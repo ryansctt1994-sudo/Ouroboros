@@ -1,0 +1,47 @@
+name: Visualize and Export
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'visualization/**'
+      - '.github/workflows/visualize.yml'
+
+jobs:
+  build-and-visualize:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            pip install numpy matplotlib trimesh ruff black
+          fi
+
+      - name: Run linters (ruff, black)
+        run: |
+          ruff .
+          black --check .
+
+      - name: Generate visualizations and exports
+        env:
+          MPLBACKEND: Agg
+        run: |
+          python visualization/torus_geodesics.py --export-obj --export-stl --save-png
+
+      - name: Upload visualization artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: visualization-artifacts
+          path: visualization/output
