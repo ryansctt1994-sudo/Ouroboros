@@ -23,6 +23,10 @@ class OuroborosVirtualProcessor:
     
     It can be embedded as a native overlay within Elpis or other fabric runtimes.
     """
+    
+    # Constants for extended features
+    VECTOR_SCALE_FACTOR = 10  # Scaling for vector to integer conversion
+    TAU_CORRECTION_FACTOR = 1e-6  # Correction factor for tau coupling
 
     def __init__(self, radius: float = 1.0, lambda_: float = 0.3, threshold: float = 0.4,
                  zeta_seed: Optional[float] = None):
@@ -75,7 +79,7 @@ class OuroborosVirtualProcessor:
         adapted with zeta modulation for toroidal state analysis.
         
         Args:
-            s: Complex parameter for zeta function (default 2.0)
+            s: Real parameter for zeta function (default 2.0)
             
         Returns:
             Zeta-seeded ergotropy value
@@ -230,9 +234,9 @@ class OuroborosVirtualProcessor:
         
         if use_tau and self._extended:
             # Apply tau correction based on vector magnitude
-            n = int(sum(V_obs) * 10) + 1  # Scale to integer
+            n = int(sum(V_obs) * self.VECTOR_SCALE_FACTOR) + 1  # Scale to integer
             tau_val = self.ramanujan_tau(n)
-            tau_correction = tau_val * 1e-6  # Small correction factor
+            tau_correction = tau_val * self.TAU_CORRECTION_FACTOR  # Small correction factor
             
             result["tau_correction"] = tau_correction
             result["delta_extended"] = result["delta"] + tau_correction
