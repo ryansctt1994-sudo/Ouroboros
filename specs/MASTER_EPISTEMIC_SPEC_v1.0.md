@@ -561,7 +561,7 @@ ERROR: E001 (unjustified statistical claim)
 ```
 "Because of climate change, this event occurred."
 JUSTIFICATION = assumption (not explicit)
-ERROR: E008 (implicit causal claim)
+ERROR: E001 (unjustified causal claim)
 ```
 
 #### Forbidden Pattern 3: Temporal Certainty Beyond Scope
@@ -1108,8 +1108,9 @@ repository: https://github.com/AIOSPANDORA/Ouroboros
 ### Document Hash (Integrity Seal)
 
 ```
-SHA-256: [To be computed upon finalization]
+SHA-256: 103aac30d0d1674c0d68b5f8e7f421ee0601b894e231eb9d9012c1312d04de7f
 Purpose: Tamper detection and version verification
+Note: Hash computed before final seal inclusion
 ```
 
 ---
