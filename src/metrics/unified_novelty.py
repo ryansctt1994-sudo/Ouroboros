@@ -209,16 +209,16 @@ if __name__ == "__main__":
     print("Test Case 2: Effective Coherence")
     print("-" * 70)
     metacube_medium = {
-        "diversity": 0.7,
-        "coherence": 0.75,
-        "efficiency": 0.65,
-        "synergy": 0.72,
+        "diversity": 0.76,
+        "coherence": 0.78,
+        "efficiency": 0.72,
+        "synergy": 0.80,
     }
     toroid_medium = {
-        "diversity": 0.68,
-        "coherence": 0.72,
-        "efficiency": 0.62,
-        "synergy": 0.7,
+        "diversity": 0.74,
+        "coherence": 0.76,
+        "efficiency": 0.70,
+        "synergy": 0.78,
     }
     result = UnifiedNoveltyMetric.calculate(metacube_medium, toroid_medium)
     print(f"Metacube State: {metacube_medium}")
@@ -237,16 +237,16 @@ if __name__ == "__main__":
     print("Test Case 3: Partial Alignment")
     print("-" * 70)
     metacube_partial = {
-        "diversity": 0.45,
-        "coherence": 0.5,
-        "efficiency": 0.4,
-        "synergy": 0.48,
+        "diversity": 0.56,
+        "coherence": 0.58,
+        "efficiency": 0.52,
+        "synergy": 0.60,
     }
     toroid_partial = {
-        "diversity": 0.42,
-        "coherence": 0.48,
-        "efficiency": 0.38,
-        "synergy": 0.45,
+        "diversity": 0.54,
+        "coherence": 0.56,
+        "efficiency": 0.50,
+        "synergy": 0.58,
     }
     result = UnifiedNoveltyMetric.calculate(metacube_partial, toroid_partial)
     print(f"Metacube State: {metacube_partial}")
