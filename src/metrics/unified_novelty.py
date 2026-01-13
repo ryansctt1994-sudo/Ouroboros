@@ -127,30 +127,29 @@ class UnifiedNoveltyMetric:
         >>> result['interpretation']
         'Optimal Synthesis'
         """
+
         # Extract and average components from both subsystems
+        # Helper function to extract and average a component
+        def _average_component(key: str) -> float:
+            return (metacube_state.get(key, 0.0) + toroid_state.get(key, 0.0)) / 2.0
+
         # Diversity (D): Measures variety and richness of system states
-        D = (
-            metacube_state.get("diversity", 0.0) + toroid_state.get("diversity", 0.0)
-        ) / 2.0
+        D = _average_component("diversity")
 
         # Coherence (C): Measures consistency and alignment
-        C = (
-            metacube_state.get("coherence", 0.0) + toroid_state.get("coherence", 0.0)
-        ) / 2.0
+        C = _average_component("coherence")
 
         # Efficiency (E): Measures resource utilization
-        E = (
-            metacube_state.get("efficiency", 0.0) + toroid_state.get("efficiency", 0.0)
-        ) / 2.0
+        E = _average_component("efficiency")
 
         # Synergy (S): Measures emergent collaborative effects
-        S = (
-            metacube_state.get("synergy", 0.0) + toroid_state.get("synergy", 0.0)
-        ) / 2.0
+        S = _average_component("synergy")
 
         # Calculate Unified Novelty Metric using the formula:
         # Γ = (D × C)^(1/2) × E^(1/3) × S
-        gamma = np.sqrt(D * C) * np.power(E, 1 / 3) * S
+        # Note: If D or C is zero, the entire metric becomes zero by design,
+        # as diversity and coherence are foundational to novelty.
+        gamma = np.sqrt(D * C) * np.cbrt(E) * S
 
         # Determine interpretation level based on threshold ranges
         if gamma < 0.2:
