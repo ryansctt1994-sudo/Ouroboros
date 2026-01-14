@@ -3,23 +3,16 @@ import math
 import threading
 import time
 from typing import List, Optional, Dict, Any
+from functools import lru_cache
 
 try:
     import numpy as np
     import scipy.special
     import networkx as nx
-    from functools import lru_cache
 
     EXTENDED_FEATURES = True
 except ImportError:
     EXTENDED_FEATURES = False
-
-    # Provide fallback for lru_cache if functools not available
-    def lru_cache(maxsize=None):
-        def decorator(func):
-            return func
-
-        return decorator
 
 
 class OuroborosVirtualProcessor:
