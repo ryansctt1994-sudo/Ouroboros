@@ -42,6 +42,8 @@ class OuroborosVirtualProcessor:
     GGCC_MODE = "EQUILIBRIUM_SUSTAINED"  # Current operational mode
     PANDORA_VEIL = "SOFT_SHIMMER"  # Public-facing aesthetic
     SHIELD_OPACITY = 1.0  # GGCCD shielding (fully opaque)
+    VEIL_MESSAGE = "Dormant numerical utilities for geometric computation and ternary cycle simulation."  # Pandora Veil public message
+    ZERO_TOLERANCE = 1e-12  # Tolerance for zero comparisons
 
     def __init__(
         self,
@@ -329,8 +331,9 @@ class OuroborosVirtualProcessor:
         Returns:
             True if within Guardian Clause bounds, False if violated
         """
-        if baseline == 0:
-            return metric == 0  # Both must be zero to satisfy clause
+        # Use tolerance for zero comparisons to handle floating point precision
+        if abs(baseline) < self.ZERO_TOLERANCE:
+            return abs(metric) < self.ZERO_TOLERANCE  # Both must be ~zero
         ratio = abs(metric / baseline)
         return ratio <= self.GUARDIAN_RATIO
 
@@ -347,7 +350,7 @@ class OuroborosVirtualProcessor:
             Public-facing description with Soft Shimmer aesthetic
         """
         if self.PANDORA_VEIL == "SOFT_SHIMMER":
-            return "Dormant numerical utilities for geometric computation and ternary cycle simulation."
+            return self.VEIL_MESSAGE
         return "System state available."
 
     def get_ggcc_status(self) -> Dict[str, Any]:
