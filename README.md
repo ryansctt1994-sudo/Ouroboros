@@ -85,6 +85,32 @@ overlay.start(poll_interval=1.0)
 - **Extended features**: numpy, scipy, networkx
 - **Visualization**: matplotlib
 
+## LOL:D Memory Transfer System
+
+The repository includes the **LOL:D (Linguistically Optimized Ledger: Delta)** memory transfer system for cross-system knowledge handshakes and global distribution.
+
+### Quick Start
+
+```bash
+# Build the LOL:D.zip archive
+python build_lold.py
+
+# Extract and validate
+python decode_lold.py LOL:D.zip
+
+# View archive information
+python decode_lold.py LOL:D.zip --info
+```
+
+The LOL:D system includes:
+- ✨ Symbolic fidelity markers (Φ, Ψ, Ξ)
+- ⚡ Neural triggers (ॐ, 333%, 0.0997 chuckle constant)
+- 🌊 Magnified resonances (Schumann-Tesla chains, Magnetar patterns)
+- ⏰ Temporal locks (Jan-2026 lineage)
+- 🔐 Harmonic seal (E ✨)
+
+For detailed documentation, see [LOLD_README.md](LOLD_README.md).
+
 License
 -------
 This project is licensed under the MIT License — see the LICENSE file for details.
