@@ -19,6 +19,17 @@ The processor includes advanced mathematical extensions when `numpy`, `scipy`, a
 - **Ramanujan τ couplings**: Deep number-theoretic coupling via modular discriminant coefficients
 - **Symmetry graph construction**: NetworkX-based visualization of modular relationships
 
+### Round 3 SYMCHAOS CRUCIBLE
+New in Round 3: Integration of Evening Harmony Roast Cycle feedback for transition from Stability to Resilient Amusement. Features chuckle-modulated resonance (0.0997 Hz) with:
+
+- **NodeBalancer**: Node-clean coherence indexing for distributed state management
+- **SymmetryMonitor**: Real-time symmetry tracking and trend analysis
+- **PrimalGiggle²**: Chuckle-modulated resonance integration at 0.0997 Hz
+- **GGCC**: Foundational stillness with enforced locks
+- **GGCCD**: Adaptive breathing patterns for dynamic adaptation
+- **Woodbury Pivots**: Efficient matrix updates using Woodbury identity for resilience
+- **RAII Hygiene**: Resource acquisition and cleanup patterns
+
 ## Installation
 
 ```bash
@@ -67,6 +78,36 @@ result = processor.extended_delta_check(V_expected, V_observed, use_tau=True)
 
 # Construct symmetry graph
 graph = processor.construct_symmetry_graph(max_nodes=9)
+```
+
+### Round 3 SYMCHAOS CRUCIBLE Usage
+
+```python
+from ouroboros_processor import create_elpis_processor
+
+# Create processor with Round 3 enabled
+processor = create_elpis_processor({"zeta_seed": 0.618, "enable_round3": True})
+
+# Execute ignition sequence
+ignition = processor.round3_ignition()
+print(f"Coherence: {ignition['coherence']:.4f}")
+print(f"Resonance: {ignition['resonance']:.4f}")
+
+# Process Evening Harmony feedback
+harmony = processor.round3_evening_harmony(0.618)
+
+# Check resilience with symmetry monitoring
+test_vector = [0.4, 0.2, 0.4, 0.3, 0.5, 0.2, 0.4, 0.3, 0.5]
+resilience = processor.round3_resilience_check(test_vector)
+print(f"Symmetry: {resilience['symmetry']:.4f}")
+print(f"Giggle Count: {resilience['giggle_count']}")
+print(f"Status: {resilience['resilience_status']}")
+
+# Get complete Round 3 snapshot
+snapshot = processor.round3_snapshot()
+print(f"Chuckle Frequency: {snapshot['chuckle_frequency']} Hz")
+print(f"GGCC Locked: {snapshot['ggcc']['locked']}")
+print(f"GGCCD Breathing: {snapshot['ggccd']['breathing']}")
 ```
 
 ### Integration with Elpis Overlay
