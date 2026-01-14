@@ -13,6 +13,10 @@ import math
 import sys
 from ouroboros_processor import OuroborosVirtualProcessor, EXTENDED_FEATURES
 
+# Test constants
+GRADIENT_TOLERANCE = 1e-10  # Tolerance for gradient component comparisons
+QUATERNION_TOLERANCE = 1e-6  # Tolerance for quaternion normalization
+
 
 def test_gradient_field_computation():
     """Test tensor-integrated gradient field computation."""
@@ -21,7 +25,7 @@ def test_gradient_field_computation():
 
     # Test at multiple points
     test_points = [
-        (0.0, 0.0),  # Outer equator
+        (0.0, 0.0),  # Origin point
         (math.pi / 4, math.pi / 4),  # Mid-range
         (math.pi / 2, math.pi / 2),  # Quarter turn
     ]
@@ -38,8 +42,10 @@ def test_gradient_field_computation():
         ), f"magnitude should be finite at ({phi}, {theta})"
 
         # Magnitude should be at least as large as either component
-        assert magnitude >= grad_phi or abs(magnitude - grad_phi) < 1e-10
-        assert magnitude >= grad_theta or abs(magnitude - grad_theta) < 1e-10
+        assert magnitude >= grad_phi or abs(magnitude - grad_phi) < GRADIENT_TOLERANCE
+        assert (
+            magnitude >= grad_theta or abs(magnitude - grad_theta) < GRADIENT_TOLERANCE
+        )
 
     print("✓ Gradient field computation tests passed")
     return True
@@ -56,7 +62,7 @@ def test_quaternion_state_representation():
     # Quaternion should be normalized (unit quaternion)
     magnitude = math.sqrt(w**2 + x**2 + y**2 + z**2)
     assert (
-        abs(magnitude - 1.0) < 1e-6
+        abs(magnitude - 1.0) < QUATERNION_TOLERANCE
     ), f"Quaternion should be normalized, got {magnitude}"
 
     # Test caching - calling again should return same result

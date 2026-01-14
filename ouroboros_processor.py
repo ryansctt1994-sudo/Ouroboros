@@ -33,6 +33,8 @@ class OuroborosVirtualProcessor:
     TAU_CORRECTION_FACTOR = 1e-6  # Correction factor for tau coupling
     ELLIPTICAL_THRESHOLD = 0.98  # Resonance clarity threshold (γ)
     NYQUIST_RATE_LIMIT = 100  # Messages per second for monitoring loops
+    GOLDEN_RATIO = 1.618033988749895  # Φ (phi) - golden ratio constant
+    GRADIENT_EPS_SCALE = 100  # Epsilon scaling factor for gradient finite differences
 
     def __init__(
         self,
@@ -282,7 +284,7 @@ class OuroborosVirtualProcessor:
         """
         if not self._extended:
             # Fallback: simple finite difference approximation
-            eps = self.EPS * 100
+            eps = self.EPS * self.GRADIENT_EPS_SCALE
             x0, y0, z0 = self.geodesic_flow(phi, theta)
             x1, y1, z1 = self.geodesic_flow(phi + eps, theta)
             x2, y2, z2 = self.geodesic_flow(phi, theta + eps)
@@ -420,18 +422,17 @@ class OuroborosVirtualProcessor:
         # Normalize state vector
         V_norm = self.ternary_cycle(V)
 
-        # Golden ratio (Φ) modulation
-        PHI = 1.618033988749895
-
         # Compute resonance using golden ratio harmonics
         resonance = 0.0
         for i, v in enumerate(V_norm):
             # Each component contributes based on Φ^i harmonic
-            harmonic_weight = 1.0 / (PHI**i)
+            harmonic_weight = 1.0 / (self.GOLDEN_RATIO**i)
             resonance += v * harmonic_weight
 
         # Normalize to [0, 1]
-        resonance = resonance / sum(1.0 / (PHI**i) for i in range(len(V_norm)))
+        resonance = resonance / sum(
+            1.0 / (self.GOLDEN_RATIO**i) for i in range(len(V_norm))
+        )
 
         return float(resonance)
 
