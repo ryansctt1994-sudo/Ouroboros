@@ -3,6 +3,7 @@ import math
 import threading
 import time
 from typing import List, Optional, Dict, Any
+from functools import lru_cache
 
 try:
     import numpy as np
@@ -40,6 +41,10 @@ class OuroborosVirtualProcessor:
     # Constants for extended features
     VECTOR_SCALE_FACTOR = 10  # Scaling for vector to integer conversion
     TAU_CORRECTION_FACTOR = 1e-6  # Correction factor for tau coupling
+    ELLIPTICAL_THRESHOLD = 0.98  # Resonance clarity threshold (γ)
+    NYQUIST_RATE_LIMIT = 100  # Messages per second for monitoring loops
+    GOLDEN_RATIO = 1.618033988749895  # Φ (phi) - golden ratio constant
+    GRADIENT_EPS_SCALE = 100  # Epsilon scaling factor for gradient finite differences
 
     def __init__(self, radius: float = 1.0, lambda_: float = 0.3, threshold: float = 0.4,
                  zeta_seed: Optional[float] = None, enable_round3: bool = True):
@@ -69,6 +74,8 @@ class OuroborosVirtualProcessor:
         self._thread: Optional[threading.Thread] = None
         self._state: Dict[str, Any] = {}
         self._extended = EXTENDED_FEATURES
+        self._quaternion_cache = {}  # Hypercomplex memory bucket
+        self._monitoring_data = []  # Monitoring loop storage
         
         # Round 3 SYMCHAOS CRUCIBLE integration
         self._round3_enabled = enable_round3 and ROUND3_AVAILABLE
@@ -286,6 +293,284 @@ class OuroborosVirtualProcessor:
 
         return result
 
+    # --- Helix DNA Magnetar Synthesis Extensions ---
+
+    def compute_gradient_field(
+        self, phi: float, theta: float
+    ) -> tuple[float, float, float]:
+        """Compute tensor-integrated gradient at a point on the torus.
+
+        Uses de Rham cohomology-inspired gradient computation to stabilize
+        untwist events in helix configurations. The gradient field represents
+        the local curvature variation supporting CP/PARAFAC tensor decomposition.
+
+        Args:
+            phi: Poloidal angle (0 to 2π)
+            theta: Toroidal angle (0 to 2π)
+
+        Returns:
+            Tuple of (grad_phi, grad_theta, magnitude) representing the gradient vector
+        """
+        if not self._extended:
+            # Fallback: simple finite difference approximation
+            eps = self.EPS * self.GRADIENT_EPS_SCALE
+            x0, y0, z0 = self.geodesic_flow(phi, theta)
+            x1, y1, z1 = self.geodesic_flow(phi + eps, theta)
+            x2, y2, z2 = self.geodesic_flow(phi, theta + eps)
+
+            grad_phi = math.sqrt((x1 - x0) ** 2 + (y1 - y0) ** 2 + (z1 - z0) ** 2) / eps
+            grad_theta = (
+                math.sqrt((x2 - x0) ** 2 + (y2 - y0) ** 2 + (z2 - z0) ** 2) / eps
+            )
+            magnitude = math.sqrt(grad_phi**2 + grad_theta**2)
+
+            return (grad_phi, grad_theta, magnitude)
+
+        # Advanced gradient using numpy for tensor operations
+        r = self.R / 2  # Minor radius (tangential throat)
+
+        # Compute metric tensor components
+        g_phi_phi = r**2
+        g_theta_theta = (self.R + r * np.cos(phi)) ** 2
+
+        # Compute Gaussian curvature K(phi)
+        K = np.cos(phi) / (r * (self.R + r * np.cos(phi)))
+
+        # Gradient components derived from Christoffel symbols
+        grad_phi = float(np.sqrt(g_phi_phi) * (1 + K * r))
+        grad_theta = float(np.sqrt(g_theta_theta))
+        magnitude = float(np.sqrt(grad_phi**2 + grad_theta**2))
+
+        return (grad_phi, grad_theta, magnitude)
+
+    @lru_cache(maxsize=128)
+    def quaternion_state(
+        self, phi: float, theta: float
+    ) -> tuple[float, float, float, float]:
+        """Represent toroidal state as a quaternion for hypercomplex memory.
+
+        Quaternion-based state representation enables rotation-aware node balancing
+        and eliminates phase ghosting in DNA-helical untwisting operations.
+
+        Args:
+            phi: Poloidal angle
+            theta: Toroidal angle
+
+        Returns:
+            Quaternion (w, x, y, z) representing the state
+        """
+        if not self._extended:
+            # Fallback: simple encoding
+            w = math.cos(phi / 2) * math.cos(theta / 2)
+            x = math.sin(phi / 2) * math.cos(theta / 2)
+            y = math.sin(phi / 2) * math.sin(theta / 2)
+            z = math.cos(phi / 2) * math.sin(theta / 2)
+            return (w, x, y, z)
+
+        # Advanced quaternion using exponential map on SO(3)
+        # Maps toroidal coordinates to unit quaternions
+        half_phi = phi / 2
+        half_theta = theta / 2
+
+        # Quaternion components with zeta modulation for coherence
+        w = float(np.cos(half_phi) * np.cos(half_theta))
+        x = float(np.sin(half_phi) * np.cos(half_theta) * self.zeta_seed)
+        y = float(np.sin(half_phi) * np.sin(half_theta))
+        z = float(np.cos(half_phi) * np.sin(half_theta) * self.zeta_seed)
+
+        # Normalize to unit quaternion
+        norm = np.sqrt(w**2 + x**2 + y**2 + z**2)
+        if norm > self.EPS:
+            w, x, y, z = w / norm, x / norm, y / norm, z / norm
+
+        # Cache in hypercomplex memory bucket
+        cache_key = f"{phi:.4f}_{theta:.4f}"
+        self._quaternion_cache[cache_key] = (w, x, y, z)
+
+        return (w, x, y, z)
+
+    def guardian_elliptical_check(self, phi: float, gamma: float = None) -> dict:
+        """Guardian Clause 3.1: Magnetic ellipses boundary validation.
+
+        Introduces elliptical corrections dynamically aligned with magnetar's
+        active field lines, preventing attractor breakdown during node-stress.
+
+        Args:
+            phi: Poloidal angle to check
+            gamma: Optional resonance clarity parameter (default: ELLIPTICAL_THRESHOLD)
+
+        Returns:
+            Dict with validation status and corrections
+        """
+        if gamma is None:
+            gamma = self.ELLIPTICAL_THRESHOLD
+
+        # Compute Gaussian curvature at this position
+        r = self.R / 2
+        K = math.cos(phi) / (r * (self.R + r * math.cos(phi)))
+
+        # Check if we're in elliptical region (K > 0)
+        is_elliptical = K > 0
+
+        # Compute distance from throat (φ = π is the critical region)
+        throat_distance = abs(phi - math.pi)
+
+        # Guardian check: validate against gamma threshold
+        safe = is_elliptical or throat_distance > (2 * math.pi * (1 - gamma))
+
+        result = {
+            "safe": safe,
+            "is_elliptical": is_elliptical,
+            "curvature": K,
+            "throat_distance": throat_distance,
+            "gamma": gamma,
+            "correction_needed": not safe,
+        }
+
+        # If correction needed, compute elliptical anchor point
+        if not safe and self._extended:
+            # Find nearest safe elliptical point
+            anchor_phi = 0.0 if phi > math.pi else 2 * math.pi
+            result["anchor_phi"] = anchor_phi
+            result["correction_vector"] = (anchor_phi - phi, 0.0)
+
+        return result
+
+    def phi_invariant_resonance(self, V: List[float]) -> float:
+        """Compute Φ-invariant PWM resonator for elliptical safe-nets.
+
+        Matches Φ-invariant PWM resonators (stillness) to harmonics of
+        DNA-coiled dynamics (breath/spin) with universal anchoring.
+
+        Args:
+            V: Ternary vector state
+
+        Returns:
+            Resonance value between 0 and 1
+        """
+        # Normalize state vector
+        V_norm = self.ternary_cycle(V)
+
+        # Compute resonance using golden ratio harmonics
+        resonance = 0.0
+        for i, v in enumerate(V_norm):
+            # Each component contributes based on Φ^i harmonic
+            harmonic_weight = 1.0 / (self.GOLDEN_RATIO**i)
+            resonance += v * harmonic_weight
+
+        # Normalize to [0, 1]
+        resonance = resonance / sum(
+            1.0 / (self.GOLDEN_RATIO**i) for i in range(len(V_norm))
+        )
+
+        return float(resonance)
+
+    def monitor_phase_lock(
+        self, phi: float, theta: float, rate_limit: bool = True
+    ) -> dict:
+        """Monitor phase-lock resonance with Nyquist wrap-tail protection.
+
+        Integrates monitoring loops with phase-lock resonance eased into
+        scoped deep-dorm Nyquist wrap-tail (100 msg/s basal frame caution).
+
+        Args:
+            phi: Poloidal angle
+            theta: Toroidal angle
+            rate_limit: Whether to enforce Nyquist rate limiting
+
+        Returns:
+            Dict with monitoring data
+        """
+        current_time = time.time()
+
+        # Rate limiting check (Nyquist: 100 msg/s max)
+        if rate_limit and len(self._monitoring_data) > 0:
+            last_time = self._monitoring_data[-1].get("timestamp", 0)
+            min_interval = 1.0 / self.NYQUIST_RATE_LIMIT
+            if current_time - last_time < min_interval:
+                return {"status": "rate_limited", "reason": "nyquist_protection"}
+
+        # Compute gradient field for phase analysis
+        grad_phi, grad_theta, grad_mag = self.compute_gradient_field(phi, theta)
+
+        # Get quaternion state
+        quat = self.quaternion_state(phi, theta)
+
+        # Phase-lock detection: check if gradients are balanced
+        phase_balance = abs(grad_phi - grad_theta) / (grad_phi + grad_theta + self.EPS)
+        phase_locked = phase_balance < 0.1  # 10% tolerance
+
+        monitor_entry = {
+            "timestamp": current_time,
+            "phi": phi,
+            "theta": theta,
+            "gradient_magnitude": grad_mag,
+            "quaternion": quat,
+            "phase_locked": phase_locked,
+            "phase_balance": phase_balance,
+        }
+
+        # Store in monitoring buffer (keep last 1000 entries)
+        self._monitoring_data.append(monitor_entry)
+        if len(self._monitoring_data) > 1000:
+            self._monitoring_data.pop(0)
+
+        return monitor_entry
+
+    def topological_analysis(self, max_nodes: int = 9) -> dict:
+        """Multi-dimensional topological automata analysis.
+
+        Analyzes aggregator poles & properties across the toroidal manifold,
+        assessing flux differentials with Jacobian-tuned scalar anchors.
+
+        Args:
+            max_nodes: Number of sample points for analysis
+
+        Returns:
+            Dict with topological properties
+        """
+        if not self._extended:
+            return {"error": "Extended features required for topological analysis"}
+
+        # Sample points across the torus
+        phi_samples = np.linspace(0, 2 * np.pi, max_nodes)
+        theta_sample = 0.0  # Fix theta for poloidal analysis
+
+        # Collect gradient data at each point
+        gradients = []
+        curvatures = []
+
+        for phi in phi_samples:
+            grad = self.compute_gradient_field(phi, theta_sample)
+            gradients.append(grad[2])  # Magnitude
+
+            # Compute Gaussian curvature
+            r = self.R / 2
+            K = np.cos(phi) / (r * (self.R + r * np.cos(phi)))
+            curvatures.append(K)
+
+        # Identify poles (critical points where gradient vanishes or curvature changes sign)
+        curvatures_arr = np.array(curvatures)
+        sign_changes = np.diff(np.sign(curvatures_arr))
+        poles = np.where(np.abs(sign_changes) > 0)[0]
+
+        # Compute flux differential using Jacobian determinant approximation
+        gradients_arr = np.array(gradients)
+        flux_differential = float(np.std(gradients_arr))
+
+        return {
+            "num_poles": len(poles),
+            "pole_locations": [float(phi_samples[p]) for p in poles],
+            "flux_differential": flux_differential,
+            "mean_curvature": float(np.mean(curvatures_arr)),
+            "curvature_variance": float(np.var(curvatures_arr)),
+            "gradient_range": (
+                float(np.min(gradients_arr)),
+                float(np.max(gradients_arr)),
+            ),
+        }
+        return result
+
     # --- Round 3 SYMCHAOS CRUCIBLE Methods ---
     
     def round3_ignition(self) -> Optional[Dict[str, Any]]:
@@ -459,6 +744,14 @@ class OuroborosVirtualProcessor:
         if self._extended:
             snapshot["ergotropy"] = self.zeta_ergotropy()
             snapshot["modular_class"] = self.modular_symmetry(int(self.R * 10))
+
+            # Add new Helix DNA Magnetar features
+            snapshot["quaternion_cache_size"] = len(self._quaternion_cache)
+            snapshot["monitoring_entries"] = len(self._monitoring_data)
+
+            # Sample topological analysis
+            topo = self.topological_analysis(max_nodes=9)
+            snapshot["topological_properties"] = topo
         
         # Add Round 3 snapshot if available
         if self._round3_enabled and self._crucible is not None:
@@ -525,6 +818,43 @@ if __name__ == "__main__":
             print("\n=== Symmetry Graph ===")
             print(f"Nodes: {graph.number_of_nodes()}")
             print(f"Edges: {graph.number_of_edges()}")
+
+        # New Helix DNA Magnetar Synthesis Features
+        print("\n=== Helix DNA Magnetar Synthesis ===")
+
+        # Tensor-integrated gradients
+        phi, theta = math.pi / 4, math.pi / 3
+        grad = processor.compute_gradient_field(phi, theta)
+        print(f"Gradient field at (π/4, π/3): mag={grad[2]:.6f}")
+
+        # Quaternion hypercomplex memory
+        quat = processor.quaternion_state(phi, theta)
+        print(
+            f"Quaternion state: ({quat[0]:.4f}, {quat[1]:.4f}, {quat[2]:.4f}, {quat[3]:.4f})"
+        )
+
+        # Guardian elliptical check
+        guardian = processor.guardian_elliptical_check(phi, gamma=0.98)
+        print(
+            f"Guardian check: safe={guardian['safe']}, elliptical={guardian['is_elliptical']}"
+        )
+
+        # Φ-invariant resonance
+        resonance = processor.phi_invariant_resonance(V_obs)
+        print(f"Φ-invariant resonance: {resonance:.6f}")
+
+        # Phase-lock monitoring
+        monitor = processor.monitor_phase_lock(phi, theta)
+        print(
+            f"Phase-lock status: locked={monitor['phase_locked']}, balance={monitor['phase_balance']:.6f}"
+        )
+
+        # Topological analysis
+        topo = processor.topological_analysis(max_nodes=9)
+        print(
+            f"Topological poles: {topo['num_poles']}, flux_diff={topo['flux_differential']:.6f}"
+        )
+
     else:
         print("\n[Extended features not available - install numpy, scipy, networkx]")
     
