@@ -7,6 +7,7 @@ It attempts to be non-prescriptive about fabric_core's API: it will first
 attempt to call a `register_overlay` function on the fabric, and if missing
 will fall back to inserting into a fabric.overlays mapping.
 """
+
 from typing import Any, Dict
 
 from ouroboros_processor import create_elpis_processor, OuroborosVirtualProcessor
@@ -22,6 +23,7 @@ class ElpisOverlay:
 
     def start(self, poll_interval: float = 1.0):
         """Start the overlay's execution loop in a non-blocking way."""
+
         # Example on_tick callback: could push snapshots into fabric ledgers
         def on_tick(proc: OuroborosVirtualProcessor):
             # Minimal heartbeat: record a snapshot; integration points may push this
@@ -33,7 +35,9 @@ class ElpisOverlay:
         self.processor.stop_event_loop()
 
 
-def register_elpis_overlay(fabric: Any, name: str = "elpis", config: Dict[str, Any] = None) -> ElpisOverlay:
+def register_elpis_overlay(
+    fabric: Any, name: str = "elpis", config: Dict[str, Any] = None
+) -> ElpisOverlay:
     """Register the Elpis overlay with the host fabric.
 
     Usage (inside fabric_core):

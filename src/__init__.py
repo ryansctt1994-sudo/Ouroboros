@@ -8,7 +8,7 @@ from .dna_helix_magnetar import (
     SymmetryMonitor,
     PrimalGiggleIntegrator,
     SUPERCRITICAL_CHUCKLE_FREQUENCY,
-    PHI_GOLDEN_RATIO
+    PHI_GOLDEN_RATIO,
 )
 
 __all__ = [
@@ -19,5 +19,5 @@ __all__ = [
     "SymmetryMonitor",
     "PrimalGiggleIntegrator",
     "SUPERCRITICAL_CHUCKLE_FREQUENCY",
-    "PHI_GOLDEN_RATIO"
+    "PHI_GOLDEN_RATIO",
 ]

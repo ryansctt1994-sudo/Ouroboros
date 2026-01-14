@@ -15,7 +15,6 @@ The CI workflow sets MPLBACKEND=Agg so this script can run headless.
 
 from __future__ import annotations
 import argparse
-import os
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
@@ -72,11 +71,24 @@ def save_png(x, y, z, out_path: Path, dpi: int = 200):
     fig = plt.figure(figsize=(6, 6))
     ax = fig.add_subplot(111, projection="3d")
     # Use a surface plot with modest alpha so mesh structure is visible
-    ax.plot_surface(x, y, z, rstride=2, cstride=2, cmap="viridis", linewidth=0, antialiased=True, alpha=0.9)
+    ax.plot_surface(
+        x,
+        y,
+        z,
+        rstride=2,
+        cstride=2,
+        cmap="viridis",
+        linewidth=0,
+        antialiased=True,
+        alpha=0.9,
+    )
     ax.set_axis_off()
     # Equal aspect ratio
     try:
-        max_range = np.array([x.max() - x.min(), y.max() - y.min(), z.max() - z.min()]).max() / 2.0
+        max_range = (
+            np.array([x.max() - x.min(), y.max() - y.min(), z.max() - z.min()]).max()
+            / 2.0
+        )
         mid_x = (x.max() + x.min()) * 0.5
         mid_y = (y.max() + y.min()) * 0.5
         mid_z = (z.max() + z.min()) * 0.5
@@ -92,12 +104,31 @@ def save_png(x, y, z, out_path: Path, dpi: int = 200):
 
 def parse_args():
     p = argparse.ArgumentParser(description="Create a torus mesh and optional exports")
-    p.add_argument("--output-dir", "-o", default="visualization/output", help="Directory to place exports and images")
-    p.add_argument("--export-obj", action="store_true", help="Export mesh as OBJ (outdir/torus.obj)")
-    p.add_argument("--export-stl", action="store_true", help="Export mesh as STL (outdir/torus.stl)")
-    p.add_argument("--save-png", action="store_true", help="Save a PNG render (outdir/torus.png)")
-    p.add_argument("--nu", type=int, default=180, help="Samples around major circumference")
-    p.add_argument("--nv", type=int, default=90, help="Samples around minor circumference")
+    p.add_argument(
+        "--output-dir",
+        "-o",
+        default="visualization/output",
+        help="Directory to place exports and images",
+    )
+    p.add_argument(
+        "--export-obj",
+        action="store_true",
+        help="Export mesh as OBJ (outdir/torus.obj)",
+    )
+    p.add_argument(
+        "--export-stl",
+        action="store_true",
+        help="Export mesh as STL (outdir/torus.stl)",
+    )
+    p.add_argument(
+        "--save-png", action="store_true", help="Save a PNG render (outdir/torus.png)"
+    )
+    p.add_argument(
+        "--nu", type=int, default=180, help="Samples around major circumference"
+    )
+    p.add_argument(
+        "--nv", type=int, default=90, help="Samples around minor circumference"
+    )
     p.add_argument("--R", type=float, default=1.0, help="Major radius")
     p.add_argument("--r", type=float, default=0.35, help="Minor radius")
     return p.parse_args()
@@ -127,7 +158,9 @@ def main():
         save_png(x, y, z, png_path)
 
     if not (args.export_obj or args.export_stl or args.save_png):
-        print("No outputs requested. Use --export-obj, --export-stl and/or --save-png to produce files.")
+        print(
+            "No outputs requested. Use --export-obj, --export-stl and/or --save-png to produce files."
+        )
 
 
 if __name__ == "__main__":
