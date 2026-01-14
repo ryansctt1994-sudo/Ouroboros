@@ -72,7 +72,9 @@ class LatticeNode:
         if not validate_symbol(self.symbol):
             raise ValueError(f"Invalid symbol for lattice node: {self.symbol}")
         if not self.node_id:
-            self.node_id = f"node_{hash(self.position)}_{self.symbol}"
+            # Use deterministic ID based on position and symbol
+            pos_str = "_".join(str(int(p * 1000000)) for p in self.position)
+            self.node_id = f"node_{pos_str}_{self.symbol}"
 
 
 @dataclass
@@ -288,12 +290,15 @@ def extend_lattice(
     
     elif merge_strategy == "overlay":
         # Overlay replaces conflicting nodes
+        # Build position mapping for efficiency
+        position_to_node = {node.position: node for node in extended.nodes}
+        
         for ext_node in extension.nodes:
-            # Remove any existing node at this position
-            extended.nodes = [
-                n for n in extended.nodes if n.position != ext_node.position
-            ]
-            extended.add_node(ext_node)
+            # Replace or add node
+            position_to_node[ext_node.position] = ext_node
+        
+        # Rebuild nodes list from mapping
+        extended.nodes = list(position_to_node.values())
     
     else:
         raise ValueError(f"Unknown merge strategy: {merge_strategy}")
@@ -358,8 +363,14 @@ def apply_operation_chain(
     # Validate all operations are chainable
     for op in operations:
         sym = get_symbol(op)
-        if not (isinstance(sym, Glyph) and sym.chainable):
+        if sym is None:
+            raise ValueError(f"Unknown symbol: {op}")
+        # Check if it's a Glyph with chainable attribute
+        if isinstance(sym, Glyph) and not sym.chainable:
             raise ValueError(f"Operation {op} is not chainable")
+        # Symbols are not chainable (only Glyphs can be)
+        if isinstance(sym, Symbol):
+            raise ValueError(f"Symbol {op} cannot be used in operation chains (only Glyphs are chainable)")
     
     new_symbols = base_statement.symbols + operations
     return CompositeStatement(
