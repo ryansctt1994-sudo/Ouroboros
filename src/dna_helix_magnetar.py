@@ -28,6 +28,7 @@ from scipy.linalg import svd
 SUPERCRITICAL_CHUCKLE_FREQUENCY = 0.0997  # Hz - PrimalGiggle^2 baseline resonance
 PHI_GOLDEN_RATIO = (1 + math.sqrt(5)) / 2  # φ for memoization
 GUARDIAN_ELLIPTICAL_TOLERANCE = 1e-9  # Precision for elliptical corrections
+EPSILON = 1e-12  # Small value to prevent division by zero
 
 
 class TensorGradientSystem:
@@ -102,7 +103,11 @@ class TensorGradientSystem:
 
         # Reconstruct and compute error
         reconstruction = U_r @ np.diag(S_r) @ Vt_r
-        error = np.linalg.norm(matrix - reconstruction) / np.linalg.norm(matrix)
+        matrix_norm = np.linalg.norm(matrix)
+        if matrix_norm < EPSILON:
+            error = 0.0
+        else:
+            error = np.linalg.norm(matrix - reconstruction) / matrix_norm
 
         # Factor matrices for λ-spike management
         factor_matrices = [U_r, np.diag(S_r), Vt_r.T]
@@ -161,7 +166,7 @@ class QuaternionNodeBalancer:
             Bucket index
         """
         # Normalize quaternion
-        q_norm = q / (np.linalg.norm(q) + 1e-12)
+        q_norm = q / (np.linalg.norm(q) + EPSILON)
 
         # Hash based on quaternion components
         hash_val = (
@@ -217,7 +222,7 @@ class QuaternionNodeBalancer:
             [node_state[0], -node_state[1], -node_state[2], -node_state[3]]
         )
         balanced = self.quaternion_multiply(node_state, conjugate)
-        balanced = balanced / (np.linalg.norm(balanced) + 1e-12)
+        balanced = balanced / (np.linalg.norm(balanced) + EPSILON)
 
         # Store in quaternion bucket cache
         self.quaternion_cache[bucket_idx].append(balanced)
@@ -309,7 +314,7 @@ class GuardianClause31:
         """
         # Normalize to unit sphere for coherence
         magnitude = np.linalg.norm(angular_momentum)
-        if magnitude > 1e-12:
+        if magnitude > EPSILON:
             coherent_momentum = angular_momentum / magnitude
         else:
             coherent_momentum = angular_momentum
@@ -576,14 +581,18 @@ class DNAHelixMagnetarCore:
         """Multi-pole phase quantization for Round 3 dynamics.
 
         Args:
-            poles: Array of pole positions
+            poles: Array of pole positions (Nx2 array or 1D array)
             quantum_levels: Number of quantization levels
 
         Returns:
             Quantized phase array
         """
         # Compute phases relative to origin
-        phases = np.arctan2(poles[:, 1], poles[:, 0]) if poles.shape[1] >= 2 else poles
+        if len(poles.shape) > 1 and poles.shape[1] >= 2:
+            phases = np.arctan2(poles[:, 1], poles[:, 0])
+        else:
+            # For 1D array, treat as angles directly
+            phases = poles.flatten()
 
         # Quantize to discrete levels
         phase_range = 2 * np.pi
@@ -629,4 +638,5 @@ __all__ = [
     "DNAHelixMagnetarCore",
     "SUPERCRITICAL_CHUCKLE_FREQUENCY",
     "PHI_GOLDEN_RATIO",
+    "EPSILON",
 ]
