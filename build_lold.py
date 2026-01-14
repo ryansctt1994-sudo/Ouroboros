@@ -159,21 +159,23 @@ def build_lold_archive(output_path="LOL:D.zip"):
     
     # Update manifest with file list
     manifest["included_files"] = [f[0] for f in files]
+    
+    # Derive session transcripts from included files
+    session_transcript_keywords = [
+        "SESSION_TRANSCRIPTS", "MASTERSTACK_KERNEL", "MANUSCRIPT", 
+        "VERITAS", "TERNARY_BINARY", "METHODOLOGY", "FALSIFIABILITY"
+    ]
     manifest["session_transcripts"] = [
-        "SESSION_TRANSCRIPTS.md",
-        "MASTERSTACK_KERNEL_v2.0.kernel",
-        "OUROBOROS_MANUSCRIPT_DATA.md",
-        "OUROBOROS_DELTA_MANUSCRIPT.md",
-        "VERITAS_ALIGNMENT.md",
-        "TERNARY_BINARY_BRIDGE.md",
-        "METHODOLOGY.md",
-        "FALSIFIABILITY_AUDIT.md"
+        f[0] for f in files 
+        if any(keyword in f[0].upper() for keyword in session_transcript_keywords)
     ]
     
     # Create archive
     output = Path(output_path)
+    
+    # First pass: create archive and add files
     with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as archive:
-        # Add manifest
+        # Add manifest (will be updated with hash in second pass)
         manifest_json = json.dumps(manifest, indent=2, ensure_ascii=False)
         archive.writestr("MANIFEST.json", manifest_json)
         print(f"✓ Added MANIFEST.json")
@@ -182,10 +184,22 @@ def build_lold_archive(output_path="LOL:D.zip"):
         for file_path, full_path in files:
             archive.write(full_path, file_path)
             print(f"✓ Added {file_path}")
+    
+    # Calculate archive hash
+    archive_data = output.read_bytes()
+    archive_hash = hashlib.sha256(archive_data).hexdigest()
+    
+    # Update manifest with hash and recreate archive
+    manifest["archive_hash"] = archive_hash
+    
+    with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED) as archive:
+        # Add updated manifest with hash
+        manifest_json = json.dumps(manifest, indent=2, ensure_ascii=False)
+        archive.writestr("MANIFEST.json", manifest_json)
         
-        # Calculate archive hash
-        archive_data = output.read_bytes()
-        archive_hash = hashlib.sha256(archive_data).hexdigest()
+        # Add all collected files
+        for file_path, full_path in files:
+            archive.write(full_path, file_path)
     
     print()
     print("=" * 70)
