@@ -12,6 +12,7 @@ Features:
 """
 
 import math
+import random
 from typing import List, Tuple, Dict, Any, Optional
 import time
 
@@ -171,7 +172,6 @@ class SymmetryMonitorV2:
             Correction value applied, or None if no correction
         """
         # Determine if correction should be applied
-        import random
         should_correct = force_correction or (random.random() < self.correction_sparsity)
         
         if not should_correct:
@@ -319,7 +319,6 @@ if __name__ == "__main__":
     print("=" * 70)
     print()
     
-    import random
     monitor = SymmetryMonitorV2(drift_threshold=0.05)
     
     # Simulate phase measurements with drift
