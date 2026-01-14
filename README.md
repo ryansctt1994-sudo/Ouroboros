@@ -19,6 +19,17 @@ The processor includes advanced mathematical extensions when `numpy`, `scipy`, a
 - **Ramanujan τ couplings**: Deep number-theoretic coupling via modular discriminant coefficients
 - **Symmetry graph construction**: NetworkX-based visualization of modular relationships
 
+#### Helix DNA Magnetar Synthesis Extensions
+
+Advanced features for stabilization and resonance analysis:
+
+- **Tensor-integrated gradient systems**: de Rham cohomology-inspired gradient computation for geodesic flow stabilization
+- **Quaternion hypercomplex memory**: LRU-cached quaternion state representation for rotation-aware operations
+- **Guardian elliptical validation**: Magnetic ellipse boundary checking with dynamic corrections
+- **Φ-invariant PWM resonance**: Golden ratio-modulated resonators for harmonic analysis
+- **Phase-lock monitoring**: Nyquist-protected monitoring loops with rate limiting
+- **Topological automata analysis**: Multi-dimensional pole detection and flux differential computation
+
 ## Installation
 
 ```bash
@@ -67,6 +78,27 @@ result = processor.extended_delta_check(V_expected, V_observed, use_tau=True)
 
 # Construct symmetry graph
 graph = processor.construct_symmetry_graph(max_nodes=9)
+
+# Helix DNA Magnetar Synthesis features
+phi, theta = 3.14159 / 4, 3.14159 / 3
+
+# Compute gradient field
+grad_phi, grad_theta, magnitude = processor.compute_gradient_field(phi, theta)
+
+# Get quaternion state (with LRU caching)
+quaternion = processor.quaternion_state(phi, theta)
+
+# Validate elliptical boundaries (Guardian Clause 3.1)
+guardian_result = processor.guardian_elliptical_check(phi, gamma=0.98)
+
+# Compute Φ-invariant resonance
+resonance = processor.phi_invariant_resonance([0.35, 0.25, 0.4])
+
+# Monitor phase-lock with Nyquist protection
+monitor_data = processor.monitor_phase_lock(phi, theta, rate_limit=True)
+
+# Analyze topological properties
+topology = processor.topological_analysis(max_nodes=9)
 ```
 
 ### Integration with Elpis Overlay
