@@ -13,15 +13,20 @@ from .lexicon import (
     get_symbol,
     get_glyph,
     validate_symbol,
+    list_all_symbols,
 )
 
 from .framework import (
     CompositeStatement,
     LatticeConstruct,
+    LatticeNode,
     DeploymentProtocol,
+    ConstructType,
     encode_construct,
     decode_construct,
     extend_lattice,
+    create_ternary_lattice,
+    apply_operation_chain,
 )
 
 __version__ = "1.0.0"
@@ -35,11 +40,16 @@ __all__ = [
     "get_symbol",
     "get_glyph",
     "validate_symbol",
+    "list_all_symbols",
     # Framework exports
     "CompositeStatement",
     "LatticeConstruct",
+    "LatticeNode",
     "DeploymentProtocol",
+    "ConstructType",
     "encode_construct",
     "decode_construct",
     "extend_lattice",
+    "create_ternary_lattice",
+    "apply_operation_chain",
 ]

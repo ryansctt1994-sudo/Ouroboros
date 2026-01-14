@@ -10,6 +10,26 @@ A repository for geometry and visualization experiments, featuring the **Ourobor
 - **Delta-check validation**: Ternary Delta-check with torus curvature penalty
 - **Event loop integration**: Lightweight overlay for fabric runtimes (e.g., Elpis)
 
+### GGCCD Crucible Framework
+The **Global Geometric Construct Compression Dictionary (GGCCD)** framework provides a holistic lexicon system for encoding multi-dimensional states:
+
+- **Immutable True Text Lexicon**: Symbols, glyphs, and their explanations organized into a comprehensive lexicon
+- **Composite Statements**: Structured statements combining symbols with context and metadata
+- **Lattice Constructs**: Multi-dimensional lattice structures with nodes and relationships
+- **Deployment Protocols**: Protocols for deploying and executing GGCCD constructs
+- **Ternary State Support**: Native support for ternary states (+1, 0, -1) and transitions
+- **Advanced Glyphs**: Δ (Delta), Ø (Empty), Θ (Theta), → (Arrow), ≈ (Approximation), ⊕ (XOR), ⊗ (Tensor), Ω (Omega), Φ (Phi), and more
+
+### Rosetta Translator Prototype (LOL:D → LOL:D.zip)
+The **Rosetta Translator** provides complete reversible compression/decompression for LOL:D (Language of Lattice: Dimensional) symbolic-text constructs:
+
+- **Lossless Compression**: Zlib-based compact encoding with lossless text preservation
+- **Symbol Mapping**: Extended symbol map supporting GGCCD lattice glyphs and operational chaining
+- **Direct Text Encoding**: Plain text embedded directly in compressed stream
+- **Relational Integrity**: Maintains traversal relationships in large-scale constructs
+- **File Format**: .lold.zip format with versioning, checksums, and metadata
+- **Roundtrip Validation**: Built-in validation for compression/decompression integrity
+
 ### Extended Features
 The processor includes advanced mathematical extensions when `numpy`, `scipy`, and `networkx` are installed:
 
@@ -78,6 +98,73 @@ from overlays.elpis_overlay import register_elpis_overlay
 overlay = register_elpis_overlay(fabric, name="ouroboros", config={"zeta_seed": 0.5})
 overlay.start(poll_interval=1.0)
 ```
+
+### GGCCD Framework Usage
+
+```python
+from ggccd import (
+    CompositeStatement, LatticeConstruct, ConstructType,
+    create_ternary_lattice, get_symbol
+)
+
+# Work with symbols
+delta = get_symbol("Δ")
+print(delta.true_text.primary)  # "Change operator, difference, delta transformation"
+
+# Create composite statements
+statement = CompositeStatement(
+    symbols=["Δ", "→", "+1"],
+    construct_type=ConstructType.CHAIN,
+    context="state_validation"
+)
+print(statement)  # "Δ → +1 :: state_validation"
+
+# Create ternary lattice
+lattice = create_ternary_lattice(
+    expansion_positions=[(1.0, 0.0, 0.0)],
+    reconciliation_positions=[(0.0, 0.0, 0.0)],
+    collapse_positions=[(-1.0, 0.0, 0.0)],
+    dimensions=3,
+    name="ouroboros_lattice"
+)
+print(f"Lattice nodes: {len(lattice.nodes)}")
+```
+
+### Rosetta Translator Usage
+
+```python
+from rosetta import (
+    RosettaTranslator, validate_roundtrip,
+    save_lold_zip, load_lold_zip
+)
+
+# Compress LOL:D constructs
+translator = RosettaTranslator(compression_level=6)
+lold_construct = "Δ(V_exp, V_obs) → +1 :: validated_state"
+compressed = translator.compress(lold_construct)
+
+print(f"Original: {compressed.original_size} bytes")
+print(f"Compressed: {compressed.compressed_size} bytes")
+print(f"Ratio: {compressed.compression_ratio():.2%}")
+
+# Decompress
+decompressed = translator.decompress(compressed)
+print(f"Match: {lold_construct == decompressed}")
+
+# Save to file
+save_lold_zip(lold_construct, "construct.lold.zip")
+
+# Load from file
+loaded = load_lold_zip("construct.lold.zip")
+
+# Validate roundtrip
+success, message, ratio = validate_roundtrip(lold_construct)
+print(message)
+```
+
+See the `examples/` directory for comprehensive usage examples:
+- `examples/ggccd_examples.py` - GGCCD framework demonstrations
+- `examples/rosetta_examples.py` - Rosetta translator demonstrations
 
 ## Dependencies
 

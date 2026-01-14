@@ -10,6 +10,8 @@ from .translator import (
     compress_lold,
     decompress_lold,
     validate_roundtrip,
+    save_lold_zip,
+    load_lold_zip,
 )
 
 from .symbol_map import (
@@ -17,6 +19,9 @@ from .symbol_map import (
     encode_symbol,
     decode_symbol,
     is_lold_symbol,
+    list_all_symbols,
+    list_ggccd_symbols,
+    list_chainable_symbols,
 )
 
 from .encoder import (
@@ -33,11 +38,16 @@ __all__ = [
     "compress_lold",
     "decompress_lold",
     "validate_roundtrip",
+    "save_lold_zip",
+    "load_lold_zip",
     # Symbol map exports
     "ROSETTA_SYMBOL_MAP",
     "encode_symbol",
     "decode_symbol",
     "is_lold_symbol",
+    "list_all_symbols",
+    "list_ggccd_symbols",
+    "list_chainable_symbols",
     # Encoder exports
     "LoldEncoder",
     "LoldDecoder",
