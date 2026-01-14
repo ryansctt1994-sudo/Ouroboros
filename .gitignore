@@ -23,3 +23,7 @@ Thumbs.db
 
 # Output from visualization runs (generated artifacts)
 visualization/output/*
+
+# LOL:D extraction test directories
+LOLD_extracted/
+*_extraction/
