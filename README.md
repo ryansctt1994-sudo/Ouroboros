@@ -19,6 +19,20 @@ The processor includes advanced mathematical extensions when `numpy`, `scipy`, a
 - **Ramanujan τ couplings**: Deep number-theoretic coupling via modular discriminant coefficients
 - **Symmetry graph construction**: NetworkX-based visualization of modular relationships
 
+### GGCC Phase 3: Crucible Kinetic Synthesis (NEW)
+Advanced modular systems for Phase 3 activation within the Guardian Gate Constellation Control lattice:
+
+- **NodeBalancer v2**: Φ-Aware memoization with AVL-weighted balancing and LRU cache
+- **GradientEngine v2**: Chebyshev-proxied gradient management with adaptive segment prioritization
+- **SymmetryMonitor v2**: Auto-drift detection with Kalman-backed filters and Guardian Clause dynamics
+- **TransientManager v2**: Epoch-driven cleanup with two-level FIFO system for cache pressure management
+- **CouplingInterface**: Static/Dynamic impedance matching between GGCC and GGCCD layers
+- **GGCC Controller**: Unified coordination system for all Phase 3 modules
+
+All modules feature zero-cascade deployment, monitored fitness control, and AMUSED-tagged logging.
+
+See [src/ggcc/README.md](src/ggcc/README.md) for detailed GGCC Phase 3 documentation.
+
 ## Installation
 
 ```bash
@@ -77,6 +91,39 @@ from overlays.elpis_overlay import register_elpis_overlay
 # Register with fabric
 overlay = register_elpis_overlay(fabric, name="ouroboros", config={"zeta_seed": 0.5})
 overlay.start(poll_interval=1.0)
+```
+
+### GGCC Phase 3 Usage
+
+```python
+from src.ggcc import GGCCPhase3Controller
+
+# Initialize Phase 3 controller with all modules
+controller = GGCCPhase3Controller(config={
+    "node_balancer": {"capacity": 100},
+    "gradient_engine": {"lambda_scale": 0.3},
+    "symmetry_monitor": {"drift_threshold": 0.01}
+})
+
+# Process coordinated operation across all modules
+operation = {
+    "key": "operation_1",
+    "gradient_param": 0.5,
+    "phase": 0.1,
+    "static_value": 0.7
+}
+result = controller.process_operation(operation)
+
+# Check system health
+health = controller.get_system_health()
+print(f"System Status: {health['overall_status']}")
+
+# Perform maintenance
+controller.perform_maintenance()
+
+# Zero-cascade module deactivation (reversible)
+controller.deactivate_module("gradient_engine")
+controller.activate_module("gradient_engine")
 ```
 
 ## Dependencies
