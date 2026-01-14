@@ -3,6 +3,7 @@
 
 import numpy as np
 import sys
+import traceback
 
 from src.dna_helix_magnetar import (
     DNAHelixMagnetarCore,
@@ -203,8 +204,6 @@ def main():
         return 1
     except Exception as e:
         print(f"\n❌ Unexpected error: {e}")
-        import traceback
-
         traceback.print_exc()
         return 1
 

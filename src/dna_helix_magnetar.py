@@ -18,7 +18,7 @@ All changes are reversible, human-sovereign, and laughter-infused with resilienc
 
 import math
 from collections import OrderedDict
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Tuple, Any, Callable
 import numpy as np
 from scipy import signal
 from scipy.linalg import svd
@@ -554,7 +554,7 @@ class DNAHelixMagnetarCore:
             "state": "GGCCD_Breath",
         }
 
-    def phi_memoization(self, key: str, computation_fn: callable) -> float:
+    def phi_memoization(self, key: str, computation_fn: Callable[[], float]) -> float:
         """NodeBalancer Φ-memoization for higher-order dynamics.
 
         Args:
