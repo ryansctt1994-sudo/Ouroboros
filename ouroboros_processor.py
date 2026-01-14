@@ -783,9 +783,6 @@ def create_elpis_processor(
         zeta_seed=zeta_seed,
         enable_round3=enable_round3,
     )
-    return OuroborosVirtualProcessor(
-        radius=radius, lambda_=lambda_, threshold=threshold, zeta_seed=zeta_seed
-    )
 
 
 __all__ = ["OuroborosVirtualProcessor", "create_elpis_processor"]
