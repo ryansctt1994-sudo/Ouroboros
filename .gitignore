@@ -29,3 +29,6 @@ visualization/output/*
 .coverage
 coverage.xml
 htmlcov/
+# LOL:D extraction test directories
+LOLD_extracted/
+*_extraction/
