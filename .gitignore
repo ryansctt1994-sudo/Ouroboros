@@ -24,6 +24,11 @@ Thumbs.db
 # Output from visualization runs (generated artifacts)
 visualization/output/*
 
+# Testing
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
 # LOL:D extraction test directories
 LOLD_extracted/
 *_extraction/
