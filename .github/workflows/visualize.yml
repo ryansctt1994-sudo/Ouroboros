@@ -26,8 +26,9 @@ jobs:
           if [ -f requirements.txt ]; then
             pip install -r requirements.txt
           else
-            pip install numpy matplotlib trimesh ruff black
+            pip install numpy matplotlib trimesh
           fi
+          pip install ruff black
 
       - name: Run linters (ruff, black)
         run: |
