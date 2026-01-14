@@ -10,10 +10,12 @@ from .lexicon import (
     Glyph,
     TrueText,
     GGCCD_LEXICON,
+    SymbolCategory,
     get_symbol,
     get_glyph,
     validate_symbol,
     list_all_symbols,
+    get_symbols_by_category,
 )
 
 from .framework import (
@@ -37,10 +39,12 @@ __all__ = [
     "Glyph",
     "TrueText",
     "GGCCD_LEXICON",
+    "SymbolCategory",
     "get_symbol",
     "get_glyph",
     "validate_symbol",
     "list_all_symbols",
+    "get_symbols_by_category",
     # Framework exports
     "CompositeStatement",
     "LatticeConstruct",
