@@ -284,6 +284,11 @@ class LOLDDecoder:
             print(f"Version: {self.manifest.get('version', 'Unknown')}")
             print(f"Description: {self.manifest.get('description', 'N/A')}")
             
+            # Display archive hash if present
+            archive_hash = self.manifest.get('archive_hash')
+            if archive_hash:
+                print(f"Archive Hash (SHA-256): {archive_hash}")
+            
             print(f"\n{HARMONIC_SEAL} Harmonic Seal: {self.manifest.get('harmonic_seal', 'Not set')}")
             
             # Symbolic fidelity
