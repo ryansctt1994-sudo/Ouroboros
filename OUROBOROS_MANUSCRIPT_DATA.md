@@ -16,7 +16,7 @@ Motif Glossary
 
 Digital Artifacts Inventory
 
-Files (current at 2025-12-30):
+Files (current at 2026-01-14):
 - README.md (expanded)
 - LICENSE (MIT)
 - OUROBOROS_DELTA_MANUSCRIPT.md (theoretical manuscript)
@@ -25,6 +25,10 @@ Files (current at 2025-12-30):
 - VERITAS_ALIGNMENT.md (ledger alignment and manifest-tip policy)
 - FALSIFIABILITY_AUDIT.md (tests, measurable predictions, acceptance criteria)
 - METHODOLOGY.md (experimental & reproducibility notes)
+- MASTERSTACK_KERNEL_v2.0.kernel (LLM kernel specification)
+- SYMCHAOS_CRUCIBLE_ROUND3_SEAL.md (Round 3 completion and equilibrium seal)
+- specs/MASTER_EPISTEMIC_SPEC_v1.0.md (epistemic discipline framework)
+- specs/README.md (specifications overview)
 - visualization/torus_geodesics.py (visualization + exporters)
 - visualization/README.md
 - requirements.txt
