@@ -19,7 +19,7 @@ Components:
 import math
 import threading
 import time
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, Callable
 from dataclasses import dataclass, field
 
 try:
@@ -154,12 +154,19 @@ class SymmetryMonitor:
             
             # Check reflection symmetry
             n = len(vector)
-            symmetry = 0.0
-            for i in range(n // 2):
-                diff = abs(vector[i] - vector[n - 1 - i])
-                symmetry += 1.0 / (1.0 + diff)
+            half = n // 2
             
-            self.symmetry_score = symmetry / (n // 2) if n > 1 else 1.0
+            if half == 0:
+                # Vector too short for meaningful symmetry check
+                self.symmetry_score = 1.0
+            else:
+                symmetry = 0.0
+                for i in range(half):
+                    diff = abs(vector[i] - vector[n - 1 - i])
+                    symmetry += 1.0 / (1.0 + diff)
+                
+                self.symmetry_score = symmetry / half
+            
             self.symmetry_history.append(self.symmetry_score)
             
             # Keep history bounded
@@ -263,8 +270,8 @@ class WoodburyPivot:
         Updates (A + u⊗v) efficiently.
         
         Args:
-            u: Update vector (column)
-            v: Update vector (row)
+            u: Update vector (column) - must have length equal to base_size
+            v: Update vector (row) - must have length equal to base_size
         
         Returns:
             Updated inverse matrix
@@ -272,6 +279,13 @@ class WoodburyPivot:
         if not NUMPY_AVAILABLE:
             # Simple fallback: return base inverse
             return self.base_inverse
+        
+        # Validate input dimensions
+        if len(u) != self.base_size or len(v) != self.base_size:
+            raise ValueError(
+                f"Input vectors must have length {self.base_size}, "
+                f"got u: {len(u)}, v: {len(v)}"
+            )
         
         u_arr = np.array(u).reshape(-1, 1)
         v_arr = np.array(v).reshape(1, -1)
@@ -308,7 +322,7 @@ class RAIIContext:
     Ensures proper resource cleanup through context management.
     """
     
-    def __init__(self, resource_name: str, cleanup_fn: Optional[callable] = None):
+    def __init__(self, resource_name: str, cleanup_fn: Optional[Callable[[], None]] = None):
         self.resource_name = resource_name
         self.cleanup_fn = cleanup_fn
         self.acquired = False
@@ -433,9 +447,10 @@ class SymchaosCrucible:
         # Check symmetry
         symmetry = self.symmetry_monitor.check_symmetry(vector)
         
-        # Check coherence
-        for i, val in enumerate(vector[:len(self.node_balancer.nodes)]):
-            self.node_balancer.update_node(i, val)
+        # Check coherence - update nodes efficiently
+        node_count = len(self.node_balancer.nodes)
+        for i in range(min(len(vector), node_count)):
+            self.node_balancer.update_node(i, vector[i])
         coherence = self.node_balancer.balance()
         
         # Generate giggle if threshold met
