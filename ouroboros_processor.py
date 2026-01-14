@@ -570,7 +570,6 @@ class OuroborosVirtualProcessor:
                 float(np.max(gradients_arr)),
             ),
         }
-        return result
 
     # --- Round 3 SYMCHAOS CRUCIBLE Methods ---
 
