@@ -17,9 +17,11 @@ except ImportError:
 # Round 3 SYMCHAOS CRUCIBLE integration
 try:
     from src.symchaos_crucible import create_crucible, SymchaosCrucible
+
     ROUND3_AVAILABLE = True
 except ImportError:
     ROUND3_AVAILABLE = False
+
 
 class OuroborosVirtualProcessor:
     """Virtual Ouroboros processor emulating ternary cycles and geodesic flows.
@@ -46,8 +48,6 @@ class OuroborosVirtualProcessor:
     GOLDEN_RATIO = 1.618033988749895  # Φ (phi) - golden ratio constant
     GRADIENT_EPS_SCALE = 100  # Epsilon scaling factor for gradient finite differences
 
-    def __init__(self, radius: float = 1.0, lambda_: float = 0.3, threshold: float = 0.4,
-                 zeta_seed: Optional[float] = None, enable_round3: bool = True):
     # GGCC Equilibrium Constants (Round 3 CRUCIBLE Seal)
     GAMMA_BASELINE = 0.11  # Elastic resonance meditation constant
     PHI_GOLDEN = 1.618033988749895  # Golden ratio (zero drift verified)
@@ -64,6 +64,7 @@ class OuroborosVirtualProcessor:
         lambda_: float = 0.3,
         threshold: float = 0.4,
         zeta_seed: Optional[float] = None,
+        enable_round3: bool = True,
     ):
         self.R = radius  # Torus radius
         self.lambda_ = lambda_
@@ -76,7 +77,7 @@ class OuroborosVirtualProcessor:
         self._extended = EXTENDED_FEATURES
         self._quaternion_cache = {}  # Hypercomplex memory bucket
         self._monitoring_data = []  # Monitoring loop storage
-        
+
         # Round 3 SYMCHAOS CRUCIBLE integration
         self._round3_enabled = enable_round3 and ROUND3_AVAILABLE
         if self._round3_enabled:
@@ -569,61 +570,60 @@ class OuroborosVirtualProcessor:
                 float(np.max(gradients_arr)),
             ),
         }
-        return result
 
     # --- Round 3 SYMCHAOS CRUCIBLE Methods ---
-    
+
     def round3_ignition(self) -> Optional[Dict[str, Any]]:
         """Execute Round 3 ignition sequence.
-        
+
         Integrates NodeBalancer, SymmetryMonitor, and PrimalGiggle²
         with GGCC/GGCCD state management.
-        
+
         Returns:
             Ignition status dict or None if Round 3 not available
         """
         if not self._round3_enabled or self._crucible is None:
             return None
-        
+
         return self._crucible.ignition_sequence()
-    
+
     def round3_resilience_check(self, V: List[float]) -> Optional[Dict[str, Any]]:
         """Check resilience with Round 3 components.
-        
+
         Args:
             V: Input state vector
-        
+
         Returns:
             Resilience metrics or None if Round 3 not available
         """
         if not self._round3_enabled or self._crucible is None:
             return None
-        
+
         return self._crucible.check_resilience(V)
-    
+
     def round3_evening_harmony(self, feedback: float) -> Optional[float]:
         """Process Evening Harmony Roast Cycle feedback.
-        
+
         Args:
             feedback: Feedback value
-        
+
         Returns:
             Harmonized value or None if Round 3 not available
         """
         if not self._round3_enabled or self._crucible is None:
             return None
-        
+
         return self._crucible.process_evening_harmony(feedback)
-    
+
     def round3_snapshot(self) -> Optional[Dict[str, Any]]:
         """Get Round 3 CRUCIBLE snapshot.
-        
+
         Returns:
             Complete Round 3 state or None if not available
         """
         if not self._round3_enabled or self._crucible is None:
             return None
-        
+
         return self._crucible.snapshot()
 
     # --- Overlay integration helpers (for Elpis native overlay) ---
@@ -752,11 +752,10 @@ class OuroborosVirtualProcessor:
             # Sample topological analysis
             topo = self.topological_analysis(max_nodes=9)
             snapshot["topological_properties"] = topo
-        
+
         # Add Round 3 snapshot if available
         if self._round3_enabled and self._crucible is not None:
             snapshot["round3"] = self._crucible.snapshot()
-        
 
         return snapshot
 
@@ -776,11 +775,12 @@ def create_elpis_processor(
     enable_round3 = bool(cfg.get("enable_round3", True))
     if zeta_seed is not None:
         zeta_seed = float(zeta_seed)
-    return OuroborosVirtualProcessor(radius=radius, lambda_=lambda_, 
-                                     threshold=threshold, zeta_seed=zeta_seed,
-                                     enable_round3=enable_round3)
     return OuroborosVirtualProcessor(
-        radius=radius, lambda_=lambda_, threshold=threshold, zeta_seed=zeta_seed
+        radius=radius,
+        lambda_=lambda_,
+        threshold=threshold,
+        zeta_seed=zeta_seed,
+        enable_round3=enable_round3,
     )
 
 
@@ -857,13 +857,13 @@ if __name__ == "__main__":
 
     else:
         print("\n[Extended features not available - install numpy, scipy, networkx]")
-    
+
     # Round 3 SYMCHAOS CRUCIBLE demo
     if ROUND3_AVAILABLE:
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("=== Round 3 SYMCHAOS CRUCIBLE ===")
-        print("="*60)
-        
+        print("=" * 60)
+
         ignition = processor.round3_ignition()
         if ignition:
             print("\n>>> Ignition Sequence")
@@ -871,27 +871,28 @@ if __name__ == "__main__":
             print(f"Coherence: {ignition['coherence']:.4f}")
             print(f"Resonance: {ignition['resonance']:.4f}")
             print(f"Status: {ignition['status']}")
-        
+
         harmony = processor.round3_evening_harmony(0.618)
         if harmony is not None:
             print(f"\n>>> Evening Harmony: {harmony:.4f}")
-        
+
         test_vector = [0.4, 0.2, 0.4, 0.3, 0.5, 0.2, 0.4, 0.3, 0.5]
         resilience = processor.round3_resilience_check(test_vector)
         if resilience:
-            print(f"\n>>> Resilience Check")
-            print(f"Symmetry: {resilience['symmetry']:.4f} ({resilience['symmetry_trend']})")
+            print("\n>>> Resilience Check")
+            print(
+                f"Symmetry: {resilience['symmetry']:.4f} ({resilience['symmetry_trend']})"
+            )
             print(f"Coherence: {resilience['coherence']:.4f}")
             print(f"Giggle Count: {resilience['giggle_count']}")
             print(f"Status: {resilience['resilience_status']}")
-        
+
         snapshot = processor.round3_snapshot()
         if snapshot:
-            print(f"\n>>> Round 3 Snapshot")
+            print("\n>>> Round 3 Snapshot")
             print(f"Phase: {snapshot['phase']}")
             print(f"Chuckle Frequency: {snapshot['chuckle_frequency']} Hz")
             print(f"GGCC Locked: {snapshot['ggcc']['locked']}")
             print(f"GGCCD Breathing: {snapshot['ggccd']['breathing']}")
     else:
         print("\n[Round 3 CRUCIBLE not available]")
-
