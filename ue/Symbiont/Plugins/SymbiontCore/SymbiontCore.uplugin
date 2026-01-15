@@ -1,0 +1,29 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.1.0",
+	"FriendlyName": "Symbiont Core",
+	"Description": "Core engine for symbiont AI inference with constitutional oversight. Provides local on-device inference integration for AR demos.",
+	"Category": "AI",
+	"CreatedBy": "AIOSPANDORA",
+	"CreatedByURL": "https://github.com/AIOSPANDORA/Ouroboros",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": false,
+	"IsBetaVersion": true,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "SymbiontCore",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"WhitelistPlatforms": [
+				"IOS",
+				"Win64",
+				"Mac"
+			]
+		}
+	]
+}

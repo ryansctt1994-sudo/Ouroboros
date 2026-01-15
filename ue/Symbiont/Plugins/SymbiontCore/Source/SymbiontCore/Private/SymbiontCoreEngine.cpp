@@ -3,6 +3,7 @@
 #include "SymbiontCoreEngine.h"
 #include "Misc/DateTime.h"
 #include "HAL/PlatformProcess.h"
+#include "Engine/World.h"
 
 // Logging category for Symbiont subsystem
 DEFINE_LOG_CATEGORY_STATIC(LogSymbiont, Log, All);
