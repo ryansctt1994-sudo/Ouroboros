@@ -1,0 +1,29 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0.0",
+	"FriendlyName": "Symbiont Core",
+	"Description": "Constitutional Symbiont core engine with consent management, gavel-tap ritual gating, and iOS CoreML bridge for safe on-device AI inference.",
+	"Category": "AI",
+	"CreatedBy": "AIOSPANDORA",
+	"CreatedByURL": "https://github.com/AIOSPANDORA/Ouroboros",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": true,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "SymbiontCore",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"PlatformAllowList": [
+				"Win64",
+				"Mac",
+				"IOS"
+			]
+		}
+	]
+}
