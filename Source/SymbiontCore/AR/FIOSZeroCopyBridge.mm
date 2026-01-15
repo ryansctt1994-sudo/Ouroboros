@@ -8,6 +8,7 @@
 #import <Foundation/Foundation.h>
 #import <CoreVideo/CoreVideo.h>
 #import <Metal/Metal.h>
+#import <UIKit/UIKit.h>
 
 FIOSZeroCopyBridge::FIOSZeroCopyBridge()
 {
@@ -209,6 +210,27 @@ uint32 FIOSZeroCopyBridge::GetMetalPixelFormat(uint32 CVPixelFormat)
         default:
             return static_cast<uint32>(MTLPixelFormatBGRA8Unorm);
     }
+}
+
+float FIOSZeroCopyBridge::QueryThermalState()
+{
+    NSProcessInfo *processInfo = [NSProcessInfo processInfo];
+    NSProcessInfoThermalState thermalState = processInfo.thermalState;
+    
+    switch (thermalState) {
+        case NSProcessInfoThermalStateNominal:  return 50.0f;  // Cool
+        case NSProcessInfoThermalStateFair:     return 70.0f;  // Warm
+        case NSProcessInfoThermalStateSerious:  return 85.0f;  // Hot
+        case NSProcessInfoThermalStateCritical: return 95.0f;  // Emergency
+        default: return 50.0f;
+    }
+}
+
+float FIOSZeroCopyBridge::QueryBatteryLevel()
+{
+    [[UIDevice currentDevice] setBatteryMonitoringEnabled:YES];
+    float level = [[UIDevice currentDevice] batteryLevel];
+    return (level < 0.0f) ? 100.0f : level * 100.0f;  // -1 means unknown, default to 100%
 }
 
 #endif // PLATFORM_IOS

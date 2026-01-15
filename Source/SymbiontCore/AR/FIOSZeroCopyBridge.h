@@ -108,6 +108,21 @@ public:
      */
     static bool IsZeroCopySupported();
     
+    /**
+     * Query iOS thermal state
+     * Maps NSProcessInfoThermalState to temperature values
+     * 
+     * @return Temperature in Celsius (50.0 = Nominal, 70.0 = Fair, 85.0 = Serious, 95.0 = Critical)
+     */
+    static float QueryThermalState();
+    
+    /**
+     * Query iOS battery level
+     * 
+     * @return Battery level percentage (0.0 - 100.0, defaults to 100.0 if unknown)
+     */
+    static float QueryBatteryLevel();
+
 private:
     /**
      * Internal: Create IOSurface-backed CVPixelBuffer

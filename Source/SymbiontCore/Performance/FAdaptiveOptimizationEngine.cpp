@@ -7,6 +7,10 @@
 #include "RHI.h"
 #include "Engine/Engine.h"
 
+#if PLATFORM_IOS
+#include "AR/FIOSZeroCopyBridge.h"
+#endif
+
 FAdaptiveOptimizationEngine::FAdaptiveOptimizationEngine()
     : ThermalSmoother(0.3f)  // Alpha = 0.3 for thermal EMA
     , FPSThreshold(30.0f, 20.0f, 40.0f)
@@ -80,12 +84,20 @@ void FAdaptiveOptimizationEngine::MeasureMetrics()
     
     // Measure thermal state (platform-specific, placeholder for now)
     // On iOS, this would use ProcessInfo.thermalState
-    float RawThermalState = 50.0f; // Placeholder - would query actual thermal state
+#if PLATFORM_IOS
+    float RawThermalState = FIOSZeroCopyBridge::QueryThermalState();
+#else
+    float RawThermalState = 50.0f; // Non-iOS fallback
+#endif
     CurrentMetrics.ThermalStateC = ThermalSmoother.Update(RawThermalState);
     
     // Measure battery level (platform-specific, placeholder)
     // On iOS, this would use UIDevice.batteryLevel
-    CurrentMetrics.BatteryLevelPercent = 80.0f; // Placeholder
+#if PLATFORM_IOS
+    CurrentMetrics.BatteryLevelPercent = FIOSZeroCopyBridge::QueryBatteryLevel();
+#else
+    CurrentMetrics.BatteryLevelPercent = 80.0f; // Non-iOS fallback
+#endif
 }
 
 void FAdaptiveOptimizationEngine::EvaluateAdaptation()
