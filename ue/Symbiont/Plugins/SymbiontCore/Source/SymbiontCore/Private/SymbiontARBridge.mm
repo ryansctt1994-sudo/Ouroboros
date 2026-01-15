@@ -102,7 +102,7 @@
     // Create AR configuration
     ARWorldTrackingConfiguration* config = [[ARWorldTrackingConfiguration alloc] init];
     
-    if (enableDepth && ARWorldTrackingConfiguration.supportsFrameSemantics & ARFrameSemanticSceneDepth)
+    if (enableDepth && (ARWorldTrackingConfiguration.supportsFrameSemantics & ARFrameSemanticSceneDepth))
     {
         // Enable LiDAR depth capture if available
         config.frameSemantics = ARFrameSemanticSceneDepth | ARFrameSemanticSmoothedSceneDepth;
