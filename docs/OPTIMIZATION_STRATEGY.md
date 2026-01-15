@@ -412,7 +412,7 @@ if (MaskAlpha > 0.0f)
 ## References
 
 - **Unreal Engine Documentation**: [Performance Guidelines for Mobile](https://docs.unrealengine.com/en-US/performance-guidelines-for-mobile-devices/)
-- **Apple Developer**: [Optimizing Your App for Today's Devices](https://developer.apple.com/videos/play/wwdc2021/10057/)
+- **Apple Developer**: [Optimizing Your App for Today's Devices](https://developer.apple.com/videos/play/wwdc2021/10057/) (WWDC 2021, reference as of 2026)
 - **GDC 2023**: "Adaptive Performance in Mobile Gaming" talk
 - **CVPixelBuffer**: [Apple Core Video Documentation](https://developer.apple.com/documentation/corevideo/cvpixelbuffer)
 

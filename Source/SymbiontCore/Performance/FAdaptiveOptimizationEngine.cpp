@@ -61,7 +61,7 @@ void FAdaptiveOptimizationEngine::MeasureMetrics()
     // Measure FPS
     if (GEngine)
     {
-        CurrentMetrics.CurrentFPS = 1.0f / GEngine->GetMaxTickRate(0.0f, false);
+        CurrentMetrics.CurrentFPS = GEngine->GetAverageFPS();
     }
     
     // Measure memory (RSS)
@@ -71,8 +71,11 @@ void FAdaptiveOptimizationEngine::MeasureMetrics()
     // Measure VRAM (if available)
     if (GDynamicRHI)
     {
-        int64 UsedVRAM = GDynamicRHI->RHIGetAvailableTextureMemory();
-        CurrentMetrics.CurrentVRAMMB = UsedVRAM / (1024 * 1024);
+        // Note: RHIGetAvailableTextureMemory returns free VRAM, not used
+        // For now, we track available VRAM as a proxy for usage
+        // In production, would need platform-specific total VRAM query
+        int64 AvailableVRAM = GDynamicRHI->RHIGetAvailableTextureMemory();
+        CurrentMetrics.CurrentVRAMMB = AvailableVRAM / (1024 * 1024);
     }
     
     // Measure thermal state (platform-specific, placeholder for now)
