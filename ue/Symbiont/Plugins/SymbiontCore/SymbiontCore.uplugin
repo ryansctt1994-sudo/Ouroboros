@@ -1,0 +1,29 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.1.0",
+	"FriendlyName": "SymbiontCore",
+	"Description": "Core AR/XR integration plugin for Symbiont - provides iOS ARKit/Metal bridge and cross-platform AR capabilities",
+	"Category": "Augmented Reality",
+	"CreatedBy": "AIOSPANDORA",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": false,
+	"IsBetaVersion": true,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "SymbiontCore",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"PlatformAllowList": [
+				"IOS",
+				"Mac",
+				"Windows"
+			]
+		}
+	]
+}
