@@ -213,8 +213,9 @@ class OuroborosVirtualProcessor:
         
         # Compute Möbius transformation for state continuity
         # Using the Möbius function μ(n) to create non-orientable mapping
-        n_elpis = max(1, int(sum(elpis_norm) * 100))
-        n_pandora = max(1, int(sum(pandora_norm) * 100))
+        MOBIUS_SCALE_FACTOR = 100  # Scaling factor for state sum to integer conversion
+        n_elpis = max(1, int(sum(elpis_norm) * MOBIUS_SCALE_FACTOR))
+        n_pandora = max(1, int(sum(pandora_norm) * MOBIUS_SCALE_FACTOR))
         
         # Get Möbius kernels for both states
         if self._extended:

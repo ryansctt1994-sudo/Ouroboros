@@ -125,7 +125,9 @@ class LatticeNode:
         
         # Calculate instantaneous coherence
         # Coherence is high when harmonics are in phase
-        phase_diff = abs(phase_111 / HARMONIC_RATIO - phase_schumann) % (2 * math.pi)
+        # Use proper circular distance for phase difference
+        phase_diff_raw = phase_111 / HARMONIC_RATIO - phase_schumann
+        phase_diff = abs(phase_diff_raw - 2 * math.pi * round(phase_diff_raw / (2 * math.pi))) % (2 * math.pi)
         self.coherence_score = 1.0 - (phase_diff / (2 * math.pi))
         
         return {

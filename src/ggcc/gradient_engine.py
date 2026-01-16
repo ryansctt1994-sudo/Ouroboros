@@ -345,9 +345,7 @@ class GradientEngineV2:
         if len(self.coherence_history) > 100:
             self.coherence_history = self.coherence_history[-100:]
         
-        # Calculate target ΔA based on turbulence and coherence
-        # Higher turbulence -> lower ΔA (more damping)
-        # Lower coherence -> lower ΔA (more stability)
+        # Apply Φ-based scaling for elastic resilience
         phi = 1.618033988749895  # Golden ratio
         chuckle = 0.0997  # Chuckle constant
         
