@@ -1,0 +1,94 @@
+# Unreal Engine 5 .gitignore
+
+# Visual Studio files
+.vs/
+*.sln
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Unreal Engine directories
+Binaries/
+Build/
+DerivedDataCache/
+Intermediate/
+Saved/
+
+# Build files
+*.VC.db
+*.VC.VC.opendb
+
+# Compiled files
+*.exe
+*.dll
+*.lib
+*.pdb
+*.iobj
+*.ipdb
+
+# Crashlytics generated files
+crashlytics-build.properties
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Rider
+.idea/
+*.sln.iml
+
+# Visual Studio Code
+.vscode/
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+
+# Executables
+*.out
+*.app
+*.ipa
+
+# Plugin Binaries - these are rebuilt from source
+Plugins/*/Binaries/
+Plugins/*/Intermediate/
+
+# Starter Content - optional, typically not version controlled
+# Content/StarterContent/

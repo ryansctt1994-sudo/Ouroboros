@@ -1,0 +1,280 @@
+"""
+Ouroboros — Epistemic Discipline Framework
+Hallucination-Resistant Inference Core (Public / MIT-Safe)
+
+This module provides:
+- Epistemic state modeling on probability simplices
+- Invariant enforcement (hard epistemic rails)
+- Möbius kernel (μ) and Ramanujan tau (τ) grounding
+- Geodesic drift monitoring on a flat torus
+- Failure-mode classification
+- Explainability hooks
+
+No proprietary logic. Deterministic math only.
+"""
+
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import Sequence, Optional, Any, Dict, List
+import math
+from functools import lru_cache
+
+# ---------------------------------------------------------------------
+# Utility: Simplex + Entropy
+# ---------------------------------------------------------------------
+
+def normalize_simplex(v: Sequence[float], eps: float = 1e-15) -> tuple[float, ...]:
+    vv = [max(0.0, float(x)) for x in v]
+    s = sum(vv)
+    if s <= eps:
+        return tuple([1.0 / len(vv)] * len(vv))
+    return tuple(x / s for x in vv)
+
+def entropy(p: Sequence[float], eps: float = 1e-12) -> float:
+    h = 0.0
+    for pi in p:
+        pi2 = max(eps, float(pi))
+        h -= pi2 * math.log(pi2)
+    return h
+
+def l1(a: Sequence[float], b: Sequence[float]) -> float:
+    return sum(abs(float(x) - float(y)) for x, y in zip(a, b))
+
+# ---------------------------------------------------------------------
+# Epistemic State
+# ---------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class EpistemicState:
+    b: tuple[float, ...]       # belief mass (simplex)
+    u: float                  # uncertainty proxy (entropy)
+    c: float                  # coherence residual
+    x: tuple[float, ...] = () # torus coordinates (optional)
+
+    def sanity(self) -> None:
+        if not self.b:
+            raise ValueError("Belief vector empty")
+        if not all(math.isfinite(v) for v in self.b):
+            raise ValueError("Non-finite belief value")
+        if not math.isfinite(self.u) or not math.isfinite(self.c):
+            raise ValueError("Non-finite state scalar")
+        if not all(math.isfinite(v) for v in self.x):
+            raise ValueError("Non-finite torus coordinate")
+
+# ---------------------------------------------------------------------
+# Number Theory Grounding
+# ---------------------------------------------------------------------
+
+def mobius_mu(n: int) -> int:
+    if n <= 0:
+        raise ValueError("n must be positive")
+    x, k, p = n, 0, 2
+    while p * p <= x:
+        if x % p == 0:
+            x //= p
+            k += 1
+            if x % p == 0:
+                return 0
+            while x % p == 0:
+                x //= p
+        p += 1 if p == 2 else 2
+    if x > 1:
+        k += 1
+    return -1 if (k % 2) else 1
+
+def _mul_trunc(a: List[int], b: List[int], N: int) -> List[int]:
+    out = [0] * (N + 1)
+    for i, ai in enumerate(a):
+        if ai == 0:
+            continue
+        for j, bj in enumerate(b):
+            d = i + j
+            if d > N:
+                break
+            out[d] += ai * bj
+    return out
+
+def _pow1_minus_qm_24(m: int, N: int) -> List[int]:
+    from math import comb
+    poly = [0] * (N + 1)
+    for k in range(25):
+        d = k * m
+        if d > N:
+            break
+        poly[d] = comb(24, k) * ((-1) ** k)
+    return poly
+
+@lru_cache(maxsize=64)
+def tau_upto(N: int) -> Dict[int, int]:
+    if N < 1:
+        return {}
+    P = [0] * (N + 1)
+    P[0] = 1
+    for m in range(1, N + 1):
+        P = _mul_trunc(P, _pow1_minus_qm_24(m, N), N)
+    return {n: P[n - 1] for n in range(1, N + 1)}
+
+def ramanujan_tau(n: int, precompute_N: int = 256) -> int:
+    return tau_upto(max(n, precompute_N))[n]
+
+# ---------------------------------------------------------------------
+# Geometry: Flat Torus
+# ---------------------------------------------------------------------
+
+def torus_delta(a: float, b: float, period: float = 1.0) -> float:
+    d = (a - b) % period
+    return d - period if d > period / 2 else d
+
+def torus_distance(x: Sequence[float], y: Sequence[float], period: float = 1.0) -> float:
+    return math.sqrt(sum(torus_delta(xi, yi, period) ** 2 for xi, yi in zip(x, y)))
+
+def drift_ratio(x_prev, x_next, x_expected) -> float:
+    actual = torus_distance(x_prev, x_next)
+    expected = torus_distance(x_prev, x_expected)
+    return float("inf") if expected == 0 else actual / expected
+
+# ---------------------------------------------------------------------
+# Failure Mode Flags
+# ---------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class FailureFlags:
+    overconfident_drift: bool = False
+    cyclic_hallucination: bool = False
+    spurious_precision: bool = False
+    anchoring_bias: bool = False
+    geodesic_violation: bool = False
+
+# ---------------------------------------------------------------------
+# Processor Core
+# ---------------------------------------------------------------------
+
+class OuroborosVirtualProcessor:
+    def __init__(
+        self,
+        threshold: float = 0.4,
+        entropy_floor: float = 0.0,
+        geodesic_eps: float = 1.25,
+        tau_precompute: int = 256,
+    ):
+        self.threshold = threshold
+        self.entropy_floor = entropy_floor
+        self.geodesic_eps = geodesic_eps
+        self.tau_precompute = tau_precompute
+
+    # -------------------------
+    # Core Operations
+    # -------------------------
+
+    def ternary_cycle(self, v3: Sequence[float]) -> tuple[float, float, float]:
+        if len(v3) != 3:
+            raise ValueError("Ternary cycle requires length-3 vector")
+        return normalize_simplex(v3)
+
+    def delta_check(self, expected, observed, threshold: Optional[float] = None):
+        exp = normalize_simplex(expected)
+        obs = normalize_simplex(observed)
+        d = l1(exp, obs)
+        th = self.threshold if threshold is None else threshold
+        return {
+            "delta": d,
+            "threshold": th,
+            "verdict": "PASS" if d <= th else "FAIL",
+        }
+
+    def mobius_kernel(self, n: int) -> int:
+        return mobius_mu(n)
+
+    def ramanujan_tau(self, n: int) -> int:
+        return ramanujan_tau(n, self.tau_precompute)
+
+    # -------------------------
+    # State Construction
+    # -------------------------
+
+    def make_state(
+        self,
+        belief: Sequence[float],
+        expected: Optional[Sequence[float]] = None,
+        x: Sequence[float] = (),
+    ) -> EpistemicState:
+        b = normalize_simplex(belief)
+        u = entropy(b)
+        c = 0.0 if expected is None else self.delta_check(expected, b)["delta"]
+        st = EpistemicState(b=b, u=u, c=c, x=tuple(x))
+        st.sanity()
+        return st
+
+    # -------------------------
+    # Drift + Failure Analysis
+    # -------------------------
+
+    def geodesic_drift_monitor(self, x_prev, x_next, x_expected):
+        r = drift_ratio(x_prev, x_next, x_expected)
+        return {
+            "drift_ratio": r,
+            "eps": self.geodesic_eps,
+            "verdict": "PASS" if r <= self.geodesic_eps else "FAIL",
+        }
+
+    def classify_failures(
+        self,
+        prev: EpistemicState,
+        nxt: EpistemicState,
+        *,
+        geodesic=None,
+        mu_probe_n: Optional[int] = None,
+    ) -> FailureFlags:
+        overconf = nxt.c <= self.threshold and nxt.u < max(prev.u * 0.25, 1e-9)
+        spurious = nxt.u < 1e-6
+        anchor = nxt.c > self.threshold and l1(prev.b, nxt.b) < 0.15 * self.threshold
+        geo = geodesic is not None and geodesic["verdict"] == "FAIL"
+        cyclic = mu_probe_n is not None and self.mobius_kernel(mu_probe_n) == 0
+        return FailureFlags(overconf, cyclic, spurious, anchor, geo)
+
+    # -------------------------
+    # Explainability
+    # -------------------------
+
+    def explain(
+        self,
+        prev: EpistemicState,
+        nxt: EpistemicState,
+        *,
+        expected_next: Optional[Sequence[float]] = None,
+        x_expected: Optional[Sequence[float]] = None,
+        mu_probe_n: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        delta_info = None
+        if expected_next is not None:
+            delta_info = self.delta_check(expected_next, nxt.b)
+
+        geo_info = None
+        if prev.x and nxt.x and x_expected is not None:
+            geo_info = self.geodesic_drift_monitor(prev.x, nxt.x, x_expected)
+
+        flags = self.classify_failures(
+            prev, nxt, geodesic=geo_info, mu_probe_n=mu_probe_n
+        )
+
+        return {
+            "prev": prev,
+            "next": nxt,
+            "delta_check": delta_info,
+            "geodesic": geo_info,
+            "failure_flags": flags,
+        }
+
+# ---------------------------------------------------------------------
+# Minimal Self-Test (Optional)
+# ---------------------------------------------------------------------
+
+if __name__ == "__main__":
+    p = OuroborosVirtualProcessor()
+
+    prev = p.make_state([0.4, 0.3, 0.3], expected=[0.4, 0.3, 0.3], x=[0.1, 0.2])
+    nxt  = p.make_state([0.6, 0.2, 0.2], expected=[0.5, 0.25, 0.25], x=[0.9, 0.2])
+
+    print("μ(4):", p.mobius_kernel(4))
+    print("τ(3):", p.ramanujan_tau(3))
+    print(p.explain(prev, nxt, expected_next=[0.5,0.25,0.25], x_expected=[0.2,0.2], mu_probe_n=4))
