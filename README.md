@@ -107,6 +107,21 @@ ouroboros/
 
 ---
 
+## 📚 Documentation
+
+**Core Manuscripts:**
+- [AIOSPANDORA Integration Manuscript](AIOSPANDORA_INTEGRATION_MANUSCRIPT.md) — Advanced integration architectures (TSN, eBPF, quantum-enzymatic interfaces)
+- [Ouroboros Delta Manuscript](OUROBOROS_DELTA_MANUSCRIPT.md) — Theoretical foundations
+- [Master Epistemic Spec v1.0](specs/MASTER_EPISTEMIC_SPEC_v1.0.md) — Hallucination-resistant inference grammar
+- [GGCC Equilibrium Seal](GGCC_EQUILIBRIUM_SEAL.md) — Golden Geometric Crucible Configuration
+
+**Technical Integration:**
+- [Ternary-Binary Bridge](TERNARY_BINARY_BRIDGE.md) — Encoding patterns for ternary states
+- [Veritas Alignment](VERITAS_ALIGNMENT.md) — Ledger alignment and manifest-tip policy
+- [Falsifiability Audit](FALSIFIABILITY_AUDIT.md) — Testing and acceptance criteria
+
+---
+
 ## 🤝 Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for coding standards and development workflow.
