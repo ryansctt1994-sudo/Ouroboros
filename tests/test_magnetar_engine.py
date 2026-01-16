@@ -176,7 +176,7 @@ class TestMagnetarMLP:
     
     def test_forward_pass(self):
         """Test forward pass with small tensor."""
-        module = MagnetarMLP(mlp_dim=256)
+        module = MagnetarMLP(mlp_dim=256, out_dim=64)
         rng = random.PRNGKey(4)
         
         # Small input: [batch=2, seq_len=8, features=64]
@@ -265,11 +265,12 @@ class TestMagnetarEngine:
         state = create_train_state(rng, config, input_shape)
         
         # Generate batch
-        batch = random.normal(rng, input_shape)
-        labels = random.randint(rng, (4,), 0, 5)
+        rng, batch_rng, dropout_rng = random.split(rng, 3)
+        batch = random.normal(batch_rng, input_shape)
+        labels = random.randint(batch_rng, (4,), 0, 5)
         
         # Training step
-        new_state, loss = train_step(state, batch, labels)
+        new_state, loss = train_step(state, batch, labels, dropout_rng)
         
         # Check that state was updated
         assert new_state.step == state.step + 1

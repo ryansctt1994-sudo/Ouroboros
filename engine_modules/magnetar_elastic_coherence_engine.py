@@ -190,21 +190,22 @@ class MagnetarMLP(nn.Module):
     """
     
     mlp_dim: int
+    out_dim: int
     dropout_rate: float = 0.1
     
     @nn.compact
     def __call__(self, x, deterministic=False):
         """Apply MLP transformation."""
         # First linear layer with PHI scaling
-        x = nn.Dense(self.mlp_dim)(x)
-        x = nn.gelu(x) * PHI
-        x = nn.Dropout(rate=self.dropout_rate)(x, deterministic=deterministic)
+        h = nn.Dense(self.mlp_dim)(x)
+        h = nn.gelu(h) * PHI
+        h = nn.Dropout(rate=self.dropout_rate)(h, deterministic=deterministic)
         
-        # Second linear layer
-        x = nn.Dense(x.shape[-1])(x)
-        x = nn.Dropout(rate=self.dropout_rate)(x, deterministic=deterministic)
+        # Second linear layer - project back to original dimension
+        out = nn.Dense(self.out_dim)(h)
+        out = nn.Dropout(rate=self.dropout_rate)(out, deterministic=deterministic)
         
-        return x
+        return out
 
 
 # ============================================================================
@@ -224,6 +225,8 @@ class CoherenceTransformerBlock(nn.Module):
     @nn.compact
     def __call__(self, x, mask=None, deterministic=False):
         """Apply transformer block."""
+        features = x.shape[-1]
+        
         # Self-attention with residual
         attn_out = ElasticCoherenceAttention(
             num_heads=self.num_heads,
@@ -235,6 +238,7 @@ class CoherenceTransformerBlock(nn.Module):
         # MLP with residual
         mlp_out = MagnetarMLP(
             mlp_dim=self.mlp_dim,
+            out_dim=features,
             dropout_rate=self.dropout_rate,
         )(x, deterministic=deterministic)
         x = nn.LayerNorm()(x + mlp_out)
@@ -334,6 +338,7 @@ def train_step(
     state: train_state.TrainState,
     batch: jnp.ndarray,
     labels: jnp.ndarray,
+    dropout_rng: jax.random.PRNGKey,
 ) -> Tuple[train_state.TrainState, float]:
     """
     Single training step.
@@ -342,12 +347,17 @@ def train_step(
         state: Current training state
         batch: Input batch
         labels: Target labels
+        dropout_rng: RNG key for dropout
         
     Returns:
         Updated state and loss value
     """
     def loss_fn(params):
-        logits = state.apply_fn(params, batch, deterministic=False)
+        logits = state.apply_fn(
+            params, batch, 
+            deterministic=False,
+            rngs={'dropout': dropout_rng}
+        )
         loss = optax.softmax_cross_entropy_with_integer_labels(logits, labels).mean()
         return loss
     
@@ -479,13 +489,13 @@ def run_demo(
         iterator = tqdm(iterator, desc="Training")
     
     for step in iterator:
-        # Generate synthetic data
-        rng_key, data_rng = random.split(rng_key)
+        # Generate synthetic data and RNG for dropout
+        rng_key, data_rng, dropout_rng = random.split(rng_key, 3)
         batch = random.normal(data_rng, (batch_size, seq_len, config.input_dim))
         labels = random.randint(data_rng, (batch_size,), 0, config.output_dim)
         
         # Training step
-        state, loss = train_step(state, batch, labels)
+        state, loss = train_step(state, batch, labels, dropout_rng)
         losses.append(float(loss))
         
         if verbose and step % 10 == 0:
