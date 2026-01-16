@@ -40,8 +40,12 @@ class MagnetarElasticCoherenceEngine:
         
         # Compute coherence score (normalized correlation)
         if len(signal) > 0:
-            correlation = np.corrcoef(signal, processed)[0, 1]
-            coherence_score = abs(correlation)
+            # Handle constant signals (zero std dev)
+            if np.std(signal) == 0 or np.std(processed) == 0:
+                coherence_score = 1.0 if np.allclose(signal, processed) else 0.0
+            else:
+                correlation = np.corrcoef(signal, processed)[0, 1]
+                coherence_score = abs(correlation) if not np.isnan(correlation) else 0.0
         else:
             coherence_score = 0.0
         
