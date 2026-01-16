@@ -1,0 +1,16 @@
+{
+  "mandate_id": "GENESIS-001",
+  "tenant_class": "Witness-0.1",
+  "scope_boundary": ["/core/logic_check.py", "/logs/genesis.log"],
+  "axiom_set": ["AIC-0.1"],
+  "compute_budget": {
+    "max_tokens": 1000,
+    "max_seconds": 30
+  },
+  "resource_permissions": {
+    "read": ["/core"],
+    "write": ["/logs"]
+  },
+  "issued_at_utc": 1705420800,
+  "signature": "ED25519_SIG_HERE"
+}
