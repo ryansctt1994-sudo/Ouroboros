@@ -60,6 +60,7 @@ def main():
     mandate_path = Path(sys.argv[1])
     mandate = load_mandate(mandate_path)
     ensure_scope(mandate["scope_boundary"])
+    # Simulate minimal work to ensure elapsed_ms > 0 for metrics reporting
     time.sleep(0.05)
     logs_dir = Path("logs")
     logs_dir.mkdir(exist_ok=True)
