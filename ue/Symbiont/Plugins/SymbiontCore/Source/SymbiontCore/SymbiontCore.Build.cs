@@ -1,4 +1,5 @@
 // Copyright AIOSPANDORA. All Rights Reserved.
+// Copyright 2024 AIOSPANDORA. All Rights Reserved.
 
 using UnrealBuildTool;
 
@@ -14,12 +15,14 @@ public class SymbiontCore : ModuleRules
 			}
 		);
 				
+		
 		PrivateIncludePaths.AddRange(
 			new string[] {
 				// ... add other private include paths required here ...
 			}
 		);
 			
+		
 		PublicDependencyModuleNames.AddRange(
 			new string[]
 			{
@@ -33,9 +36,16 @@ public class SymbiontCore : ModuleRules
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
 			{
+		
+		PrivateDependencyModuleNames.AddRange(
+			new string[]
+			{
+				"CoreUObject",
+				"Engine",
 				// ... add private dependencies that you statically link with here ...	
 			}
 		);
+		
 		
 		DynamicallyLoadedModuleNames.AddRange(
 			new string[]

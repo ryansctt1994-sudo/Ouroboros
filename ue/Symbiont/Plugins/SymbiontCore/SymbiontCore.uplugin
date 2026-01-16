@@ -11,6 +11,21 @@
 	"MarketplaceURL": "",
 	"SupportURL": "",
 	"CanContainContent": true,
+	"VersionName": "0.1.0",
+	"FriendlyName": "Symbiont Core",
+	"Description": "Core engine for symbiont AI inference with constitutional oversight. Provides local on-device inference integration for AR demos.",
+	"Category": "AI",
+	"CreatedBy": "AIOSPANDORA",
+	"CreatedByURL": "https://github.com/AIOSPANDORA/Ouroboros",
+	"FriendlyName": "SymbiontCore",
+	"Description": "Core AR/XR integration plugin for Symbiont - provides iOS ARKit/Metal bridge and cross-platform AR capabilities",
+	"Category": "Augmented Reality",
+	"CreatedBy": "AIOSPANDORA",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": false,
 	"IsBetaVersion": true,
 	"IsExperimentalVersion": false,
 	"Installed": false,
@@ -23,6 +38,14 @@
 				"Win64",
 				"Mac",
 				"IOS"
+			"WhitelistPlatforms": [
+				"IOS",
+				"Win64",
+				"Mac"
+			"PlatformAllowList": [
+				"IOS",
+				"Mac",
+				"Windows"
 			]
 		}
 	]

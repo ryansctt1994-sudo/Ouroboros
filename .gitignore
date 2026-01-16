@@ -37,6 +37,10 @@ LOLD_extracted/
 ue/Symbiont/Binaries/
 ue/Symbiont/Intermediate/
 ue/Symbiont/Build/
+# Unreal Engine 5
+# Exclude binaries and generated files, keep source code
+ue/Symbiont/Binaries/
+ue/Symbiont/Intermediate/
 ue/Symbiont/Saved/
 ue/Symbiont/DerivedDataCache/
 ue/Symbiont/.vs/
@@ -54,3 +58,21 @@ ue/Symbiont/Plugins/*/Intermediate/
 # *.umap
 # *.uexp
 # *.ubulk
+ue/Symbiont/*.xcworkspace
+ue/Symbiont/*.xcodeproj
+
+# Unreal binary assets (not committed per repository policy)
+*.uasset
+*.umap
+
+# Unreal plugins binaries
+ue/Symbiont/Plugins/*/Binaries/
+ue/Symbiont/Plugins/*/Intermediate/
+
+# Unreal build artifacts
+*.VC.db
+*.opensdf
+*.opendb
+*.sdf
+*.suo
+*.VC.VC.opendb

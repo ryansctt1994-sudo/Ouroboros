@@ -1,4 +1,5 @@
 // Copyright AIOSPANDORA. All Rights Reserved.
+// Copyright 2024 AIOSPANDORA. All Rights Reserved.
 
 #include "SymbiontCore.h"
 
@@ -8,6 +9,8 @@ void FSymbiontCoreModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
 	UE_LOG(LogTemp, Log, TEXT("SymbiontCore module started - Constitutional Symbiont initialized"));
+	// This code will execute after your module is loaded into memory
+	UE_LOG(LogTemp, Log, TEXT("SymbiontCore module starting up"));
 }
 
 void FSymbiontCoreModule::ShutdownModule()
@@ -19,4 +22,10 @@ void FSymbiontCoreModule::ShutdownModule()
 
 #undef LOCTEXT_NAMESPACE
 	
+	// This function may be called during shutdown to clean up your module
+	UE_LOG(LogTemp, Log, TEXT("SymbiontCore module shutting down"));
+}
+
+#undef LOCTEXT_NAMESPACE
+
 IMPLEMENT_MODULE(FSymbiontCoreModule, SymbiontCore)
