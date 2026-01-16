@@ -130,7 +130,7 @@ class TensorGradientSystem:
 
         # Phase coherence adjustment
         phase_coherence = np.exp(1j * 2 * np.pi * harmonic_grid)
-        stabilized = np.abs(phase_coherence) * lambda_frequencies
+        stabilized = lambda_frequencies + 0.1 * PHI_GOLDEN_RATIO * np.real(phase_coherence)
 
         return stabilized
 
@@ -217,11 +217,18 @@ class QuaternionNodeBalancer:
         bucket_idx = self.quaternion_hash(node_state)
 
         # Apply balancing transformation
-        # Use conjugate for ghosting elimination
-        conjugate = np.array(
-            [node_state[0], -node_state[1], -node_state[2], -node_state[3]]
-        )
-        balanced = self.quaternion_multiply(node_state, conjugate)
+        # Use SLERP (Spherical Linear Interpolation) for ghosting elimination
+        identity = np.array([1.0, 0.0, 0.0, 0.0])
+        t = 0.5
+        dot = np.dot(node_state, identity)
+        if dot < 0:
+            identity = -identity
+            dot = -dot
+        theta = np.arccos(np.clip(dot, -1.0, 1.0))
+        if theta < EPSILON:
+            balanced = node_state
+        else:
+            balanced = (np.sin((1-t)*theta) * node_state + np.sin(t*theta) * identity) / np.sin(theta)
         balanced = balanced / (np.linalg.norm(balanced) + EPSILON)
 
         # Store in quaternion bucket cache

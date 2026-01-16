@@ -19,8 +19,12 @@ Components:
 import math
 import threading
 import time
+from collections import deque
+import logging
 from typing import Dict, Any, List, Optional, Tuple, Callable
 from dataclasses import dataclass, field
+
+logger = logging.getLogger(__name__)
 
 try:
     import numpy as np
@@ -35,16 +39,19 @@ EVENING_HARMONY_CONSTANT = 1.618  # Golden ratio for harmony
 RESILIENT_AMUSEMENT_THRESHOLD = 0.717  # Transition threshold
 
 
-@dataclass
 class GGCCState:
     """GGCC: Foundational stillness with enforced locks.
     
     Maintains stability through strict state enforcement.
+    Uses __slots__ for memory efficiency and pickle compatibility.
     """
-    locked: bool = True
-    stillness_factor: float = 1.0
-    lock_count: int = 0
-    _lock: threading.Lock = field(default_factory=threading.Lock)
+    __slots__ = ('locked', 'stillness_factor', 'lock_count', '_lock')
+    
+    def __init__(self, locked: bool = True, stillness_factor: float = 1.0, lock_count: int = 0):
+        self.locked = locked
+        self.stillness_factor = stillness_factor
+        self.lock_count = lock_count
+        self._lock = threading.Lock()
     
     def enforce_lock(self) -> bool:
         """Enforce stillness lock."""
@@ -109,15 +116,24 @@ class NodeBalancer:
             if not self.nodes:
                 return 1.0
             
-            values = list(self.nodes.values())
-            mean_val = sum(values) / len(values)
+            # Welford's online algorithm - single pass for mean and variance
+            n = 0
+            mean_val = 0.0
+            m2 = 0.0
+            for v in self.nodes.values():
+                n += 1
+                delta = v - mean_val
+                mean_val += delta / n
+                delta2 = v - mean_val
+                m2 += delta * delta2
+            
+            variance = m2 / n if n > 0 else 0.0
             
             # Apply balancing
             for node_id in self.nodes:
                 self.nodes[node_id] = (self.nodes[node_id] + mean_val) / 2.0
             
             # Update coherence index
-            variance = sum((v - mean_val) ** 2 for v in self.nodes.values()) / len(self.nodes)
             self.coherence_index = 1.0 / (1.0 + variance)
             
             return self.coherence_index
@@ -142,7 +158,7 @@ class SymmetryMonitor:
     
     def __init__(self):
         self.symmetry_score: float = 1.0
-        self.symmetry_history: List[float] = []
+        self.symmetry_history: deque = deque(maxlen=100)
         self.modular_base: int = 9  # Mod 9 symmetry from core processor
         self._lock = threading.Lock()
     
@@ -168,10 +184,6 @@ class SymmetryMonitor:
                 self.symmetry_score = symmetry / half
             
             self.symmetry_history.append(self.symmetry_score)
-            
-            # Keep history bounded
-            if len(self.symmetry_history) > 100:
-                self.symmetry_history.pop(0)
             
             return self.symmetry_score
     
@@ -340,8 +352,8 @@ class RAIIContext:
             if self.cleanup_fn:
                 try:
                     self.cleanup_fn()
-                except Exception:
-                    pass  # Swallow cleanup errors
+                except Exception as e:
+                    logger.warning(f"Cleanup failed for {self.resource_name}: {e}")
             self.acquired = False
             self.metadata["released_at"] = time.time()
         return False  # Don't suppress exceptions
@@ -369,7 +381,7 @@ class SymchaosCrucible:
         
         # Evening Harmony integration
         self.harmony_factor = EVENING_HARMONY_CONSTANT
-        self.roast_cycle_feedback: List[float] = []
+        self.roast_cycle_feedback: deque = deque(maxlen=100)
         
         # Metrics
         self.state = {
@@ -427,8 +439,6 @@ class SymchaosCrucible:
         
         # Record feedback
         self.roast_cycle_feedback.append(harmonized)
-        if len(self.roast_cycle_feedback) > 100:
-            self.roast_cycle_feedback.pop(0)
         
         # Adapt GGCCD to feedback
         self.ggccd.adapt(harmonized * 0.1)
