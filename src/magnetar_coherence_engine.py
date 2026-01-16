@@ -719,8 +719,8 @@ class MagnetarElasticCoherenceEngine:
                 - 'coherence_score': Overall coherence score
                 - 'diagnostics': Detailed diagnostics (if requested)
         """
-        if x.ndim == 1:
-            x = x.reshape(-1, 1)
+        # Store original shape
+        original_shape = x.shape
         
         # Store intermediate outputs
         outputs = []
