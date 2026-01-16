@@ -1,4 +1,4 @@
-// Copyright 2024 AIOSPANDORA. All Rights Reserved.
+// Copyright AIOSPANDORA. All Rights Reserved.
 
 #pragma once
 

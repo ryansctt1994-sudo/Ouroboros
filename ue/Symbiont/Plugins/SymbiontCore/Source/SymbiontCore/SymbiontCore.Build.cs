@@ -1,3 +1,4 @@
+// Copyright AIOSPANDORA. All Rights Reserved.
 // Copyright 2024 AIOSPANDORA. All Rights Reserved.
 
 using UnrealBuildTool;
@@ -26,10 +27,15 @@ public class SymbiontCore : ModuleRules
 			new string[]
 			{
 				"Core",
+				"CoreUObject",
+				"Engine",
 				// ... add other public dependencies that you statically link with here ...
 			}
 		);
 			
+		PrivateDependencyModuleNames.AddRange(
+			new string[]
+			{
 		
 		PrivateDependencyModuleNames.AddRange(
 			new string[]
@@ -47,5 +53,17 @@ public class SymbiontCore : ModuleRules
 				// ... add any modules that your module loads dynamically here ...
 			}
 		);
+
+		if (Target.Platform == UnrealTargetPlatform.IOS)
+		{
+			// iOS-specific configuration for CoreML
+			PublicFrameworks.AddRange(
+				new string[]
+				{
+					"CoreML",
+					"Foundation"
+				}
+			);
+		}
 	}
 }

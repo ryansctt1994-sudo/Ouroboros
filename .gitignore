@@ -33,6 +33,10 @@ htmlcov/
 LOLD_extracted/
 *_extraction/
 
+# Unreal Engine
+ue/Symbiont/Binaries/
+ue/Symbiont/Intermediate/
+ue/Symbiont/Build/
 # Unreal Engine 5
 # Exclude binaries and generated files, keep source code
 ue/Symbiont/Binaries/
@@ -41,6 +45,19 @@ ue/Symbiont/Saved/
 ue/Symbiont/DerivedDataCache/
 ue/Symbiont/.vs/
 ue/Symbiont/*.sln
+ue/Symbiont/*.suo
+ue/Symbiont/*.sdf
+ue/Symbiont/*.opensdf
+
+# UE Plugin binaries/intermediate
+ue/Symbiont/Plugins/*/Binaries/
+ue/Symbiont/Plugins/*/Intermediate/
+
+# UE binary assets (to be managed via Git LFS if needed)
+# *.uasset
+# *.umap
+# *.uexp
+# *.ubulk
 ue/Symbiont/*.xcworkspace
 ue/Symbiont/*.xcodeproj
 
