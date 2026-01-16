@@ -1,0 +1,9 @@
+# Git LFS configuration for Unreal Engine assets
+
+# Unreal Engine asset files
+*.uasset filter=lfs diff=lfs merge=lfs -text
+*.umap filter=lfs diff=lfs merge=lfs -text
+
+# Other large binary files commonly used in UE
+*.upk filter=lfs diff=lfs merge=lfs -text
+*.udk filter=lfs diff=lfs merge=lfs -text
