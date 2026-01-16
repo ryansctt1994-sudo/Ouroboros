@@ -63,7 +63,6 @@ class RewardCalculator:
         
         self.completion_weight /= total_weight
         self.deadline_weight /= total_weight
-        self.deadline_weight /= total_weight
         self.efficiency_weight /= total_weight
         self.satisfaction_weight /= total_weight
         self.stability_weight /= total_weight

@@ -7,10 +7,12 @@ for predictive resource allocation and optimization.
 
 from .arima_predictor import ARIMAMemoryPredictor
 from .lstm_predictor import LSTMMemoryPredictor
-from .memory_manager import AdvancedMemoryManager
+from .memory_manager import AdvancedMemoryManager, PredictionStrategy, MemoryPressureLevel
 
 __all__ = [
     'ARIMAMemoryPredictor',
     'LSTMMemoryPredictor',
-    'AdvancedMemoryManager'
+    'AdvancedMemoryManager',
+    'PredictionStrategy',
+    'MemoryPressureLevel'
 ]
