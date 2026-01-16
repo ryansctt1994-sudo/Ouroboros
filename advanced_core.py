@@ -223,7 +223,21 @@ class MultiModalTensorDecomposer:
         }
     
     def _build_vietoris_rips_complex(self, graph: nx.Graph, max_dim: int) -> List[List[int]]:
-        """Build simplicial complex from graph (cliques up to max_dim+1)."""
+        """
+        Build simplicial complex from graph (cliques up to max_dim+1).
+        
+        This is a helper method available for advanced topological analysis.
+        Currently, the simplified persistence computation doesn't require
+        explicit simplex enumeration, but this method is available for
+        future extensions requiring detailed simplicial structure.
+        
+        Args:
+            graph: Input graph
+            max_dim: Maximum simplex dimension
+            
+        Returns:
+            List of simplices (as vertex lists)
+        """
         simplices = []
         
         # 0-simplices (vertices)
@@ -239,7 +253,21 @@ class MultiModalTensorDecomposer:
         return simplices
     
     def _compute_boundary_matrices(self, simplices: List[List[int]], max_dim: int) -> List[np.ndarray]:
-        """Compute boundary matrices for simplicial complex."""
+        """
+        Compute boundary matrices for simplicial complex.
+        
+        This is a helper method for advanced persistent homology calculations.
+        Currently not used in the simplified implementation, but available
+        for future extensions requiring explicit boundary operator computation
+        for Smith normal form or advanced homology calculations.
+        
+        Args:
+            simplices: List of simplices
+            max_dim: Maximum dimension
+            
+        Returns:
+            List of boundary matrices
+        """
         # Group simplices by dimension
         by_dim = defaultdict(list)
         for simplex in simplices:
@@ -296,11 +324,13 @@ class MultiModalTensorDecomposer:
             prev_components = n_components
         
         # Simplified 1-dim homology (cycles)
+        # Count cycles efficiently without creating intermediate lists
         for i, (graph, eps) in enumerate(zip(complexes, filtration_values)):
             # Detect cycles
             try:
                 cycles = nx.cycle_basis(graph)
-                if len(cycles) > len([p for p in persistence[1] if p[1] == float('inf')]):
+                current_living_cycles = sum(1 for p in persistence[1] if p[1] == float('inf'))
+                if len(cycles) > current_living_cycles:
                     # Birth of new cycle
                     persistence[1].append((eps, float('inf')))
             except:
@@ -599,6 +629,10 @@ class TernaryLogicOptimizer:
         corrected = encoded.copy()
         block_size = 7
         
+        # Hamming code syndrome weights for error position detection
+        SYNDROME_WEIGHT_1 = 1
+        SYNDROME_WEIGHT_2 = 2
+        
         for i in range(0, len(encoded), block_size):
             block_end = min(i + block_size, len(encoded))
             block = corrected[i:block_end]
@@ -610,8 +644,12 @@ class TernaryLogicOptimizer:
                 # Check and correct single-bit errors if we have parity bits
                 if len(block) >= 5 and block[4] != parity:
                     # Parity error detected, attempt correction
-                    # Find error position (simplified)
-                    error_syndrome = int(np.sum(block[5:] * [1, 2]) % 4) if len(block) > 5 else 0
+                    # Compute syndrome from check bits to locate error position
+                    syndrome_bits = block[5:] if len(block) > 5 else []
+                    error_syndrome = 0
+                    if len(syndrome_bits) > 0:
+                        error_syndrome = int(np.sum(syndrome_bits * [SYNDROME_WEIGHT_1, SYNDROME_WEIGHT_2]) % 4)
+                    
                     if error_syndrome < len(block):
                         corrected[i + error_syndrome] = 1 - corrected[i + error_syndrome]
         
@@ -941,6 +979,7 @@ class AdaptiveTranspiler:
             )
         elif SKLEARN_AVAILABLE:
             # Fallback to sklearn gradient boosting
+            from sklearn.linear_model import LinearRegression
             model = Pipeline([
                 ('scaler', StandardScaler()),
                 ('gbm', GradientBoostingRegressor(
@@ -952,12 +991,32 @@ class AdaptiveTranspiler:
                 ))
             ])
         else:
-            # Simple fallback: linear regression
-            from sklearn.linear_model import LinearRegression
-            model = Pipeline([
-                ('scaler', StandardScaler()),
-                ('lr', LinearRegression())
-            ])
+            # Pure numpy fallback - simple linear model
+            class SimpleLinearModel:
+                """Simple linear model fallback when sklearn not available."""
+                def __init__(self):
+                    self.weights = None
+                    self.bias = None
+                
+                def fit(self, X, y):
+                    # Simple least squares: w = (X^T X)^-1 X^T y
+                    X = np.atleast_2d(X)
+                    y = np.atleast_1d(y)
+                    X_bias = np.column_stack([X, np.ones(len(X))])
+                    try:
+                        params = np.linalg.lstsq(X_bias, y, rcond=None)[0]
+                        self.weights = params[:-1]
+                        self.bias = params[-1]
+                    except:
+                        self.weights = np.zeros(X.shape[1])
+                        self.bias = 0
+                    return self
+                
+                def predict(self, X):
+                    X = np.atleast_2d(X)
+                    return X @ self.weights + self.bias
+            
+            model = SimpleLinearModel()
         
         self.performance_model = model
         return model
