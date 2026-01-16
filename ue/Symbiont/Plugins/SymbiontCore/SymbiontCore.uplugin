@@ -2,6 +2,11 @@
 	"FileVersion": 3,
 	"Version": 1,
 	"VersionName": "0.1.0",
+	"FriendlyName": "Symbiont Core",
+	"Description": "Core engine for symbiont AI inference with constitutional oversight. Provides local on-device inference integration for AR demos.",
+	"Category": "AI",
+	"CreatedBy": "AIOSPANDORA",
+	"CreatedByURL": "https://github.com/AIOSPANDORA/Ouroboros",
 	"FriendlyName": "SymbiontCore",
 	"Description": "Core AR/XR integration plugin for Symbiont - provides iOS ARKit/Metal bridge and cross-platform AR capabilities",
 	"Category": "Augmented Reality",
@@ -19,6 +24,10 @@
 			"Name": "SymbiontCore",
 			"Type": "Runtime",
 			"LoadingPhase": "Default",
+			"WhitelistPlatforms": [
+				"IOS",
+				"Win64",
+				"Mac"
 			"PlatformAllowList": [
 				"IOS",
 				"Mac",

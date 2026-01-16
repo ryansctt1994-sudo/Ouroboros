@@ -32,3 +32,30 @@ htmlcov/
 # LOL:D extraction test directories
 LOLD_extracted/
 *_extraction/
+
+# Unreal Engine 5
+# Exclude binaries and generated files, keep source code
+ue/Symbiont/Binaries/
+ue/Symbiont/Intermediate/
+ue/Symbiont/Saved/
+ue/Symbiont/DerivedDataCache/
+ue/Symbiont/.vs/
+ue/Symbiont/*.sln
+ue/Symbiont/*.xcworkspace
+ue/Symbiont/*.xcodeproj
+
+# Unreal binary assets (not committed per repository policy)
+*.uasset
+*.umap
+
+# Unreal plugins binaries
+ue/Symbiont/Plugins/*/Binaries/
+ue/Symbiont/Plugins/*/Intermediate/
+
+# Unreal build artifacts
+*.VC.db
+*.opensdf
+*.opendb
+*.sdf
+*.suo
+*.VC.VC.opendb
