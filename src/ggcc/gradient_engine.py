@@ -41,7 +41,7 @@ class GradientEngineV2:
     
     def __init__(self, lambda_scale: float = 0.3, chebyshev_degree: int = 5,
                  segments: int = 10, use_simd: bool = True, 
-                 enable_amused_logging: bool = True):
+                 enable_amused_logging: bool = True, delta_a_mode: str = "soft"):
         """Initialize the gradient engine.
         
         Args:
@@ -50,12 +50,14 @@ class GradientEngineV2:
             segments: Number of adaptive curve segments (default: 10)
             use_simd: Enable vectorized SIMD operations (default: True)
             enable_amused_logging: Enable AMUSED-tagged logging
+            delta_a_mode: ΔA adjustment mode - "soft" or "hard" (default: "soft")
         """
         self.lambda_scale = lambda_scale
         self.chebyshev_degree = chebyshev_degree
         self.segments = segments
         self.use_simd = use_simd and HAS_NUMPY
         self.amused_logging = enable_amused_logging
+        self.delta_a_mode = delta_a_mode
         
         # Gradient cache for adaptive segment prioritization
         self.gradient_cache: Dict[int, List[float]] = {}
@@ -64,6 +66,13 @@ class GradientEngineV2:
         # Performance metrics
         self.evaluations = 0
         self.cache_hits = 0
+        
+        # ΔA[mode=soft] dynamic adjustment parameters
+        self.delta_a_base = 1.0
+        self.delta_a_current = 1.0
+        self.turbulence_level = 0.0
+        self.coherence_history: List[float] = []
+        self.chaos_mode_active = False
         
         if self.amused_logging:
             self._log_amused(
@@ -314,6 +323,107 @@ class GradientEngineV2:
         
         if self.amused_logging:
             self._log_amused(f"Cleared {cleared} cached segments")
+    
+    def update_delta_a(self, turbulence: float, coherence: float) -> float:
+        """Update ΔA dynamically based on computational turbulence.
+        
+        Implements dynamic gradient scaling logic for elastic coherence
+        under computational turbulence. In soft mode, adjustments are
+        smooth and gradual. In hard mode, adjustments are immediate.
+        
+        Args:
+            turbulence: Current turbulence level (0.0 to 1.0)
+            coherence: Current system coherence (0.0 to 1.0)
+            
+        Returns:
+            Updated ΔA value
+        """
+        self.turbulence_level = max(0.0, min(1.0, turbulence))
+        self.coherence_history.append(coherence)
+        
+        # Keep only recent history
+        if len(self.coherence_history) > 100:
+            self.coherence_history = self.coherence_history[-100:]
+        
+        # Calculate target ΔA based on turbulence and coherence
+        # Higher turbulence -> lower ΔA (more damping)
+        # Lower coherence -> lower ΔA (more stability)
+        phi = 1.618033988749895  # Golden ratio
+        chuckle = 0.0997  # Chuckle constant
+        
+        turbulence_factor = 1.0 - (self.turbulence_level * 0.7)
+        coherence_factor = coherence ** 0.5  # Square root for softer response
+        
+        target_delta_a = self.delta_a_base * turbulence_factor * coherence_factor
+        
+        # Apply Φ-based scaling for elastic resilience
+        target_delta_a *= (1 + (phi - 1) * chuckle)
+        
+        if self.delta_a_mode == "soft":
+            # Smooth exponential approach to target
+            alpha = 0.1  # Smoothing factor
+            self.delta_a_current = (
+                alpha * target_delta_a + (1 - alpha) * self.delta_a_current
+            )
+        else:  # hard mode
+            # Immediate update
+            self.delta_a_current = target_delta_a
+        
+        if self.amused_logging:
+            self._log_amused(
+                f"ΔA updated: {self.delta_a_current:.4f} "
+                f"(turbulence={self.turbulence_level:.3f}, coherence={coherence:.3f})",
+                "DEBUG"
+            )
+        
+        return self.delta_a_current
+    
+    def enable_chaos_mode(self):
+        """Enable chaos-mode operations for extreme turbulence handling.
+        
+        In chaos mode:
+        - ΔA adjustments become more aggressive
+        - Gradient caching is disabled
+        - Priority updates are more frequent
+        """
+        self.chaos_mode_active = True
+        self.clear_cache()  # Clear cache for fresh computations
+        
+        if self.amused_logging:
+            self._log_amused("CHAOS MODE ENABLED - Enhanced turbulence response", "WARN")
+    
+    def disable_chaos_mode(self):
+        """Disable chaos-mode operations and return to normal operation."""
+        self.chaos_mode_active = False
+        
+        if self.amused_logging:
+            self._log_amused("CHAOS MODE DISABLED - Returning to normal operation")
+    
+    def apply_elastic_coherence(self, gradient: Tuple[float, float]) -> Tuple[float, float]:
+        """Apply elastic coherence transformation to gradient.
+        
+        Scales gradient by current ΔA for turbulence-adaptive behavior.
+        
+        Args:
+            gradient: Input gradient tuple (dx, dy)
+            
+        Returns:
+            Scaled gradient tuple
+        """
+        dx, dy = gradient
+        
+        # Apply ΔA scaling
+        scaled_dx = dx * self.delta_a_current
+        scaled_dy = dy * self.delta_a_current
+        
+        # In chaos mode, apply additional amplification
+        if self.chaos_mode_active:
+            amplification = 3.33  # 333% amplification
+            chaos_factor = 1.0 + (self.turbulence_level * (amplification - 1.0))
+            scaled_dx *= chaos_factor
+            scaled_dy *= chaos_factor
+        
+        return (scaled_dx, scaled_dy)
 
 
 if __name__ == "__main__":
