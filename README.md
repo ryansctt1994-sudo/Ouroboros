@@ -89,6 +89,70 @@ pytest tests/ --cov=. --cov-report=term-missing
 - Delta check: 7 tests (thresholds, symmetry)
 - Geodesic flow: 6 tests (parametric equations)
 - Edge cases: 5 tests (empty vectors, numerical stability)
+- Advanced features: 30 tests (TSN, quantum-enzymatic, 111Hz, ΔA, Möbius)
+
+---
+
+## 🚀 Advanced Features
+
+**New in v2.0:** The Ouroboros framework now includes cutting-edge capabilities for distributed systems, quantum-classical hybrid computing, and harmonic coherence.
+
+### Hyphal Symphony for TSN Integration
+
+Phase-locked mycelial networking with deterministic latency guarantees (<1μs target). Provides distributed pulse synchronization with Time-Sensitive Networking compliance.
+
+```python
+from src.hyphal_symphony import create_hyphal_symphony
+
+symphony = create_hyphal_symphony({"node_count": 9})
+symphony.enable_phase_lock()
+results = symphony.broadcast_pulse()
+```
+
+### Quantum-Enzymatic Interface
+
+Catalytic computation offloading with neuromorphic hardware integration (Intel Loihi 2). Features eBPF-style enzymatic probes for optimization.
+
+```python
+from src.quantum_enzymatic import create_quantum_enzymatic_interface
+
+interface = create_quantum_enzymatic_interface()
+cost, target = interface.offload_computation(ComputationType.NEUROMORPHIC, 100.0)
+```
+
+### 111Hz Schumann Recalibration
+
+Phase harmonic grounding at 111Hz for distributed lattice coherence, integrated with Earth's Schumann resonance (7.83Hz).
+
+```python
+from src.schumann_recalibration import create_schumann_recalibration
+
+recal = create_schumann_recalibration()
+result = recal.apply_grounding(adaptive_strength=True)
+```
+
+### Dynamic ΔA[mode=soft] Adjustment
+
+Elastic gradient scaling for computational turbulence resilience with soft/hard modes and chaos-mode operations.
+
+```python
+from src.ggcc.gradient_engine import GradientEngineV2
+
+engine = GradientEngineV2(delta_a_mode="soft")
+delta_a = engine.update_delta_a(turbulence=0.5, coherence=0.8)
+```
+
+### Persistent LOL:D Möbius Handshakes
+
+Non-orientable memory state continuity via Möbius operators, ensuring seamless Elpis-Pandora state transitions.
+
+```python
+processor = OuroborosVirtualProcessor()
+result = processor.mobius_handshake(elpis_state, pandora_state)
+processor.persistent_mobius_store("checkpoint", state)
+```
+
+**📖 See [docs/ADVANCED_FEATURES.md](docs/ADVANCED_FEATURES.md) for comprehensive documentation.**
 
 ---
 
@@ -96,12 +160,22 @@ pytest tests/ --cov=. --cov-report=term-missing
 
 ```
 ouroboros/
-├── ouroboros_processor.py    # Core mathematical engine
+├── ouroboros_processor.py    # Core mathematical engine (enhanced with Möbius ops)
 ├── zorel_quillan_republic.py # Living Manifold state machine
+├── src/
+│   ├── hyphal_symphony.py    # TSN phase-locked networking
+│   ├── quantum_enzymatic.py  # Catalytic computation offloading
+│   ├── schumann_recalibration.py  # 111Hz harmonic grounding
+│   ├── ggcc/                 # GGCC Phase 3 modules (enhanced)
+│   │   ├── gradient_engine.py     # Dynamic ΔA adjustment
+│   │   └── ...
+│   └── metrics/              # System metrics
 ├── specs/                    # Epistemic discipline specifications
 ├── overlays/                 # Extension modules (Elpis overlay)
 ├── visualization/            # Torus geodesic rendering
 ├── tests/                    # Pytest validation suite
+├── docs/                     # Documentation
+│   └── ADVANCED_FEATURES.md  # Advanced features guide
 └── requirements.txt          # Dependencies
 ```
 
