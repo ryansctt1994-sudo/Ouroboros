@@ -246,7 +246,7 @@ class OuroborosVirtualProcessor:
     def _execute_due_tasks(self):
         """Execute tasks that are due, respecting backpressure controls."""
         current_time = time.time()
-        tick_start = time.time()
+        tick_start = current_time
         tick_budget_seconds = self._tick_time_budget_ms / 1000.0
         tasks_executed = 0
         
