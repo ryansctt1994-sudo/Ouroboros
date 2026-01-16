@@ -51,6 +51,55 @@ pytest tests/ -v
 | **Ramanujan τ** | Approximates τ(n) for modular form calculations | OEIS A000594 |
 | **Delta Check** | Validates coherence between expected/observed states | Threshold-based pass/fail |
 | **Geodesic Flow** | Computes (x,y,z) coordinates on horn torus | Parametric equations verified |
+| **[Magnetar Coherence Engine](MAGNETAR_COHERENCE_ENGINE_README.md)** | 10-module coherence analysis system | Φ-structured dynamics, 92.5Hz rhythm |
+
+---
+
+## 🌟 Magnetar Elastic Coherence Engine
+
+The repository now includes a complete **Magnetar Elastic Coherence Engine** - a lightweight signal processing system implementing 10 specialized modules for coherence analysis:
+
+1. **PhaseObfuscationDetector** - Detect/correct phase inconsistencies
+2. **SoftCycleStabilizer** - Preserve soft cycle limits under interference
+3. **TorsionResolver** - Resolve torsional imbalances
+4. **HarmonicImpedanceMatcher** - Adaptive harmonic interference
+5. **CoherenceRegenerator** - Regenerate state-signature coherence
+6. **PressureAbsorbingSubnet** - Absorb pressure anomalies
+7. **DistortionMaskingSignals** - Generate distortion masking signals
+8. **GradientAlignedOperators** - Align with basin gradients
+9. **LeakTracer** - Trace emergent information leaks
+10. **FlexStateRealigner** - Realign internal lattices
+
+**Key Features:**
+- ✅ Uses only existing dependencies (numpy, scipy, matplotlib)
+- ✅ Pure CPU-based signal processing (no GPU required)
+- ✅ Golden ratio (Φ) structured dynamics
+- ✅ 92.5 Hz magnetar frequency core rhythm
+- ✅ Comprehensive visualization and analysis tools
+
+**Quick Start:**
+```python
+from src.magnetar_coherence_engine import CoherenceAnalyzer
+
+# Create analyzer
+analyzer = CoherenceAnalyzer()
+
+# Generate and analyze a test signal
+signal = analyzer.generate_test_signal(1000, 'magnetar')
+analysis = analyzer.analyze(signal, label='test')
+
+print(f"Coherence Score: {analysis['coherence_score']:.4f}")
+
+# Visualize results
+analyzer.visualize_analysis(analysis, save_path='coherence.png')
+```
+
+**See:** [MAGNETAR_COHERENCE_ENGINE_README.md](MAGNETAR_COHERENCE_ENGINE_README.md) for complete documentation.
+
+**Run Examples:**
+```bash
+python3 examples/magnetar_coherence_examples.py
+```
 
 ---
 
