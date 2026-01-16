@@ -86,7 +86,7 @@ class TestDummyTenant:
         """Test that missing required fields are detected."""
         invalid_mandate = {
             "mandate_id": "TEST-001",
-            # Missing tenant_class and other fields
+            # Missing tenant_class and signature fields
             "scope_boundary": ["/test"],
             "axiom_set": ["TEST"],
             "compute_budget": {"max_tokens": 100, "max_seconds": 10},
