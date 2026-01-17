@@ -1,0 +1,1 @@
+# Content for benchmark_latch.c based on manuscript
