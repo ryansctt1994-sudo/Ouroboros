@@ -33,6 +33,9 @@ htmlcov/
 LOLD_extracted/
 *_extraction/
 
+# Genesis Pipeline logs
+logs/
+
 # Unreal Engine
 ue/Symbiont/Binaries/
 ue/Symbiont/Intermediate/

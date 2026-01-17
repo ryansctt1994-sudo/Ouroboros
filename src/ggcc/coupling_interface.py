@@ -13,6 +13,7 @@ Features:
 """
 
 import math
+from collections import deque
 from typing import List, Tuple, Dict, Any, Optional
 import time
 
@@ -62,8 +63,8 @@ class CouplingInterface:
         self.dynamic_state: float = 0.0
         self.filtered_state: float = 0.0
         
-        # History for oscillation detection
-        self.state_history: List[float] = []
+        # History for oscillation detection - use deque for O(1) eviction
+        self.state_history: deque = deque(maxlen=100)
         self.oscillation_history: List[float] = []
         
         # Adaptive coupling parameters
@@ -113,7 +114,9 @@ class CouplingInterface:
             return False, 0.0
         
         # Check for rapid sign changes (oscillation indicator)
-        recent_states = self.state_history[-5:]
+        # Convert deque to list for slicing
+        history_list = list(self.state_history)
+        recent_states = history_list[-5:]
         if len(recent_states) < 3:
             return False, 0.0
         
@@ -154,10 +157,8 @@ class CouplingInterface:
             self.filtered_state
         )
         
-        # Update state history
+        # Update state history (deque auto-evicts when maxlen reached)
         self.state_history.append(self.filtered_state)
-        if len(self.state_history) > 100:
-            self.state_history.pop(0)
         
         # Detect oscillations
         oscillation_detected, amplitude = self._detect_oscillation()

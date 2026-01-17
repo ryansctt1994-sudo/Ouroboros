@@ -17,7 +17,7 @@ All changes are reversible, human-sovereign, and laughter-infused with resilienc
 """
 
 import math
-from collections import OrderedDict
+from collections import OrderedDict, deque
 from typing import Dict, List, Tuple, Any, Callable
 import numpy as np
 from scipy import signal
@@ -130,7 +130,7 @@ class TensorGradientSystem:
 
         # Phase coherence adjustment
         phase_coherence = np.exp(1j * 2 * np.pi * harmonic_grid)
-        stabilized = np.abs(phase_coherence) * lambda_frequencies
+        stabilized = lambda_frequencies + 0.1 * PHI_GOLDEN_RATIO * np.real(phase_coherence)
 
         return stabilized
 
@@ -152,8 +152,10 @@ class QuaternionNodeBalancer:
         self.cache_size = cache_size
         self.quaternion_buckets = quaternion_buckets
         self.lru_cache: OrderedDict = OrderedDict()
-        self.quaternion_cache: Dict[int, List[np.ndarray]] = {
-            i: [] for i in range(quaternion_buckets)
+        # Use deque with maxlen for O(1) eviction instead of list with pop(0)
+        bucket_maxlen = cache_size // quaternion_buckets
+        self.quaternion_cache: Dict[int, deque] = {
+            i: deque(maxlen=bucket_maxlen) for i in range(quaternion_buckets)
         }
 
     def quaternion_hash(self, q: np.ndarray) -> int:
@@ -165,8 +167,12 @@ class QuaternionNodeBalancer:
         Returns:
             Bucket index
         """
-        # Normalize quaternion
-        q_norm = q / (np.linalg.norm(q) + EPSILON)
+        # Safe quaternion normalization with identity fallback
+        q_norm_val = np.linalg.norm(q)
+        if q_norm_val > 1e-10:
+            q_norm = q / q_norm_val
+        else:
+            q_norm = np.array([1.0, 0.0, 0.0, 0.0])
 
         # Hash based on quaternion components
         hash_val = (
@@ -217,20 +223,28 @@ class QuaternionNodeBalancer:
         bucket_idx = self.quaternion_hash(node_state)
 
         # Apply balancing transformation
-        # Use conjugate for ghosting elimination
-        conjugate = np.array(
-            [node_state[0], -node_state[1], -node_state[2], -node_state[3]]
-        )
-        balanced = self.quaternion_multiply(node_state, conjugate)
-        balanced = balanced / (np.linalg.norm(balanced) + EPSILON)
+        # Use SLERP (Spherical Linear Interpolation) for ghosting elimination
+        identity = np.array([1.0, 0.0, 0.0, 0.0])
+        t = 0.5
+        dot = np.dot(node_state, identity)
+        if dot < 0:
+            identity = -identity
+            dot = -dot
+        theta = np.arccos(np.clip(dot, -1.0, 1.0))
+        if theta < EPSILON:
+            balanced = node_state
+        else:
+            balanced = (np.sin((1-t)*theta) * node_state + np.sin(t*theta) * identity) / np.sin(theta)
+        
+        # Safe quaternion normalization with identity fallback
+        balanced_norm = np.linalg.norm(balanced)
+        if balanced_norm > 1e-10:
+            balanced = balanced / balanced_norm
+        else:
+            balanced = np.array([1.0, 0.0, 0.0, 0.0])
 
-        # Store in quaternion bucket cache
+        # Store in quaternion bucket cache (deque auto-evicts when maxlen reached)
         self.quaternion_cache[bucket_idx].append(balanced)
-        if (
-            len(self.quaternion_cache[bucket_idx])
-            > self.cache_size // self.quaternion_buckets
-        ):
-            self.quaternion_cache[bucket_idx].pop(0)
 
         # Store in LRU cache
         self.lru_cache[cache_key] = balanced

@@ -138,6 +138,116 @@ pytest tests/ --cov=. --cov-report=term-missing
 - Delta check: 7 tests (thresholds, symmetry)
 - Geodesic flow: 6 tests (parametric equations)
 - Edge cases: 5 tests (empty vectors, numerical stability)
+- Advanced features: 30 tests (TSN, quantum-enzymatic, 111Hz, ΔA, Möbius)
+
+---
+
+## 🚀 Advanced Features
+
+**New in v2.0:** The Ouroboros framework now includes cutting-edge capabilities for distributed systems, quantum-classical hybrid computing, and harmonic coherence.
+
+### Hyphal Symphony for TSN Integration
+
+Phase-locked mycelial networking with deterministic latency guarantees (<1μs target). Provides distributed pulse synchronization with Time-Sensitive Networking compliance.
+
+```python
+from src.hyphal_symphony import create_hyphal_symphony
+
+symphony = create_hyphal_symphony({"node_count": 9})
+symphony.enable_phase_lock()
+results = symphony.broadcast_pulse()
+```
+
+### Quantum-Enzymatic Interface
+
+Catalytic computation offloading with neuromorphic hardware integration (Intel Loihi 2). Features eBPF-style enzymatic probes for optimization.
+
+```python
+from src.quantum_enzymatic import create_quantum_enzymatic_interface
+
+interface = create_quantum_enzymatic_interface()
+cost, target = interface.offload_computation(ComputationType.NEUROMORPHIC, 100.0)
+```
+
+### 111Hz Schumann Recalibration
+
+Phase harmonic grounding at 111Hz for distributed lattice coherence, integrated with Earth's Schumann resonance (7.83Hz).
+
+```python
+from src.schumann_recalibration import create_schumann_recalibration
+
+recal = create_schumann_recalibration()
+result = recal.apply_grounding(adaptive_strength=True)
+```
+
+### Dynamic ΔA[mode=soft] Adjustment
+
+Elastic gradient scaling for computational turbulence resilience with soft/hard modes and chaos-mode operations.
+
+```python
+from src.ggcc.gradient_engine import GradientEngineV2
+
+engine = GradientEngineV2(delta_a_mode="soft")
+delta_a = engine.update_delta_a(turbulence=0.5, coherence=0.8)
+```
+
+### Persistent LOL:D Möbius Handshakes
+
+Non-orientable memory state continuity via Möbius operators, ensuring seamless Elpis-Pandora state transitions.
+
+```python
+processor = OuroborosVirtualProcessor()
+result = processor.mobius_handshake(elpis_state, pandora_state)
+processor.persistent_mobius_store("checkpoint", state)
+```
+
+### LEXICON GIGAS Optimization Module
+
+**New in v2.1:** DeepSeek-level architectural refinements providing advanced optimization capabilities:
+
+```python
+from src.lexicon_gigas import (
+    topological_manifold_subspace_optimization,
+    ternary_logic_radix_economy_stabilizer,
+    berry_curvature_holonomy_optimizer,
+    neuro_symbolic_latent_pruning,
+    cryptographic_integrity_layer_optimization,
+)
+
+# HOSVD tensor decomposition
+core, factors = topological_manifold_subspace_optimization(tensor, target_rank=3)
+
+# Ternary logic optimization
+optimized_trits = ternary_logic_radix_economy_stabilizer([0,1,2,1,0], alpha_threshold=0.7)
+
+# Berry phase calculation for quantum systems
+phase = berry_curvature_holonomy_optimizer(wavefunction, adiabatic_path)
+
+# Neural network pruning
+pruned_weights = neuro_symbolic_latent_pruning(weight_matrix, sparsity_target=0.5)
+
+# Zero-knowledge circuit optimization
+optimized = cryptographic_integrity_layer_optimization(circuit, proof_params)
+```
+
+**Features:**
+- **Topological Manifold Optimization**: Higher-Order SVD for tensor decomposition and latent feature extraction
+- **Ternary Logic Stabilizer**: Entropy-based radix economy optimization with compression triggers
+- **Berry Curvature Optimizer**: Geometric phase calculation for quantum adiabatic systems
+- **Neuro-Symbolic Pruning**: Magnitude-based weight pruning for sparse neural architectures
+- **Cryptographic Optimization**: R1CS constraint optimization for zero-knowledge proofs
+
+**Hardware Tuning:**
+The module includes a kernel tuning script for optimal hardware utilization:
+
+```bash
+# Auto-detect and optimize for your hardware
+./scripts/kernel_tuning.sh
+```
+
+Supports NVIDIA GPUs, AMD GPUs/CPUs, and Intel CPUs with platform-specific optimizations.
+
+**📖 See [docs/ADVANCED_FEATURES.md](docs/ADVANCED_FEATURES.md) for comprehensive documentation.**
 
 ---
 
@@ -145,14 +255,43 @@ pytest tests/ --cov=. --cov-report=term-missing
 
 ```
 ouroboros/
-├── ouroboros_processor.py    # Core mathematical engine
+├── ouroboros_processor.py    # Core mathematical engine (enhanced with Möbius ops)
 ├── zorel_quillan_republic.py # Living Manifold state machine
+├── src/
+│   ├── hyphal_symphony.py    # TSN phase-locked networking
+│   ├── quantum_enzymatic.py  # Catalytic computation offloading
+│   ├── schumann_recalibration.py  # 111Hz harmonic grounding
+│   ├── lexicon_gigas.py      # DeepSeek-level optimization module
+│   ├── dna_helix_magnetar.py # DNA Helix Magnetar synthesis
+│   ├── ggcc/                 # GGCC Phase 3 modules (enhanced)
+│   │   ├── gradient_engine.py     # Dynamic ΔA adjustment
+│   │   └── ...
+│   └── metrics/              # System metrics
+├── scripts/
+│   └── kernel_tuning.sh      # Hardware optimization script
 ├── specs/                    # Epistemic discipline specifications
 ├── overlays/                 # Extension modules (Elpis overlay)
 ├── visualization/            # Torus geodesic rendering
 ├── tests/                    # Pytest validation suite
+├── docs/                     # Documentation
+│   └── ADVANCED_FEATURES.md  # Advanced features guide
 └── requirements.txt          # Dependencies
 ```
+
+---
+
+## 📚 Documentation
+
+**Core Manuscripts:**
+- [AIOSPANDORA Integration Manuscript](AIOSPANDORA_INTEGRATION_MANUSCRIPT.md) — Advanced integration architectures (TSN, eBPF, quantum-enzymatic interfaces)
+- [Ouroboros Delta Manuscript](OUROBOROS_DELTA_MANUSCRIPT.md) — Theoretical foundations
+- [Master Epistemic Spec v1.0](specs/MASTER_EPISTEMIC_SPEC_v1.0.md) — Hallucination-resistant inference grammar
+- [GGCC Equilibrium Seal](GGCC_EQUILIBRIUM_SEAL.md) — Golden Geometric Crucible Configuration
+
+**Technical Integration:**
+- [Ternary-Binary Bridge](TERNARY_BINARY_BRIDGE.md) — Encoding patterns for ternary states
+- [Veritas Alignment](VERITAS_ALIGNMENT.md) — Ledger alignment and manifest-tip policy
+- [Falsifiability Audit](FALSIFIABILITY_AUDIT.md) — Testing and acceptance criteria
 
 ---
 
