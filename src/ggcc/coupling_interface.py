@@ -114,7 +114,9 @@ class CouplingInterface:
             return False, 0.0
         
         # Check for rapid sign changes (oscillation indicator)
-        recent_states = self.state_history[-5:]
+        # Convert deque to list for slicing
+        history_list = list(self.state_history)
+        recent_states = history_list[-5:]
         if len(recent_states) < 3:
             return False, 0.0
         
