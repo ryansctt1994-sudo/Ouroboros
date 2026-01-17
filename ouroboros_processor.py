@@ -2,6 +2,7 @@
 import math
 import threading
 import time
+from collections import deque
 from typing import List, Optional, Dict, Any
 from functools import lru_cache
 
@@ -76,7 +77,7 @@ class OuroborosVirtualProcessor:
         self._state: Dict[str, Any] = {}
         self._extended = EXTENDED_FEATURES
         self._quaternion_cache = {}  # Hypercomplex memory bucket
-        self._monitoring_data = []  # Monitoring loop storage
+        self._monitoring_data: deque = deque(maxlen=1000)  # Monitoring loop storage with O(1) eviction
 
         # Round 3 SYMCHAOS CRUCIBLE integration
         self._round3_enabled = enable_round3 and ROUND3_AVAILABLE
@@ -544,10 +545,12 @@ class OuroborosVirtualProcessor:
         y = float(np.sin(half_phi) * np.sin(half_theta))
         z = float(np.cos(half_phi) * np.sin(half_theta) * self.zeta_seed)
 
-        # Normalize to unit quaternion
+        # Safe quaternion normalization with identity fallback
         norm = np.sqrt(w**2 + x**2 + y**2 + z**2)
-        if norm > self.EPS:
+        if norm > 1e-10:
             w, x, y, z = w / norm, x / norm, y / norm, z / norm
+        else:
+            w, x, y, z = 1.0, 0.0, 0.0, 0.0
 
         # Cache in hypercomplex memory bucket
         cache_key = f"{phi:.4f}_{theta:.4f}"
@@ -676,10 +679,8 @@ class OuroborosVirtualProcessor:
             "phase_balance": phase_balance,
         }
 
-        # Store in monitoring buffer (keep last 1000 entries)
+        # Store in monitoring buffer (deque auto-evicts when maxlen reached)
         self._monitoring_data.append(monitor_entry)
-        if len(self._monitoring_data) > 1000:
-            self._monitoring_data.pop(0)
 
         return monitor_entry
 
