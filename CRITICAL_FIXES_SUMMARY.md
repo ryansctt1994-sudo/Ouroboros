@@ -24,6 +24,7 @@ The original code used `np.abs(np.exp(1j * x))` which always returns 1.0 (magnit
 
 ```python
 # BROKEN (before):
+harmonic_grid = lambda_frequencies * PHI_GOLDEN_RATIO
 phase_coherence = np.exp(1j * harmonic_grid)
 stabilized = np.abs(phase_coherence) * lambda_frequencies  # Always 1.0 * frequencies
 ```
@@ -70,7 +71,7 @@ The original code computed `q * conjugate(q)` which mathematically equals `[|q|�
 # BROKEN (before):
 conjugate = np.array([node_state[0], -node_state[1], -node_state[2], -node_state[3]])
 balanced = self.quaternion_multiply(node_state, conjugate)
-# Result: [norm², 0, 0, 0] - rotation data lost!
+# Result: [|q|², 0, 0, 0] - rotation data lost!
 ```
 
 ### Solution
@@ -302,16 +303,16 @@ def __exit__(self, exc_type, exc_val, exc_tb):
             try:
                 self.cleanup_fn()
             except Exception as e:
-                logger.warning(f"Cleanup failed for {self.resource_name}: {e}", exc_info=True)
+                logger.warning(f"Cleanup failed for {self.resource_name}: {e}")
         self.acquired = False
         self.metadata["released_at"] = time.time()
     return False  # Don't suppress exceptions
 ```
 
 ### Impact
-- Cleanup failures are now visible in logs
+- Cleanup failures are now visible in logs (with warning level)
 - Debugging resource management issues is now possible
-- Full stack traces available via `exc_info=True`
+- Error messages include exception details
 - Maintains proper exception propagation (returns `False`)
 - Adds release timing metadata for diagnostics
 
@@ -328,7 +329,7 @@ def __exit__(self, exc_type, exc_val, exc_tb):
 
 ### Compilation
 ```bash
-python -m compileall .
+python -m compileall src/dna_helix_magnetar.py src/symchaos_crucible.py tests/test_critical_fixes.py
 ```
 ✅ All files compile without syntax errors
 
@@ -413,7 +414,7 @@ Status: Addressed performance and observability issues
 
 **Suggested closing message for #35 and #36**:
 ```
-Closing in favor of #[THIS_PR] which rebases these fixes onto current main 
+Closing in favor of #[REPLACEMENT_PR_NUMBER] which rebases these fixes onto current main 
 with comprehensive test coverage and conflict resolution. All changes from 
 this PR are preserved in the replacement.
 ```
