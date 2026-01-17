@@ -247,7 +247,7 @@ def __exit__(self, exc_type, exc_val, exc_tb):
 ### Test Suite
 **File:** `tests/test_critical_fixes.py`
 
-Comprehensive test suite with 40+ test cases covering:
+Comprehensive test suite with 32 test cases covering:
 
 1. **Phase Coherence Tests** (4 tests)
    - Verifies output is not constant (not a no-op)

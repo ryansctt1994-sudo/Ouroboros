@@ -19,6 +19,7 @@ Fixes demonstrated:
 import sys
 import time
 import logging
+import traceback
 import numpy as np
 from collections import deque
 
@@ -193,8 +194,10 @@ def demo_fix_5_welford_algorithm():
     
     balancer = NodeBalancer(node_count=5)
     
-    # Set test values
-    balancer.nodes = {0: 1.0, 1: 2.0, 2: 3.0, 3: 4.0, 4: 5.0}
+    # Set test values using thread-safe API
+    test_values = {0: 1.0, 1: 2.0, 2: 3.0, 3: 4.0, 4: 5.0}
+    for node_id, value in test_values.items():
+        balancer.update_node(node_id, value)
     
     print(f"\nNode values: {list(balancer.nodes.values())}")
     print(f"Expected mean: 3.0")
@@ -209,12 +212,16 @@ def demo_fix_5_welford_algorithm():
     print(f"\n✓ Single-pass computation: O(n) instead of O(2n)")
     print(f"✓ Numerically stable: Welford's algorithm avoids catastrophic cancellation")
     
-    # Test with high variance
-    balancer.nodes = {0: 0.0, 1: 10.0, 2: 0.0, 3: 10.0, 4: 0.0}
+    # Test with high variance using thread-safe API
+    high_var_values = {0: 0.0, 1: 10.0, 2: 0.0, 3: 10.0, 4: 0.0}
+    for node_id, value in high_var_values.items():
+        balancer.update_node(node_id, value)
     coherence_high_var = balancer.balance()
     
-    # Test with low variance
-    balancer.nodes = {0: 5.0, 1: 5.1, 2: 5.0, 3: 5.1, 4: 5.0}
+    # Test with low variance using thread-safe API
+    low_var_values = {0: 5.0, 1: 5.1, 2: 5.0, 3: 5.1, 4: 5.0}
+    for node_id, value in low_var_values.items():
+        balancer.update_node(node_id, value)
     coherence_low_var = balancer.balance()
     
     print(f"\n✓ High variance coherence: {coherence_high_var:.6f}")
@@ -345,7 +352,6 @@ def main():
         
     except Exception as e:
         print(f"\n✗ Error during demonstration: {e}", file=sys.stderr)
-        import traceback
         traceback.print_exc()
         return 1
 
