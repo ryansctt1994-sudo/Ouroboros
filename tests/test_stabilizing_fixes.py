@@ -24,7 +24,7 @@ class TestPhaseCoherenceVerification:
     """Verify phase coherence uses real-part multiplier correctly."""
     
     def test_phase_coherence_formula(self):
-        """Verify the formula matches requirement: lambda_frequencies * (1.0 + 0.1 * np.real(phase_coherence))"""
+        """Verify the formula uses real-part: lambda_frequencies + 0.1 * PHI_GOLDEN_RATIO * np.real(phase_coherence)"""
         system = TensorGradientSystem()
         lambda_freqs = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
         
