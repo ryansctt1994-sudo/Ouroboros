@@ -1193,7 +1193,14 @@ class DivisionErrorAnalyzer:
         # Check for overflow risk
         if num_is_array or den_is_array:
             num_max = np.max(np.abs(numerator)) if num_is_array else abs(numerator)
-            den_min = np.min(np.abs(denominator[denominator != 0])) if den_is_array and np.any(denominator != 0) else abs(denominator) if not analysis['has_zeros'] else 1e-15
+            
+            # Calculate minimum non-zero denominator value
+            if den_is_array and np.any(denominator != 0):
+                den_min = np.min(np.abs(denominator[denominator != 0]))
+            elif not analysis['has_zeros']:
+                den_min = abs(denominator)
+            else:
+                den_min = 1e-15
             
             if den_min > 0:
                 ratio = num_max / den_min
@@ -1435,9 +1442,16 @@ class SafeDivider:
         """
         # Add small regularization term to denominator
         try:
-            regularized_den = denominator + reg_param * np.sign(denominator)
+            # Use sign with fallback to 1 for zero values to avoid np.sign(0) = 0
+            if isinstance(denominator, np.ndarray):
+                sign_den = np.sign(denominator)
+                sign_den = np.where(sign_den == 0, 1, sign_den)
+                regularized_den = denominator + reg_param * sign_den
+            else:
+                sign_den = np.sign(denominator) if denominator != 0 else 1
+                regularized_den = denominator + reg_param * sign_den
             
-            # Handle case where denominator is exactly zero
+            # Handle case where regularization is still too small
             if isinstance(regularized_den, np.ndarray):
                 regularized_den = np.where(
                     np.abs(regularized_den) < reg_param,
