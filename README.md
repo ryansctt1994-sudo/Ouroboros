@@ -22,6 +22,20 @@ Simply import the module:
 
 ```python
 from ouroboros_processor import OuroborosVirtualProcessor
+A research repository featuring the Magnetar Elastic Coherence Engine.
+
+## Features
+
+- **Magnetar Elastic Coherence Engine**: A neural architecture inspired by magnetar resonance patterns and elastic coherence principles. See [`engine_modules/README.md`](engine_modules/README.md) for details.
+
+## Installation
+
+```bash
+# Install base dependencies
+pip install -r requirements.txt
+
+# Install ML dependencies for the Magnetar Engine
+pip install -r requirements-ml.txt
 ```
 
 ## Quick Start
@@ -257,6 +271,10 @@ processor.schedule_task(failing_task)
 # Check errors
 state = processor.get_state()
 print(f"Error count: {state['error_count']}")
+Run the Magnetar Elastic Coherence Engine demo:
+
+```bash
+python -m engine_modules.magnetar_elastic_coherence_engine
 ```
 
 ## Testing
@@ -270,3 +288,6 @@ python -m unittest tests.test_task_scheduler -v
 ## License
 
 MIT
+```bash
+pytest tests/ -v
+```

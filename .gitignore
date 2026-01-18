@@ -31,6 +31,12 @@ env/
 *.swp
 *.swo
 *~
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
 
 # Testing
 .pytest_cache/
@@ -40,3 +46,24 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+.coverage.*
+htmlcov/
+*.cover
+.hypothesis/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# JAX/ML
+*.ckpt
+*.pkl
+*.npy
+*.npz
+checkpoints/
+logs/
+runs/
