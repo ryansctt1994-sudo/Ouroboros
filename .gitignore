@@ -20,6 +20,17 @@ wheels/
 .installed.cfg
 *.egg
 
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 # Virtual environments
 venv/
 env/
@@ -30,6 +41,11 @@ venv.bak/
 # Testing
 .pytest_cache/
 .coverage
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db
 .coverage.*
 htmlcov/
 *.cover
