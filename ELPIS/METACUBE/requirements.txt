@@ -1,0 +1,25 @@
+# METACUBE ELPIS Integration - Python Dependencies
+# Version: 1.0.0
+
+# Core numerical computing
+numpy>=1.20.0
+scipy>=1.7.0
+
+# Data structures and algorithms
+networkx>=2.6.0
+
+# Visualization
+matplotlib>=3.3.0
+
+# Web interface (for assimilate.py)
+flask>=2.0.0
+flask-qrcode>=3.0.0
+
+# Testing
+pytest>=7.0.0
+pytest-cov>=4.0.0
+
+# Optional: Performance improvements
+# Uncomment if needed for production deployments
+# numba>=0.54.0  # JIT compilation for numerical code
+# cython>=0.29.0  # C extensions for Python

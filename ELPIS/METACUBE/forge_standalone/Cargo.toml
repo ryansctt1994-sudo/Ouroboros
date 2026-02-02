@@ -1,0 +1,33 @@
+[package]
+name = "forge_standalone"
+version = "1.0.0"
+authors = ["AIOSPANDORA Development Team"]
+edition = "2021"
+description = "Standalone Rust implementation of Forge consensus for METACUBE integration"
+license = "MIT"
+repository = "https://github.com/AIOSPANDORA/Ouroboros"
+
+[lib]
+name = "forge_standalone"
+crate-type = ["cdylib", "rlib"]  # Build both shared library and Rust library
+
+[dependencies]
+# No external dependencies for minimal, self-contained build
+# All functionality implemented with std library
+
+[dev-dependencies]
+# Testing dependencies
+criterion = "0.5"  # Benchmarking
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+[profile.bench]
+inherits = "release"
+
+[[bench]]
+name = "sync_benchmark"
+harness = false
