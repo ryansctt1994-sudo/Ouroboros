@@ -1,0 +1,33 @@
+[package]
+name = "universal-reliability-crucible"
+version = "1.0.0"
+edition = "2021"
+description = "Universal Reliability Crucible - Substrate-Independent System Architecture"
+license = "Apache-2.0 OR MIT"
+authors = ["Universal Architect <architect@reliability.design>"]
+
+[lib]
+name = "substrate"
+path = "src/lib.rs"
+
+[[bin]]
+name = "universal_id"
+path = "src/main.rs"
+
+[dependencies]
+sha3 = "0.10"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+log = "0.4"
+env_logger = "0.10"
+hex = "0.4"
+
+[dev-dependencies]
+rstest = "0.18"
+tempfile = "3.8"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
