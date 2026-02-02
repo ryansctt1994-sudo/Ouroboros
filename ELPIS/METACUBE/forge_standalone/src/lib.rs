@@ -11,11 +11,10 @@
 //!
 //! # Examples
 //!
-//! ```rust
-//! use forge_standalone::{ForgeEngine, ConsciousnessState};
-//!
+//! ```
+//! # use forge_standalone::{ForgeEngine, ConsciousnessState};
 //! let mut engine = ForgeEngine::new(5);  // 5 agents
-//! let state = ConsciousnessState::balanced();
+//! let state = ConsciousnessState::new([0.7; 7]);
 //! engine.update_agent(0, state).unwrap();
 //! engine.consensus_round();
 //! ```
@@ -113,7 +112,7 @@ mod tests {
         
         // Initialize agents with similar states
         for i in 0..5 {
-            let state = ConsciousnessState::balanced();
+            let state = ConsciousnessState::new([0.7; 7]);
             engine.update_agent(i, state).unwrap();
         }
         
