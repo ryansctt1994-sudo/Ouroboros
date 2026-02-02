@@ -382,7 +382,7 @@ class FederatedMetacubeSystem:
 Synchronize multiple Metacube instances with phase locking:
 
 ```python
-class PhaseLocked MetacubeNetwork:
+class PhaseLockedMetacubeNetwork:
     """Phase-locked network using Kuramoto model."""
     
     def __init__(self, num_agents=10, coupling_strength=0.5):
