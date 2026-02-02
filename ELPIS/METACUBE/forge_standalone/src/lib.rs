@@ -118,7 +118,10 @@ mod tests {
         
         // Run consensus
         let result = engine.consensus_round();
-        assert!(result.consensus_achieved || !result.consensus_achieved);  // Always valid
+        
+        // Verify result structure
         assert_eq!(result.num_agents, 5);
+        assert_eq!(result.round, 1);
+        assert!(result.network_gamma >= 0.0 && result.network_gamma <= 1.0);
     }
 }
