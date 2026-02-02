@@ -23,63 +23,72 @@ Thumbs.db
 
 # Output from visualization runs (generated artifacts)
 visualization/output/*
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
 
 # Testing
 .pytest_cache/
 .coverage
-coverage.xml
 htmlcov/
-# LOL:D extraction test directories
-LOLD_extracted/
-*_extraction/
 
-# Genesis Pipeline logs
+# OS
+.DS_Store
+Thumbs.db
+.coverage.*
+htmlcov/
+*.cover
+.hypothesis/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# JAX/ML
+*.ckpt
+*.pkl
+*.npy
+*.npz
+checkpoints/
 logs/
-
-# Unreal Engine
-ue/Symbiont/Binaries/
-ue/Symbiont/Intermediate/
-ue/Symbiont/Build/
-# Unreal Engine 5
-# Exclude binaries and generated files, keep source code
-ue/Symbiont/Binaries/
-ue/Symbiont/Intermediate/
-ue/Symbiont/Saved/
-ue/Symbiont/DerivedDataCache/
-ue/Symbiont/.vs/
-ue/Symbiont/*.sln
-ue/Symbiont/*.suo
-ue/Symbiont/*.sdf
-ue/Symbiont/*.opensdf
-
-# UE Plugin binaries/intermediate
-ue/Symbiont/Plugins/*/Binaries/
-ue/Symbiont/Plugins/*/Intermediate/
-
-# UE binary assets (to be managed via Git LFS if needed)
-# *.uasset
-# *.umap
-# *.uexp
-# *.ubulk
-ue/Symbiont/*.xcworkspace
-ue/Symbiont/*.xcodeproj
-
-# Unreal binary assets (not committed per repository policy)
-*.uasset
-*.umap
-
-# Unreal plugins binaries
-ue/Symbiont/Plugins/*/Binaries/
-ue/Symbiont/Plugins/*/Intermediate/
-
-# Unreal build artifacts
-*.VC.db
-*.opensdf
-*.opendb
-*.sdf
-*.suo
-*.VC.VC.opendb
-
-# Rust build artifacts
-target/
-Cargo.lock
+runs/
