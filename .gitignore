@@ -79,3 +79,7 @@ ue/Symbiont/Plugins/*/Intermediate/
 *.sdf
 *.suo
 *.VC.VC.opendb
+
+# Rust build artifacts
+target/
+Cargo.lock
