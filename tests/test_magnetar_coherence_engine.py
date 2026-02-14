@@ -116,7 +116,6 @@ class TestMagnetarCoherenceEngine:
         For simple implementation, just verify basic processing works.
         """
         # Check if return_diagnostics is supported
-        import inspect
         sig = inspect.signature(engine.__call__)
         
         if 'return_diagnostics' in sig.parameters:
@@ -200,12 +199,12 @@ class TestCoherenceAnalyzer:
         """
         analyzer = CoherenceAnalyzer()
         
-        # Check if analyze method supports the full API
+        # Check if the underlying engine supports return_diagnostics
         sig = inspect.signature(CoherenceAnalyzer.analyze)
         engine_sig = inspect.signature(analyzer.engine.__call__)
         
         if 'return_diagnostics' not in engine_sig.parameters:
-            pytest.skip("CoherenceAnalyzer.analyze() requires full engine implementation with return_diagnostics")
+            pytest.skip("This test requires the full engine implementation with return_diagnostics support")
         
         result = analyzer.analyze(clean_magnetar_signal, label="test_signal")
         
@@ -226,10 +225,10 @@ class TestCoherenceAnalyzer:
         """
         analyzer = CoherenceAnalyzer()
         
-        # Check if analyze is compatible with current engine implementation
+        # Check if the underlying engine supports return_diagnostics
         engine_sig = inspect.signature(analyzer.engine.__call__)
         if 'return_diagnostics' not in engine_sig.parameters:
-            pytest.skip("CoherenceAnalyzer.analyze() requires full engine implementation with return_diagnostics")
+            pytest.skip("This test requires the full engine implementation with return_diagnostics support")
         
         # Initially empty
         assert len(analyzer.history) == 0
