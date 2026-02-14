@@ -5,9 +5,11 @@ This module provides comprehensive tests for the MagnetarElasticCoherenceEngine
 and CoherenceAnalyzer classes, ensuring they process signals correctly and
 maintain coherence properties.
 
-Note: The source file contains two implementations of MagnetarElasticCoherenceEngine.
-Tests are written to work with the current (simpler) implementation, with additional
-tests for the full implementation when it becomes the active one.
+Note: The source file contains two MagnetarElasticCoherenceEngine class definitions -
+a full implementation with 10 modules (lines ~675-858) and a simpler stub implementation
+(lines ~1213-1252). Python uses the last definition, so the simpler one is currently active.
+These tests are written to work with both: they test the simple implementation now and
+will automatically use advanced features when the full implementation becomes active.
 """
 
 import pytest
@@ -27,7 +29,7 @@ except ImportError:
 
 
 # Test constants
-COHERENCE_TOLERANCE_FACTOR = 0.8  # Allow 20% tolerance when comparing coherence scores
+MIN_COHERENCE_RATIO = 0.8  # Clean signal should have at least 80% of its coherence relative to noise
 MAX_SIGNAL_AMPLITUDE = 10.0  # Expected maximum amplitude for generated test signals
 GOLDEN_RATIO = 1.618033988749895  # Golden ratio (phi) used in signal generation
 RANDOM_SEED = 42  # Fixed seed for reproducible test results
@@ -141,6 +143,8 @@ class TestMagnetarCoherenceEngine:
         
         A clean magnetar signal should have higher coherence than random noise,
         demonstrating the engine's ability to distinguish signal quality.
+        Note: The simple engine implementation may not distinguish well between
+        signal types, so we use a relaxed comparison.
         """
         # Process clean signal
         clean_result = engine(clean_magnetar_signal)
@@ -152,9 +156,9 @@ class TestMagnetarCoherenceEngine:
         noise_result = engine(noise_signal)
         noise_coherence = noise_result['coherence_score']
         
-        # Clean signal should have higher or equal coherence
-        # Note: Using tolerance factor to handle edge cases where noise might align
-        assert clean_coherence >= noise_coherence * COHERENCE_TOLERANCE_FACTOR
+        # Clean signal should have higher or equal coherence than noise
+        # For simple implementation, both may be similar; full implementation should show clear difference
+        assert clean_coherence >= noise_coherence * MIN_COHERENCE_RATIO
     
     def test_graceful_handling_of_empty_signal(self, engine):
         """Test that engine handles empty signals gracefully.
