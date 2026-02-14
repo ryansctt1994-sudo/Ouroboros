@@ -12,10 +12,18 @@ tests for the full implementation when it becomes the active one.
 
 import pytest
 import numpy as np
+import inspect
 from src.magnetar_coherence_engine import (
     MagnetarElasticCoherenceEngine,
     MAGNETAR_FREQ
 )
+
+# Try to import CoherenceAnalyzer - may not be available or compatible
+try:
+    from src.magnetar_coherence_engine import CoherenceAnalyzer
+    COHERENCE_ANALYZER_AVAILABLE = True
+except ImportError:
+    COHERENCE_ANALYZER_AVAILABLE = False
 
 
 # Test constants
@@ -167,111 +175,106 @@ class TestMagnetarCoherenceEngine:
             # It's acceptable to raise these exceptions for empty input
             pass
 
-
-# Try to import CoherenceAnalyzer - it may or may not work depending on engine implementation
-try:
-    from src.magnetar_coherence_engine import CoherenceAnalyzer
+@pytest.mark.skipif(not COHERENCE_ANALYZER_AVAILABLE, reason="CoherenceAnalyzer not available")
+class TestCoherenceAnalyzer:
+    """Test suite for CoherenceAnalyzer class."""
     
-    class TestCoherenceAnalyzer:
-        """Test suite for CoherenceAnalyzer class."""
+    def test_analyzer_instantiation(self):
+        """Test that CoherenceAnalyzer can be instantiated.
         
-        def test_analyzer_instantiation(self):
-            """Test that CoherenceAnalyzer can be instantiated.
-            
-            Verifies the analyzer is created with an engine and empty history.
-            """
-            analyzer = CoherenceAnalyzer()
-            
-            assert analyzer is not None
-            assert hasattr(analyzer, 'engine')
-            assert hasattr(analyzer, 'history')
-            assert len(analyzer.history) == 0
+        Verifies the analyzer is created with an engine and empty history.
+        """
+        analyzer = CoherenceAnalyzer()
         
-        def test_analyze_returns_dict_with_expected_fields(self, clean_magnetar_signal):
-            """Test that analyze() returns a dict with expected fields including label.
-            
-            The analysis result should include label, input, coherence_score.
-            If the full engine implementation is active, it will also include
-            output and diagnostics.
-            """
-            analyzer = CoherenceAnalyzer()
-            
-            try:
-                result = analyzer.analyze(clean_magnetar_signal, label="test_signal")
-                
-                assert isinstance(result, dict)
-                assert 'label' in result
-                assert result['label'] == "test_signal"
-                assert 'input' in result
-                assert 'coherence_score' in result
-                
-                # Full implementation includes these
-                if 'output' in result:
-                    assert 'diagnostics' in result
-            except TypeError:
-                # analyze() requires return_diagnostics support in engine
-                # This is expected if the simple engine implementation is active
-                pytest.skip("CoherenceAnalyzer.analyze() requires full engine implementation")
+        assert analyzer is not None
+        assert hasattr(analyzer, 'engine')
+        assert hasattr(analyzer, 'history')
+        assert len(analyzer.history) == 0
+    
+    def test_analyze_returns_dict_with_expected_fields(self, clean_magnetar_signal):
+        """Test that analyze() returns a dict with expected fields including label.
         
-        def test_history_accumulates_across_multiple_analyze_calls(self, clean_magnetar_signal):
-            """Test that history accumulates across multiple analyze() calls.
-            
-            The analyzer should maintain a history of all analyses performed.
-            """
-            analyzer = CoherenceAnalyzer()
-            
-            try:
-                # Initially empty
-                assert len(analyzer.history) == 0
-                
-                # Add first analysis
-                analyzer.analyze(clean_magnetar_signal, label="first")
-                assert len(analyzer.history) == 1
-                assert analyzer.history[0]['label'] == "first"
-                
-                # Add second analysis
-                analyzer.analyze(clean_magnetar_signal, label="second")
-                assert len(analyzer.history) == 2
-                assert analyzer.history[1]['label'] == "second"
-                
-                # Verify both are preserved
-                assert analyzer.history[0]['label'] == "first"
-            except TypeError:
-                # analyze() requires return_diagnostics support in engine
-                pytest.skip("CoherenceAnalyzer.analyze() requires full engine implementation")
+        The analysis result should include label, input, coherence_score.
+        If the full engine implementation is active, it will also include
+        output and diagnostics.
+        """
+        analyzer = CoherenceAnalyzer()
         
-        def test_generate_test_signal_returns_array_of_requested_length(self):
-            """Test that generate_test_signal() returns an array of the requested length.
-            
-            The method should generate signals of the exact length specified,
-            for all supported signal types.
-            """
-            analyzer = CoherenceAnalyzer()
-            
-            # Test different durations and signal types
-            for duration in [100, 500, 1000]:
-                for signal_type in ['magnetar', 'schumann', 'mixed', 'chaotic']:
-                    signal = analyzer.generate_test_signal(duration=duration, signal_type=signal_type)
-                    
-                    assert isinstance(signal, np.ndarray)
-                    assert len(signal) == duration
+        # Check if analyze method supports the full API
+        sig = inspect.signature(CoherenceAnalyzer.analyze)
+        engine_sig = inspect.signature(analyzer.engine.__call__)
         
-        def test_generate_test_signal_magnetar_type(self):
-            """Test that generate_test_signal creates valid magnetar signals.
-            
-            Verifies the magnetar signal type produces expected waveforms.
-            """
-            analyzer = CoherenceAnalyzer()
-            signal = analyzer.generate_test_signal(duration=1000, signal_type='magnetar')
-            
-            assert len(signal) == 1000
-            assert np.all(np.isfinite(signal))
-            # Signal should be bounded (not growing without limit)
-            assert np.max(np.abs(signal)) < MAX_SIGNAL_AMPLITUDE
-
-except ImportError:
-    # CoherenceAnalyzer not available
-    pass
+        if 'return_diagnostics' not in engine_sig.parameters:
+            pytest.skip("CoherenceAnalyzer.analyze() requires full engine implementation with return_diagnostics")
+        
+        result = analyzer.analyze(clean_magnetar_signal, label="test_signal")
+        
+        assert isinstance(result, dict)
+        assert 'label' in result
+        assert result['label'] == "test_signal"
+        assert 'input' in result
+        assert 'coherence_score' in result
+        
+        # Full implementation includes these
+        if 'output' in result:
+            assert 'diagnostics' in result
+    
+    def test_history_accumulates_across_multiple_analyze_calls(self, clean_magnetar_signal):
+        """Test that history accumulates across multiple analyze() calls.
+        
+        The analyzer should maintain a history of all analyses performed.
+        """
+        analyzer = CoherenceAnalyzer()
+        
+        # Check if analyze is compatible with current engine implementation
+        engine_sig = inspect.signature(analyzer.engine.__call__)
+        if 'return_diagnostics' not in engine_sig.parameters:
+            pytest.skip("CoherenceAnalyzer.analyze() requires full engine implementation with return_diagnostics")
+        
+        # Initially empty
+        assert len(analyzer.history) == 0
+        
+        # Add first analysis
+        analyzer.analyze(clean_magnetar_signal, label="first")
+        assert len(analyzer.history) == 1
+        assert analyzer.history[0]['label'] == "first"
+        
+        # Add second analysis
+        analyzer.analyze(clean_magnetar_signal, label="second")
+        assert len(analyzer.history) == 2
+        assert analyzer.history[1]['label'] == "second"
+        
+        # Verify both are preserved
+        assert analyzer.history[0]['label'] == "first"
+    
+    def test_generate_test_signal_returns_array_of_requested_length(self):
+        """Test that generate_test_signal() returns an array of the requested length.
+        
+        The method should generate signals of the exact length specified,
+        for all supported signal types.
+        """
+        analyzer = CoherenceAnalyzer()
+        
+        # Test different durations and signal types
+        for duration in [100, 500, 1000]:
+            for signal_type in ['magnetar', 'schumann', 'mixed', 'chaotic']:
+                signal = analyzer.generate_test_signal(duration=duration, signal_type=signal_type)
+                
+                assert isinstance(signal, np.ndarray)
+                assert len(signal) == duration
+    
+    def test_generate_test_signal_magnetar_type(self):
+        """Test that generate_test_signal creates valid magnetar signals.
+        
+        Verifies the magnetar signal type produces expected waveforms.
+        """
+        analyzer = CoherenceAnalyzer()
+        signal = analyzer.generate_test_signal(duration=1000, signal_type='magnetar')
+        
+        assert len(signal) == 1000
+        assert np.all(np.isfinite(signal))
+        # Signal should be bounded (not growing without limit)
+        assert np.max(np.abs(signal)) < MAX_SIGNAL_AMPLITUDE
 
 
 if __name__ == '__main__':
