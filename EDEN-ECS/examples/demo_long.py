@@ -20,6 +20,7 @@ from core.entity import EntityType
 from components.metacube import METACUBEComponent
 from components.loyalty import Loyalty, Corruption
 from systems.consciousness import ConsciousnessSystem
+from systems.balance import BalanceSystem
 
 class HistoryTracker:
     """Tracks simulation history for analysis"""
@@ -161,9 +162,12 @@ def main():
     
     # Create world
     world = World("Long-Simulation")
+    world.add_system(BalanceSystem())
     world.add_system(ConsciousnessSystem())
     
     print(f"\n✅ Systems initialized: {len(world.scheduler.systems)}")
+    for system in world.scheduler.systems:
+        print(f"   - {system.name()} (Priority: {system.priority()})")
     
     # Create entities
     print("\n🌟 Creating cosmic entities...\n")
