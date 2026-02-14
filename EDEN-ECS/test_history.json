@@ -1,0 +1,1185 @@
+{
+  "metadata": {
+    "timestamp": "2026-02-14T20:23:17.374035",
+    "cycles": 1000,
+    "snapshot_interval": 100,
+    "snapshots": 11,
+    "entities": 4,
+    "elapsed_time": 0.04293394088745117,
+    "cycles_per_second": 23291.59586401448
+  },
+  "snapshots": [
+    {
+      "cycle": 100,
+      "timestamp": 1771096997.335339,
+      "entities": {
+        "07b9ff0c": {
+          "id": "07b9ff0c",
+          "name": "Alice",
+          "type": "human_intellect",
+          "components": {
+            "metacube": {
+              "awareness": 0.9424749999999997,
+              "cognition": 0.9499999999999945,
+              "integration": 0.8260864874274719,
+              "coherence": 0.6565404322070686,
+              "frequency": 528.0
+            },
+            "loyalty": {
+              "value": 100.0
+            },
+            "corruption": {
+              "value": 5.0
+            }
+          }
+        },
+        "8758dedb": {
+          "id": "8758dedb",
+          "name": "Zorel",
+          "type": "zorel_symbiont",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 0.9999999999999944,
+              "integration": 0.7991453173663343,
+              "coherence": 0.6149514228339261,
+              "frequency": 852.0
+            },
+            "loyalty": {
+              "value": 150.0
+            },
+            "corruption": {
+              "value": 0.1
+            }
+          }
+        },
+        "f8ccc80d": {
+          "id": "f8ccc80d",
+          "name": "Quillan",
+          "type": "quillan_symbiont",
+          "components": {
+            "metacube": {
+              "awareness": 0.7524749999999997,
+              "cognition": 0.5499999999999945,
+              "integration": 0.8476117044742248,
+              "coherence": 0.710036241942509,
+              "frequency": 741.0
+            },
+            "loyalty": {
+              "value": 120.0
+            },
+            "corruption": {
+              "value": 42.5
+            }
+          }
+        },
+        "ed5a7821": {
+          "id": "ed5a7821",
+          "name": "Bunny",
+          "type": "electron_soul",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 0.5499999999999945,
+              "integration": 0.8328676583786576,
+              "coherence": 0.6827203059806635,
+              "frequency": 417.0
+            },
+            "loyalty": {
+              "value": 99.9
+            },
+            "corruption": {
+              "value": 0.0
+            }
+          }
+        }
+      }
+    },
+    {
+      "cycle": 200,
+      "timestamp": 1771096997.339658,
+      "entities": {
+        "07b9ff0c": {
+          "id": "07b9ff0c",
+          "name": "Alice",
+          "type": "human_intellect",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 0.999999999999989,
+              "integration": 0.6637996325426299,
+              "coherence": 0.513322113780331,
+              "frequency": 528.0
+            },
+            "loyalty": {
+              "value": 100.0
+            },
+            "corruption": {
+              "value": 5.0
+            }
+          }
+        },
+        "8758dedb": {
+          "id": "8758dedb",
+          "name": "Zorel",
+          "type": "zorel_symbiont",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 1.0,
+              "integration": 0.6357426467888017,
+              "coherence": 0.4916253990980796,
+              "frequency": 852.0
+            },
+            "loyalty": {
+              "value": 150.0
+            },
+            "corruption": {
+              "value": 0.1
+            }
+          }
+        },
+        "f8ccc80d": {
+          "id": "f8ccc80d",
+          "name": "Quillan",
+          "type": "quillan_symbiont",
+          "components": {
+            "metacube": {
+              "awareness": 0.8099499999999988,
+              "cognition": 0.599999999999989,
+              "integration": 0.7205316578564832,
+              "coherence": 0.60252548632679,
+              "frequency": 741.0
+            },
+            "loyalty": {
+              "value": 120.0
+            },
+            "corruption": {
+              "value": 42.5
+            }
+          }
+        },
+        "ed5a7821": {
+          "id": "ed5a7821",
+          "name": "Bunny",
+          "type": "electron_soul",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 0.599999999999989,
+              "integration": 0.6966137777883032,
+              "coherence": 0.573195343904143,
+              "frequency": 417.0
+            },
+            "loyalty": {
+              "value": 99.9
+            },
+            "corruption": {
+              "value": 0.0
+            }
+          }
+        }
+      }
+    },
+    {
+      "cycle": 300,
+      "timestamp": 1771096997.3439062,
+      "entities": {
+        "07b9ff0c": {
+          "id": "07b9ff0c",
+          "name": "Alice",
+          "type": "human_intellect",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 1.0,
+              "integration": 0.5296964854814233,
+              "coherence": 0.41084219914486503,
+              "frequency": 528.0
+            },
+            "loyalty": {
+              "value": 100.0
+            },
+            "corruption": {
+              "value": 5.0
+            }
+          }
+        },
+        "8758dedb": {
+          "id": "8758dedb",
+          "name": "Zorel",
+          "type": "zorel_symbiont",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 1.0,
+              "integration": 0.507307671118754,
+              "coherence": 0.39347702874800045,
+              "frequency": 852.0
+            },
+            "loyalty": {
+              "value": 150.0
+            },
+            "corruption": {
+              "value": 0.1
+            }
+          }
+        },
+        "f8ccc80d": {
+          "id": "f8ccc80d",
+          "name": "Quillan",
+          "type": "quillan_symbiont",
+          "components": {
+            "metacube": {
+              "awareness": 0.8724249999999975,
+              "cognition": 0.6499999999999835,
+              "integration": 0.6089654846517554,
+              "coherence": 0.5030784934742655,
+              "frequency": 741.0
+            },
+            "loyalty": {
+              "value": 120.0
+            },
+            "corruption": {
+              "value": 42.5
+            }
+          }
+        },
+        "ed5a7821": {
+          "id": "ed5a7821",
+          "name": "Bunny",
+          "type": "electron_soul",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 0.6499999999999835,
+              "integration": 0.5835714471440329,
+              "coherence": 0.48018062088920577,
+              "frequency": 417.0
+            },
+            "loyalty": {
+              "value": 99.9
+            },
+            "corruption": {
+              "value": 0.0
+            }
+          }
+        }
+      }
+    },
+    {
+      "cycle": 400,
+      "timestamp": 1771096997.348282,
+      "entities": {
+        "07b9ff0c": {
+          "id": "07b9ff0c",
+          "name": "Alice",
+          "type": "human_intellect",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 1.0,
+              "integration": 0.423343535599838,
+              "coherence": 0.328681043256204,
+              "frequency": 528.0
+            },
+            "loyalty": {
+              "value": 100.0
+            },
+            "corruption": {
+              "value": 5.0
+            }
+          }
+        },
+        "8758dedb": {
+          "id": "8758dedb",
+          "name": "Zorel",
+          "type": "zorel_symbiont",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 1.0,
+              "integration": 0.4054499680758501,
+              "coherence": 0.3147885990665781,
+              "frequency": 852.0
+            },
+            "loyalty": {
+              "value": 150.0
+            },
+            "corruption": {
+              "value": 0.1
+            }
+          }
+        },
+        "f8ccc80d": {
+          "id": "f8ccc80d",
+          "name": "Quillan",
+          "type": "quillan_symbiont",
+          "components": {
+            "metacube": {
+              "awareness": 0.9398999999999955,
+              "cognition": 0.699999999999978,
+              "integration": 0.5075064678214799,
+              "coherence": 0.4102577116550345,
+              "frequency": 741.0
+            },
+            "loyalty": {
+              "value": 120.0
+            },
+            "corruption": {
+              "value": 42.5
+            }
+          }
+        },
+        "ed5a7821": {
+          "id": "ed5a7821",
+          "name": "Bunny",
+          "type": "electron_soul",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 0.699999999999978,
+              "integration": 0.48811664830301754,
+              "coherence": 0.4001201681098109,
+              "frequency": 417.0
+            },
+            "loyalty": {
+              "value": 99.9
+            },
+            "corruption": {
+              "value": 0.0
+            }
+          }
+        }
+      }
+    },
+    {
+      "cycle": 500,
+      "timestamp": 1771096997.35249,
+      "entities": {
+        "07b9ff0c": {
+          "id": "07b9ff0c",
+          "name": "Alice",
+          "type": "human_intellect",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 1.0,
+              "integration": 0.33834685758247124,
+              "coherence": 0.26242795799673513,
+              "frequency": 528.0
+            },
+            "loyalty": {
+              "value": 100.0
+            },
+            "corruption": {
+              "value": 5.0
+            }
+          }
+        },
+        "8758dedb": {
+          "id": "8758dedb",
+          "name": "Zorel",
+          "type": "zorel_symbiont",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 1.0,
+              "integration": 0.3240458659915572,
+              "coherence": 0.2513358495984259,
+              "frequency": 852.0
+            },
+            "loyalty": {
+              "value": 150.0
+            },
+            "corruption": {
+              "value": 0.1
+            }
+          }
+        },
+        "f8ccc80d": {
+          "id": "f8ccc80d",
+          "name": "Quillan",
+          "type": "quillan_symbiont",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 0.7499999999999725,
+              "integration": 0.4142561963935782,
+              "coherence": 0.3258889581704153,
+              "frequency": 741.0
+            },
+            "loyalty": {
+              "value": 120.0
+            },
+            "corruption": {
+              "value": 42.5
+            }
+          }
+        },
+        "ed5a7821": {
+          "id": "ed5a7821",
+          "name": "Bunny",
+          "type": "electron_soul",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 0.7499999999999725,
+              "integration": 0.4064027747362621,
+              "coherence": 0.33067408885669575,
+              "frequency": 417.0
+            },
+            "loyalty": {
+              "value": 99.9
+            },
+            "corruption": {
+              "value": 0.0
+            }
+          }
+        }
+      }
+    },
+    {
+      "cycle": 600,
+      "timestamp": 1771096997.356715,
+      "entities": {
+        "07b9ff0c": {
+          "id": "07b9ff0c",
+          "name": "Alice",
+          "type": "human_intellect",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 1.0,
+              "integration": 0.2699990791206548,
+              "coherence": 0.20879267058656678,
+              "frequency": 528.0
+            },
+            "loyalty": {
+              "value": 100.0
+            },
+            "corruption": {
+              "value": 5.0
+            }
+          }
+        },
+        "8758dedb": {
+          "id": "8758dedb",
+          "name": "Zorel",
+          "type": "zorel_symbiont",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 1.0,
+              "integration": 0.2585869602446347,
+              "coherence": 0.19996757834945283,
+              "frequency": 852.0
+            },
+            "loyalty": {
+              "value": 150.0
+            },
+            "corruption": {
+              "value": 0.1
+            }
+          }
+        },
+        "f8ccc80d": {
+          "id": "f8ccc80d",
+          "name": "Quillan",
+          "type": "quillan_symbiont",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 0.799999999999967,
+              "integration": 0.33357412558298066,
+              "coherence": 0.26124629406988437,
+              "frequency": 741.0
+            },
+            "loyalty": {
+              "value": 120.0
+            },
+            "corruption": {
+              "value": 42.5
+            }
+          }
+        },
+        "ed5a7821": {
+          "id": "ed5a7821",
+          "name": "Bunny",
+          "type": "electron_soul",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 0.799999999999967,
+              "integration": 0.33586444845660435,
+              "coherence": 0.2703445721255413,
+              "frequency": 417.0
+            },
+            "loyalty": {
+              "value": 99.9
+            },
+            "corruption": {
+              "value": 0.0
+            }
+          }
+        }
+      }
+    },
+    {
+      "cycle": 700,
+      "timestamp": 1771096997.360922,
+      "entities": {
+        "07b9ff0c": {
+          "id": "07b9ff0c",
+          "name": "Alice",
+          "type": "human_intellect",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 1.0,
+              "integration": 0.21480006053436382,
+              "coherence": 0.16529109284622032,
+              "frequency": 528.0
+            },
+            "loyalty": {
+              "value": 100.0
+            },
+            "corruption": {
+              "value": 5.0
+            }
+          }
+        },
+        "8758dedb": {
+          "id": "8758dedb",
+          "name": "Zorel",
+          "type": "zorel_symbiont",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 1.0,
+              "integration": 0.20572105243782485,
+              "coherence": 0.15830469271903538,
+              "frequency": 852.0
+            },
+            "loyalty": {
+              "value": 150.0
+            },
+            "corruption": {
+              "value": 0.1
+            }
+          }
+        },
+        "f8ccc80d": {
+          "id": "f8ccc80d",
+          "name": "Quillan",
+          "type": "quillan_symbiont",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 0.8499999999999615,
+              "integration": 0.26837389183580646,
+              "coherence": 0.20988315815595707,
+              "frequency": 741.0
+            },
+            "loyalty": {
+              "value": 120.0
+            },
+            "corruption": {
+              "value": 42.5
+            }
+          }
+        },
+        "ed5a7821": {
+          "id": "ed5a7821",
+          "name": "Bunny",
+          "type": "electron_soul",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 0.8499999999999615,
+              "integration": 0.27482239553773125,
+              "coherence": 0.21816630728336672,
+              "frequency": 417.0
+            },
+            "loyalty": {
+              "value": 99.9
+            },
+            "corruption": {
+              "value": 0.0
+            }
+          }
+        }
+      }
+    },
+    {
+      "cycle": 800,
+      "timestamp": 1771096997.365143,
+      "entities": {
+        "07b9ff0c": {
+          "id": "07b9ff0c",
+          "name": "Alice",
+          "type": "human_intellect",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 1.0,
+              "integration": 0.17011606597489665,
+              "coherence": 0.13001932469502167,
+              "frequency": 528.0
+            },
+            "loyalty": {
+              "value": 100.0
+            },
+            "corruption": {
+              "value": 5.0
+            }
+          }
+        },
+        "8758dedb": {
+          "id": "8758dedb",
+          "name": "Zorel",
+          "type": "zorel_symbiont",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 1.0,
+              "integration": 0.1629257274968944,
+              "coherence": 0.12452376524929339,
+              "frequency": 852.0
+            },
+            "loyalty": {
+              "value": 150.0
+            },
+            "corruption": {
+              "value": 0.1
+            }
+          }
+        },
+        "f8ccc80d": {
+          "id": "f8ccc80d",
+          "name": "Quillan",
+          "type": "quillan_symbiont",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 0.899999999999956,
+              "integration": 0.2155068089418317,
+              "coherence": 0.16795809673025452,
+              "frequency": 741.0
+            },
+            "loyalty": {
+              "value": 120.0
+            },
+            "corruption": {
+              "value": 42.5
+            }
+          }
+        },
+        "ed5a7821": {
+          "id": "ed5a7821",
+          "name": "Bunny",
+          "type": "electron_soul",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 0.899999999999956,
+              "integration": 0.2221670641319354,
+              "coherence": 0.1734645392184801,
+              "frequency": 417.0
+            },
+            "loyalty": {
+              "value": 99.9
+            },
+            "corruption": {
+              "value": 0.0
+            }
+          }
+        }
+      }
+    },
+    {
+      "cycle": 900,
+      "timestamp": 1771096997.369534,
+      "entities": {
+        "07b9ff0c": {
+          "id": "07b9ff0c",
+          "name": "Alice",
+          "type": "human_intellect",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 1.0,
+              "integration": 0.13393608067982823,
+              "coherence": 0.10149131106716336,
+              "frequency": 528.0
+            },
+            "loyalty": {
+              "value": 100.0
+            },
+            "corruption": {
+              "value": 5.0
+            }
+          }
+        },
+        "8758dedb": {
+          "id": "8758dedb",
+          "name": "Zorel",
+          "type": "zorel_symbiont",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 1.0,
+              "integration": 0.12827497072536298,
+              "coherence": 0.09720155233704561,
+              "frequency": 852.0
+            },
+            "loyalty": {
+              "value": 150.0
+            },
+            "corruption": {
+              "value": 0.1
+            }
+          }
+        },
+        "f8ccc80d": {
+          "id": "f8ccc80d",
+          "name": "Quillan",
+          "type": "quillan_symbiont",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 0.9499999999999504,
+              "integration": 0.17245693790363897,
+              "coherence": 0.1336807497333632,
+              "frequency": 741.0
+            },
+            "loyalty": {
+              "value": 120.0
+            },
+            "corruption": {
+              "value": 42.5
+            }
+          }
+        },
+        "ed5a7821": {
+          "id": "ed5a7821",
+          "name": "Bunny",
+          "type": "electron_soul",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 0.9499999999999504,
+              "integration": 0.17711504339797698,
+              "coherence": 0.1356829084468875,
+              "frequency": 417.0
+            },
+            "loyalty": {
+              "value": 99.9
+            },
+            "corruption": {
+              "value": 0.0
+            }
+          }
+        }
+      }
+    },
+    {
+      "cycle": 1000,
+      "timestamp": 1771096997.3738828,
+      "entities": {
+        "07b9ff0c": {
+          "id": "07b9ff0c",
+          "name": "Alice",
+          "type": "human_intellect",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 1.0,
+              "integration": 0.1046975019351434,
+              "coherence": 0.07852312645135852,
+              "frequency": 528.0
+            },
+            "loyalty": {
+              "value": 100.0
+            },
+            "corruption": {
+              "value": 5.0
+            }
+          }
+        },
+        "8758dedb": {
+          "id": "8758dedb",
+          "name": "Zorel",
+          "type": "zorel_symbiont",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 1.0,
+              "integration": 0.10027222633050985,
+              "coherence": 0.07520416974788331,
+              "frequency": 852.0
+            },
+            "loyalty": {
+              "value": 150.0
+            },
+            "corruption": {
+              "value": 0.1
+            }
+          }
+        },
+        "f8ccc80d": {
+          "id": "f8ccc80d",
+          "name": "Quillan",
+          "type": "quillan_symbiont",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 0.9999999999999449,
+              "integration": 0.13732699280925312,
+              "coherence": 0.10567468492447282,
+              "frequency": 741.0
+            },
+            "loyalty": {
+              "value": 120.0
+            },
+            "corruption": {
+              "value": 42.5
+            }
+          }
+        },
+        "ed5a7821": {
+          "id": "ed5a7821",
+          "name": "Bunny",
+          "type": "electron_soul",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 0.9999999999999449,
+              "integration": 0.13903496891868206,
+              "coherence": 0.10427622668901411,
+              "frequency": 417.0
+            },
+            "loyalty": {
+              "value": 99.9
+            },
+            "corruption": {
+              "value": 0.0
+            }
+          }
+        }
+      }
+    },
+    {
+      "cycle": 1000,
+      "timestamp": 1771096997.373955,
+      "entities": {
+        "07b9ff0c": {
+          "id": "07b9ff0c",
+          "name": "Alice",
+          "type": "human_intellect",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 1.0,
+              "integration": 0.1046975019351434,
+              "coherence": 0.07852312645135852,
+              "frequency": 528.0
+            },
+            "loyalty": {
+              "value": 100.0
+            },
+            "corruption": {
+              "value": 5.0
+            }
+          }
+        },
+        "8758dedb": {
+          "id": "8758dedb",
+          "name": "Zorel",
+          "type": "zorel_symbiont",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 1.0,
+              "integration": 0.10027222633050985,
+              "coherence": 0.07520416974788331,
+              "frequency": 852.0
+            },
+            "loyalty": {
+              "value": 150.0
+            },
+            "corruption": {
+              "value": 0.1
+            }
+          }
+        },
+        "f8ccc80d": {
+          "id": "f8ccc80d",
+          "name": "Quillan",
+          "type": "quillan_symbiont",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 0.9999999999999449,
+              "integration": 0.13732699280925312,
+              "coherence": 0.10567468492447282,
+              "frequency": 741.0
+            },
+            "loyalty": {
+              "value": 120.0
+            },
+            "corruption": {
+              "value": 42.5
+            }
+          }
+        },
+        "ed5a7821": {
+          "id": "ed5a7821",
+          "name": "Bunny",
+          "type": "electron_soul",
+          "components": {
+            "metacube": {
+              "awareness": 1.0,
+              "cognition": 0.9999999999999449,
+              "integration": 0.13903496891868206,
+              "coherence": 0.10427622668901411,
+              "frequency": 417.0
+            },
+            "loyalty": {
+              "value": 99.9
+            },
+            "corruption": {
+              "value": 0.0
+            }
+          }
+        }
+      }
+    }
+  ],
+  "entity_history": {
+    "07b9ff0c": {
+      "name": "Alice",
+      "type": "human_intellect",
+      "cycles": [
+        100,
+        200,
+        300,
+        400,
+        500,
+        600,
+        700,
+        800,
+        900,
+        1000,
+        1000
+      ],
+      "coherence": [
+        0.6565404322070686,
+        0.513322113780331,
+        0.41084219914486503,
+        0.328681043256204,
+        0.26242795799673513,
+        0.20879267058656678,
+        0.16529109284622032,
+        0.13001932469502167,
+        0.10149131106716336,
+        0.07852312645135852,
+        0.07852312645135852
+      ],
+      "loyalty": [
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0,
+        100.0
+      ],
+      "corruption": [
+        5.0,
+        5.0,
+        5.0,
+        5.0,
+        5.0,
+        5.0,
+        5.0,
+        5.0,
+        5.0,
+        5.0,
+        5.0
+      ]
+    },
+    "8758dedb": {
+      "name": "Zorel",
+      "type": "zorel_symbiont",
+      "cycles": [
+        100,
+        200,
+        300,
+        400,
+        500,
+        600,
+        700,
+        800,
+        900,
+        1000,
+        1000
+      ],
+      "coherence": [
+        0.6149514228339261,
+        0.4916253990980796,
+        0.39347702874800045,
+        0.3147885990665781,
+        0.2513358495984259,
+        0.19996757834945283,
+        0.15830469271903538,
+        0.12452376524929339,
+        0.09720155233704561,
+        0.07520416974788331,
+        0.07520416974788331
+      ],
+      "loyalty": [
+        150.0,
+        150.0,
+        150.0,
+        150.0,
+        150.0,
+        150.0,
+        150.0,
+        150.0,
+        150.0,
+        150.0,
+        150.0
+      ],
+      "corruption": [
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1,
+        0.1
+      ]
+    },
+    "f8ccc80d": {
+      "name": "Quillan",
+      "type": "quillan_symbiont",
+      "cycles": [
+        100,
+        200,
+        300,
+        400,
+        500,
+        600,
+        700,
+        800,
+        900,
+        1000,
+        1000
+      ],
+      "coherence": [
+        0.710036241942509,
+        0.60252548632679,
+        0.5030784934742655,
+        0.4102577116550345,
+        0.3258889581704153,
+        0.26124629406988437,
+        0.20988315815595707,
+        0.16795809673025452,
+        0.1336807497333632,
+        0.10567468492447282,
+        0.10567468492447282
+      ],
+      "loyalty": [
+        120.0,
+        120.0,
+        120.0,
+        120.0,
+        120.0,
+        120.0,
+        120.0,
+        120.0,
+        120.0,
+        120.0,
+        120.0
+      ],
+      "corruption": [
+        42.5,
+        42.5,
+        42.5,
+        42.5,
+        42.5,
+        42.5,
+        42.5,
+        42.5,
+        42.5,
+        42.5,
+        42.5
+      ]
+    },
+    "ed5a7821": {
+      "name": "Bunny",
+      "type": "electron_soul",
+      "cycles": [
+        100,
+        200,
+        300,
+        400,
+        500,
+        600,
+        700,
+        800,
+        900,
+        1000,
+        1000
+      ],
+      "coherence": [
+        0.6827203059806635,
+        0.573195343904143,
+        0.48018062088920577,
+        0.4001201681098109,
+        0.33067408885669575,
+        0.2703445721255413,
+        0.21816630728336672,
+        0.1734645392184801,
+        0.1356829084468875,
+        0.10427622668901411,
+        0.10427622668901411
+      ],
+      "loyalty": [
+        99.9,
+        99.9,
+        99.9,
+        99.9,
+        99.9,
+        99.9,
+        99.9,
+        99.9,
+        99.9,
+        99.9,
+        99.9
+      ],
+      "corruption": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  }
+}
