@@ -29,6 +29,8 @@ except ImportError:
 # Test constants
 COHERENCE_TOLERANCE_FACTOR = 0.8  # Allow 20% tolerance when comparing coherence scores
 MAX_SIGNAL_AMPLITUDE = 10.0  # Expected maximum amplitude for generated test signals
+GOLDEN_RATIO = 1.618033988749895  # Golden ratio (phi) used in signal generation
+RANDOM_SEED = 42  # Fixed seed for reproducible test results
 
 
 @pytest.fixture
@@ -50,9 +52,8 @@ def clean_magnetar_signal():
     """
     duration = 1000
     t = np.arange(duration)
-    phi = 1.618033988749895  # Golden ratio
     signal = np.sin(2 * np.pi * MAGNETAR_FREQ * t / duration)
-    signal *= (1 + 0.1 * np.sin(2 * np.pi * t / (duration / phi)))
+    signal *= (1 + 0.1 * np.sin(2 * np.pi * t / (duration / GOLDEN_RATIO)))
     return signal
 
 
@@ -146,7 +147,7 @@ class TestMagnetarCoherenceEngine:
         clean_coherence = clean_result['coherence_score']
         
         # Process random noise
-        np.random.seed(42)
+        np.random.seed(RANDOM_SEED)
         noise_signal = np.random.randn(len(clean_magnetar_signal))
         noise_result = engine(noise_signal)
         noise_coherence = noise_result['coherence_score']
