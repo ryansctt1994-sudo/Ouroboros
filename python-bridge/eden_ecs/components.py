@@ -16,6 +16,13 @@ from typing import Dict, List, Optional
 from .core import Component
 
 
+# Evolution parameters as constants
+_CONSCIOUSNESS_OSCILLATION_AMPLITUDE = 0.01
+_CONSCIOUSNESS_COUPLING_STRENGTH = 0.005
+_CONSCIOUSNESS_NEUTRAL_STATE = 0.5
+_CONSCIOUSNESS_INTEGRATION_RATE = 0.01
+
+
 @dataclass
 class Consciousness7D(Component):
     """
@@ -47,17 +54,17 @@ class Consciousness7D(Component):
         Uses subtle oscillations to create organic state changes.
         """
         # Gentle oscillations for organic evolution
-        self.awareness += 0.01 * math.sin(dt * 0.5) * dt
-        self.intention += 0.01 * math.cos(dt * 0.7) * dt
-        self.emotion += 0.01 * math.sin(dt * 0.3) * dt
+        self.awareness += _CONSCIOUSNESS_OSCILLATION_AMPLITUDE * math.sin(dt * 0.5) * dt
+        self.intention += _CONSCIOUSNESS_OSCILLATION_AMPLITUDE * math.cos(dt * 0.7) * dt
+        self.emotion += _CONSCIOUSNESS_OSCILLATION_AMPLITUDE * math.sin(dt * 0.3) * dt
         
         # Cognitive and creative coupling
-        self.cognition += 0.005 * (self.awareness - 0.5) * dt
-        self.creativity += 0.005 * (self.emotion - 0.5) * dt
+        self.cognition += _CONSCIOUSNESS_COUPLING_STRENGTH * (self.awareness - _CONSCIOUSNESS_NEUTRAL_STATE) * dt
+        self.creativity += _CONSCIOUSNESS_COUPLING_STRENGTH * (self.emotion - _CONSCIOUSNESS_NEUTRAL_STATE) * dt
         
         # Integration follows overall coherence
         mean_state = self.get_mean()
-        self.integration += 0.01 * (mean_state - self.integration) * dt
+        self.integration += _CONSCIOUSNESS_INTEGRATION_RATE * (mean_state - self.integration) * dt
         
         # Clamp all values to [0, 1]
         self._clamp()

@@ -196,7 +196,7 @@ class TeleportationSystem(System):
             del self.cooldowns[entity_id]
     
     def teleport_entity(self, entity: Entity, x: float, y: float, z: float, 
-                       realm: str = None) -> bool:
+                       realm: Optional[str] = None) -> bool:
         """
         Attempt to teleport an entity.
         
@@ -326,13 +326,17 @@ class MetricsSystem(System):
             self.metrics['total_loyalty'] += entity.get_component(Loyalty).value
             self.metrics['total_corruption'] += entity.get_component(Corruption).value
         
-        # Quantum resonance count
+        # Quantum resonance count - track unique pairs
         quantum_entities = world.query_entities(None, QuantumResonance)
-        resonance_count = 0
+        resonance_pairs = set()
         for entity in quantum_entities:
-            resonance_tags = [t for t in entity.tags if t.startswith("resonant_with_")]
-            resonance_count += len(resonance_tags)
-        self.metrics['quantum_resonances'] = resonance_count // 2  # Each pair counted twice
+            for tag in entity.tags:
+                if tag.startswith("resonant_with_"):
+                    other_id = tag.replace("resonant_with_", "")
+                    # Create a sorted tuple to represent the pair uniquely
+                    pair = tuple(sorted([entity.entity_id[:8], other_id]))
+                    resonance_pairs.add(pair)
+        self.metrics['quantum_resonances'] = len(resonance_pairs)
         
         # Validation metrics
         self.metrics['validated_entities'] = len(
