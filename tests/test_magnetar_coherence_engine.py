@@ -18,6 +18,11 @@ from src.magnetar_coherence_engine import (
 )
 
 
+# Test constants
+COHERENCE_TOLERANCE_FACTOR = 0.8  # Allow 20% tolerance when comparing coherence scores
+MAX_SIGNAL_AMPLITUDE = 10.0  # Expected maximum amplitude for generated test signals
+
+
 @pytest.fixture
 def engine():
     """Create a default MagnetarElasticCoherenceEngine instance.
@@ -140,8 +145,8 @@ class TestMagnetarCoherenceEngine:
         noise_coherence = noise_result['coherence_score']
         
         # Clean signal should have higher or equal coherence
-        # Note: Using >= to handle edge cases where noise might align
-        assert clean_coherence >= noise_coherence * 0.8  # Allow some tolerance
+        # Note: Using tolerance factor to handle edge cases where noise might align
+        assert clean_coherence >= noise_coherence * COHERENCE_TOLERANCE_FACTOR
     
     def test_graceful_handling_of_empty_signal(self, engine):
         """Test that engine handles empty signals gracefully.
@@ -262,7 +267,7 @@ try:
             assert len(signal) == 1000
             assert np.all(np.isfinite(signal))
             # Signal should be bounded (not growing without limit)
-            assert np.max(np.abs(signal)) < 10.0
+            assert np.max(np.abs(signal)) < MAX_SIGNAL_AMPLITUDE
 
 except ImportError:
     # CoherenceAnalyzer not available
