@@ -42,6 +42,9 @@ __version__ = "1.0.0"
 __author__ = "AIOSPANDORA Development Team"
 
 __all__ = [
+    # Metadata
+    "__version__",
+    "__author__",
     # Core
     "Entity",
     "Component",
