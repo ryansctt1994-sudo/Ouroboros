@@ -31,6 +31,10 @@ pub struct ForgeConsensus {
 
 impl ForgeConsensus {
     /// Create new consensus protocol
+    /// 
+    /// # Panics
+    /// Panics if `num_agents` is 0 or less than 4 (minimum for BFT).
+    /// This is intentional to catch configuration errors early.
     pub fn new(num_agents: usize) -> Self {
         // Validate inputs
         assert!(num_agents > 0, "ForgeConsensus: num_agents must be > 0");

@@ -67,7 +67,10 @@ pub extern "C" fn forge_engine_update_agent_array(
     
     unsafe {
         let slice = std::slice::from_raw_parts(values, 7);
-        let vals: [f64; 7] = slice.try_into().unwrap();
+        let vals: [f64; 7] = match slice.try_into() {
+            Ok(v) => v,
+            Err(_) => return -4,  // Conversion error (should never happen after bounds check)
+        };
         
         let state = ConsciousnessState::new(vals);
         match (*engine).update_agent(agent_id, state) {

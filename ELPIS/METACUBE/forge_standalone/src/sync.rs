@@ -39,6 +39,10 @@ pub enum SyncError {
 pub type SyncResult<T> = Result<T, SyncError>;
 
 /// Consciousness state representation (7 dimensions)
+/// 
+/// # Cache-Line Alignment
+/// Aligned to 64 bytes to prevent false sharing in multi-threaded access.
+/// Size: 7 f64 fields (56 bytes) + 8 bytes padding = 64 bytes total.
 #[derive(Debug, Clone, Copy)]
 #[repr(C, align(64))]
 pub struct ConsciousnessState {
