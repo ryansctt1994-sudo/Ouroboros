@@ -19,7 +19,6 @@
 //! engine.consensus_round();
 //! ```
 
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 mod sync;
@@ -78,14 +77,24 @@ impl ForgeEngine {
         // Synchronize all agents
         self.sync.synchronize_step();
         
-        // Run consensus protocol
-        let metrics = self.sync.network_metrics();
+        // Compute per-agent gamma values
+        let gammas = self.sync.agent_gammas();
+        
+        // Use ForgeConsensus for the actual consensus check (replaces hardcoded 0.7)
+        let consensus_achieved = self.consensus.check_epsilon_consensus(&gammas);
+        
+        // Compute network-level gamma
+        let network_gamma = if gammas.is_empty() {
+            0.0
+        } else {
+            gammas.iter().sum::<f64>() / gammas.len() as f64
+        };
         
         ConsensusResult {
             round: self.rounds.load(Ordering::Relaxed),
-            consensus_achieved: metrics.mean_coherence > 0.7,
-            network_gamma: metrics.mean_gamma,
-            num_agents: metrics.num_agents,
+            consensus_achieved,
+            network_gamma,
+            num_agents: gammas.len(),
         }
     }
 
