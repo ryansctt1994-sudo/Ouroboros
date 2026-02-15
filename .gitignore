@@ -92,3 +92,8 @@ htmlcov/
 checkpoints/
 logs/
 runs/
+
+# Rust
+target/
+Cargo.lock
+*.rlib

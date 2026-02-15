@@ -54,21 +54,23 @@ pub extern "C" fn forge_engine_update_agent_array(
     engine: *mut ForgeEngine,
     agent_id: usize,
     values: *const f64,
+    values_len: usize,
 ) -> i32 {
     if engine.is_null() || values.is_null() {
         return -1;
     }
     
+    // Bounds check
+    if values_len < 7 {
+        return -3;
+    }
+    
     unsafe {
-        let vals: [f64; 7] = [
-            *values.offset(0),
-            *values.offset(1),
-            *values.offset(2),
-            *values.offset(3),
-            *values.offset(4),
-            *values.offset(5),
-            *values.offset(6),
-        ];
+        let slice = std::slice::from_raw_parts(values, 7);
+        let vals: [f64; 7] = match slice.try_into() {
+            Ok(v) => v,
+            Err(_) => return -4,  // Conversion error (should never happen after bounds check)
+        };
         
         let state = ConsciousnessState::new(vals);
         match (*engine).update_agent(agent_id, state) {
@@ -84,8 +86,8 @@ mod tests {
 
     #[test]
     fn test_ffi_engine_lifecycle() {
-        // Create engine via FFI
-        let engine = forge_engine_new(3);
+        // Create engine via FFI (need at least 4 agents for BFT)
+        let engine = forge_engine_new(5);
         assert!(!engine.is_null());
         
         // Get gamma

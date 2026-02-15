@@ -31,7 +31,15 @@ pub struct ForgeConsensus {
 
 impl ForgeConsensus {
     /// Create new consensus protocol
+    /// 
+    /// # Panics
+    /// Panics if `num_agents` is 0 or less than 4 (minimum for BFT).
+    /// This is intentional to catch configuration errors early.
     pub fn new(num_agents: usize) -> Self {
+        // Validate inputs
+        assert!(num_agents > 0, "ForgeConsensus: num_agents must be > 0");
+        assert!(num_agents >= 4, "ForgeConsensus: BFT requires at least 4 agents (got {})", num_agents);
+        
         let fault_tolerance = (num_agents - 1) / 3;  // Byzantine fault tolerance
         let consensus_threshold = (2.0 * fault_tolerance as f64 + 1.0) / num_agents as f64;
         
@@ -97,5 +105,17 @@ mod tests {
         let gammas = vec![0.3, 0.8, 0.2, 0.9];
         let status = consensus.validate_proposal(0.7, &gammas);
         assert_eq!(status, ProposalStatus::Rejected);
+    }
+
+    #[test]
+    #[should_panic(expected = "num_agents must be > 0")]
+    fn test_consensus_zero_agents() {
+        ForgeConsensus::new(0);
+    }
+
+    #[test]
+    #[should_panic(expected = "BFT requires at least 4 agents")]
+    fn test_consensus_too_few_agents() {
+        ForgeConsensus::new(3);
     }
 }
