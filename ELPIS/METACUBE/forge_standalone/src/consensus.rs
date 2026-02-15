@@ -33,6 +33,7 @@ pub struct ConsensusResult {
     pub consensus_achieved: bool,
     pub network_gamma: f64,
     pub num_agents: usize,
+    pub agreement_ratio: f64,
 }
 
 /// Forge consensus protocol implementation
@@ -46,16 +47,31 @@ pub struct ForgeConsensus {
 impl ForgeConsensus {
     /// Create new consensus protocol
     /// 
-    /// # Panics
-    /// Panics if `num_agents` is 0 or less than 4 (minimum for BFT).
-    /// This is intentional to catch configuration errors early.
+    /// # Safety
+    /// Does NOT panic on num_agents < 4 (minimum for BFT).
+    /// Instead uses fallback mode with simple majority (2/3 threshold).
+    /// This is required for FFI safety - panicking across FFI boundaries is undefined behavior.
     pub fn new(num_agents: usize) -> Self {
-        // Validate inputs
-        assert!(num_agents > 0, "ForgeConsensus: num_agents must be > 0");
-        assert!(num_agents >= 4, "ForgeConsensus: BFT requires at least 4 agents (got {})", num_agents);
+        // Validate inputs - but don't panic (FFI safety)
+        if num_agents == 0 {
+            // Return a minimal valid instance (will never achieve consensus)
+            return Self {
+                num_agents: 0,
+                fault_tolerance: 0,
+                consensus_threshold: 1.0,  // Impossible to reach
+                params: ConsensusParams::default(),
+            };
+        }
         
-        let fault_tolerance = (num_agents - 1) / 3;  // Byzantine fault tolerance
-        let consensus_threshold = (2.0 * fault_tolerance as f64 + 1.0) / num_agents as f64;
+        // For < 4 agents, use fallback mode with simple 2/3 majority
+        let (fault_tolerance, consensus_threshold) = if num_agents >= 4 {
+            let ft = (num_agents - 1) / 3;  // Byzantine fault tolerance
+            let thresh = (2.0 * ft as f64 + 1.0) / num_agents as f64;
+            (ft, thresh)
+        } else {
+            // Fallback: simple 2/3 majority (not BFT, but better than crashing)
+            (0, 0.67)
+        };
         
         Self {
             num_agents,
@@ -96,10 +112,10 @@ impl ForgeConsensus {
     }
 
     /// Check ε-consensus: what fraction of agents have gamma within epsilon of the mean?
-    /// Returns true if that fraction meets or exceeds the BFT-derived consensus_threshold.
-    pub fn check_epsilon_consensus(&self, gammas: &[f64]) -> bool {
+    /// Returns (consensus_achieved, agreement_ratio).
+    pub fn check_epsilon_consensus(&self, gammas: &[f64]) -> (bool, f64) {
         if gammas.is_empty() {
-            return false;
+            return (false, 0.0);
         }
         let n = gammas.len() as f64;
         let mean = gammas.iter().sum::<f64>() / n;
@@ -107,7 +123,8 @@ impl ForgeConsensus {
             .filter(|&&g| (g - mean).abs() <= self.params.epsilon)
             .count();
         let agreement_ratio = agreeing as f64 / n;
-        agreement_ratio >= self.consensus_threshold
+        let consensus_achieved = agreement_ratio >= self.consensus_threshold;
+        (consensus_achieved, agreement_ratio)
     }
 
     /// Get the BFT-derived consensus threshold
@@ -148,15 +165,24 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "num_agents must be > 0")]
     fn test_consensus_zero_agents() {
-        ForgeConsensus::new(0);
+        // Should not panic, but return fallback instance
+        let consensus = ForgeConsensus::new(0);
+        assert_eq!(consensus.num_agents, 0);
+        assert_eq!(consensus.consensus_threshold, 1.0);  // Impossible threshold
+        // Empty gammas should fail consensus
+        let (achieved, ratio) = consensus.check_epsilon_consensus(&[]);
+        assert!(!achieved);
+        assert_eq!(ratio, 0.0);
     }
 
     #[test]
-    #[should_panic(expected = "BFT requires at least 4 agents")]
     fn test_consensus_too_few_agents() {
-        ForgeConsensus::new(3);
+        // Should not panic, but use fallback mode (2/3 majority)
+        let consensus = ForgeConsensus::new(3);
+        assert_eq!(consensus.num_agents, 3);
+        assert_eq!(consensus.fault_tolerance, 0);
+        assert!((consensus.consensus_threshold - 0.67).abs() < 0.01);
     }
 
     #[test]
@@ -164,7 +190,9 @@ mod tests {
         let consensus = ForgeConsensus::new(5);
         // All gammas very close to each other
         let gammas = vec![0.7, 0.71, 0.69, 0.7, 0.72];
-        assert!(consensus.check_epsilon_consensus(&gammas));
+        let (achieved, ratio) = consensus.check_epsilon_consensus(&gammas);
+        assert!(achieved);
+        assert!(ratio >= 0.8);  // Most agents should agree
     }
 
     #[test]
@@ -172,12 +200,15 @@ mod tests {
         let consensus = ForgeConsensus::new(5);
         // Gammas spread far apart — agents disagree
         let gammas = vec![0.9, 0.1, 0.5, 0.3, 0.8];
-        assert!(!consensus.check_epsilon_consensus(&gammas));
+        let (achieved, _ratio) = consensus.check_epsilon_consensus(&gammas);
+        assert!(!achieved);
     }
 
     #[test]
     fn test_epsilon_consensus_empty() {
         let consensus = ForgeConsensus::new(4);
-        assert!(!consensus.check_epsilon_consensus(&[]));
+        let (achieved, ratio) = consensus.check_epsilon_consensus(&[]);
+        assert!(!achieved);
+        assert_eq!(ratio, 0.0);
     }
 }

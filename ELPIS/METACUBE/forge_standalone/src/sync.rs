@@ -436,6 +436,17 @@ impl SyncEngine {
             metrics.unified_metric()
         }).collect()
     }
+
+    /// Get unified metric (gamma) for a specific agent
+    pub fn get_agent_gamma(&self, agent_id: usize) -> Result<f64, SyncError> {
+        if agent_id >= self.num_agents {
+            return Err(SyncError::InvalidAgentId(agent_id));
+        }
+
+        let state = self.states[agent_id].load();
+        let metrics = state.calculate_metrics();
+        Ok(metrics.unified_metric())
+    }
 }
 
 /// Network-wide synchronization metrics
