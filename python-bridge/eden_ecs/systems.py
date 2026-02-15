@@ -13,6 +13,7 @@ Version: 1.0.0
 
 import math
 import random
+import warnings
 from typing import List, Optional
 from .core import System, World, Entity
 from .components import (
@@ -233,12 +234,19 @@ class SynchronizationSystem(System):
     """
     PBFT-like consensus synchronization system.
     
+    DEPRECATED: Use MycelialSyncSystem instead.
+    
     Ensures consistency across distributed entities through
     a simplified Practical Byzantine Fault Tolerance protocol.
     """
     
     def __init__(self, priority: int = 70):
         super().__init__(priority)
+        warnings.warn(
+            "SynchronizationSystem is deprecated; use MycelialSyncSystem.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         self.consensus_threshold = 0.67  # 2/3 majority
         self.view_number = 0
         self.last_sync_time = 0.0
@@ -246,6 +254,25 @@ class SynchronizationSystem(System):
     
     def update(self, world: World, dt: float) -> None:
         """Update synchronization and consensus."""
+        # Check if any entity has forge_consensus tag
+        # If so, propagate it to all entities and skip old logic
+        # Cache the first check result to avoid repeated O(n) iteration
+        if not hasattr(self, '_forge_mode_active'):
+            self._forge_mode_active = False
+        
+        if not self._forge_mode_active:
+            has_forge_consensus = any(
+                e.has_tag("forge_consensus") for e in world.entities.values()
+            )
+            if has_forge_consensus:
+                self._forge_mode_active = True
+        
+        if self._forge_mode_active:
+            # Propagate forge_consensus to all entities
+            for entity in world.entities.values():
+                entity.add_tag("forge_consensus")
+            return
+        
         self.last_sync_time += dt
         
         # Only sync at intervals
