@@ -40,7 +40,7 @@ pub type SyncResult<T> = Result<T, SyncError>;
 
 /// Consciousness state representation (7 dimensions)
 #[derive(Debug, Clone, Copy)]
-#[repr(C)]
+#[repr(C, align(64))]
 pub struct ConsciousnessState {
     pub awareness: f64,
     pub intention: f64,
@@ -49,6 +49,7 @@ pub struct ConsciousnessState {
     pub memory: f64,
     pub creativity: f64,
     pub integration: f64,
+    _padding: [u8; 8],  // Pad to 64 bytes total
 }
 
 impl ConsciousnessState {
@@ -62,6 +63,7 @@ impl ConsciousnessState {
             memory: values[4].clamp(0.0, 1.0),
             creativity: values[5].clamp(0.0, 1.0),
             integration: values[6].clamp(0.0, 1.0),
+            _padding: [0; 8],
         }
     }
 
@@ -78,7 +80,14 @@ impl ConsciousnessState {
         ]
     }
 
-    /// Project to ternary state for Ouroboros validation
+    /// Projects 7D consciousness to 3D space for Ouroboros validation
+    /// 
+    /// # Projection Rationale:
+    /// - D1 (Cognitive Axis): awareness + cognition + integration
+    /// - D2 (Temporal Axis): intention + memory  
+    /// - D3 (Emotional-Creative Axis): emotion + creativity
+    /// 
+    /// All dimensions are normalized by their count (3, 2, or 2)
     pub fn to_ternary(&self) -> [f64; 3] {
         // Map 7D consciousness to 3D ternary representation
         // Using PCA-like projection optimized for toroidal manifold
@@ -273,6 +282,7 @@ impl AtomicState {
             memory: f64::from_bits(self.memory.load(Ordering::Acquire)),
             creativity: f64::from_bits(self.creativity.load(Ordering::Acquire)),
             integration: f64::from_bits(self.integration.load(Ordering::Acquire)),
+            _padding: [0; 8],
         }
     }
 
@@ -408,6 +418,16 @@ mod tests {
         // Ternary should sum to 1.0
         let sum: f64 = ternary.iter().sum();
         assert!((sum - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn test_to_ternary_all_dimensions() {
+        let state = ConsciousnessState::new([0.5; 7]);
+        let proj = state.to_ternary();
+        
+        assert!(proj[0] > 0.0, "D1 should be non-zero");
+        assert!(proj[1] > 0.0, "D2 should be non-zero");
+        assert!(proj[2] > 0.0, "D3 should be non-zero (was missing!)");
     }
 
     #[test]

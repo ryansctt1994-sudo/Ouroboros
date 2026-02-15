@@ -101,9 +101,9 @@ mod tests {
 
     #[test]
     fn test_forge_engine_creation() {
-        let engine = ForgeEngine::new(3);
+        let engine = ForgeEngine::new(5);
         let metrics = engine.network_metrics();
-        assert_eq!(metrics.num_agents, 3);
+        assert_eq!(metrics.num_agents, 5);
     }
 
     #[test]
