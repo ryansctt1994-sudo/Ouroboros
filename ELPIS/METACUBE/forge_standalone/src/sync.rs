@@ -189,17 +189,17 @@ impl MetacubeMetrics {
 /// Uses centered log-ratio (CLR) transformation.
 /// A small pseudocount (1e-12) prevents log(0).
 fn aitchison_distance(a: &[f64; 3], b: &[f64; 3]) -> f64 {
-    let eps = 1e-12; // pseudocount to avoid log(0)
+    let pseudocount = 1e-12; // Numerical stability constant to avoid log(0)
     
     // Geometric means
-    let g_a = ((a[0] + eps) * (a[1] + eps) * (a[2] + eps)).powf(1.0 / 3.0);
-    let g_b = ((b[0] + eps) * (b[1] + eps) * (b[2] + eps)).powf(1.0 / 3.0);
+    let g_a = ((a[0] + pseudocount) * (a[1] + pseudocount) * (a[2] + pseudocount)).powf(1.0 / 3.0);
+    let g_b = ((b[0] + pseudocount) * (b[1] + pseudocount) * (b[2] + pseudocount)).powf(1.0 / 3.0);
     
     // CLR-transformed difference
     let mut sum_sq = 0.0;
     for i in 0..3 {
-        let lr_a = ((a[i] + eps) / g_a).ln();
-        let lr_b = ((b[i] + eps) / g_b).ln();
+        let lr_a = ((a[i] + pseudocount) / g_a).ln();
+        let lr_b = ((b[i] + pseudocount) / g_b).ln();
         sum_sq += (lr_a - lr_b).powi(2);
     }
     sum_sq.sqrt()
@@ -238,7 +238,7 @@ impl TernaryCycleNormalizer {
         let z = self.radius * self.lambda * phi.sin();
 
         // Reconstruct angles from Cartesian (preserving sign/quadrant)
-        let theta_recovered = y.atan2(x);  // atan2 preserves full [-π, π] range
+        let theta_recovered = y.atan2(x);  // atan2(y, x) preserves full [-π, π] range and correct quadrant
         let r_proj = (x * x + y * y).sqrt();
         let phi_recovered = z.atan2(r_proj - self.radius);
 

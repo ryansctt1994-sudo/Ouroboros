@@ -11,6 +11,8 @@ pub struct ConsensusParams {
 
 impl Default for ConsensusParams {
     fn default() -> Self {
+        // Default epsilon of 0.15 (15% deviation from mean) provides a reasonable
+        // balance between strictness and tolerance for typical multi-agent systems
         Self { epsilon: 0.15 }
     }
 }
