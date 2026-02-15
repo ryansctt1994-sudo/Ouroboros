@@ -1,0 +1,45 @@
+#!/sbin/openrc-run
+# EDEN Daemon OpenRC init script
+
+name="eden"
+description="EDEN Mycelial Engine"
+command="/usr/local/bin/eden-daemon"
+command_background="yes"
+pidfile="/var/run/eden.pid"
+
+depend() {
+    need localmount
+    after bootmisc
+}
+
+start_pre() {
+    checkpath --directory --mode 0755 --owner root:root /var/run
+}
+
+start() {
+    ebegin "Starting EDEN daemon"
+    start-stop-daemon --start --background --make-pidfile \
+        --pidfile "${pidfile}" --exec "${command}"
+    eend $?
+}
+
+stop() {
+    ebegin "Stopping EDEN daemon"
+    start-stop-daemon --stop --pidfile "${pidfile}"
+    eend $?
+}
+
+status() {
+    if [ -f "${pidfile}" ]; then
+        if pgrep -F "${pidfile}" > /dev/null 2>&1; then
+            einfo "EDEN daemon is running (PID: $(cat ${pidfile}))"
+            return 0
+        else
+            eerror "EDEN daemon is not running (stale PID file)"
+            return 1
+        fi
+    else
+        einfo "EDEN daemon is not running"
+        return 3
+    fi
+}
