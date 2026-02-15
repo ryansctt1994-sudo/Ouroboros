@@ -128,7 +128,7 @@ impl ForgeEngine {
         self.last_agreement_ratio.lock()
             .map(|r| *r)
             .unwrap_or_else(|e| {
-                eprintln!("Warning: agreement_ratio mutex poisoned: {}", e);
+                eprintln!("Warning: Failed to acquire lock on last_agreement_ratio (poisoned mutex): {}. Returning 0.0 as fallback.", e);
                 0.0
             })
     }

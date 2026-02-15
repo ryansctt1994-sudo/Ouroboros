@@ -358,6 +358,8 @@ class ForgeBridge:
         - C (coherence) = max(0, 1 - (std_dev / mean))
         - E (efficiency) = mean
         - S (synergy) = geometric mean
+        
+        Note: If any dimension is zero, synergy will be zero (matches Rust behavior).
         """
         if len(state) != 7:
             return 0.0
@@ -378,6 +380,7 @@ class ForgeBridge:
         efficiency = mean
         
         # Calculate synergy (geometric mean)
+        # Matches Rust implementation: product will be 0 if any dimension is 0
         product = 1.0
         for v in state:
             product *= v
