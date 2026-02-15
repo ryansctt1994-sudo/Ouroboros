@@ -10,6 +10,9 @@ Core Modules:
     - components: METACUBE consciousness components
     - systems: Cosmic logic systems
     - demo: Working demonstration
+    - forge_bridge: FFI integration with Rust ForgeEngine
+    - mycelial_components: Hyphal PLL network components
+    - mycelial_sync: Mycelial bridge system
 
 Author: AIOSPANDORA Development Team
 License: MIT
@@ -36,6 +39,17 @@ from .systems import (
     TeleportationSystem,
     SynchronizationSystem,
     MetricsSystem,
+)
+from .forge_bridge import (
+    ForgeBridge,
+    ConsensusSnapshot,
+    SlotAllocator,
+)
+from .mycelial_components import (
+    HyphalNodeComponent,
+)
+from .mycelial_sync import (
+    MycelialSyncSystem,
 )
 
 __version__ = "1.0.0"
@@ -69,4 +83,12 @@ __all__ = [
     "TeleportationSystem",
     "SynchronizationSystem",
     "MetricsSystem",
+    # Forge Bridge
+    "ForgeBridge",
+    "ConsensusSnapshot",
+    "SlotAllocator",
+    # Mycelial Components
+    "HyphalNodeComponent",
+    # Mycelial Sync
+    "MycelialSyncSystem",
 ]

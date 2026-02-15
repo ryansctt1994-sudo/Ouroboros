@@ -99,22 +99,42 @@ class Consciousness7D(Component):
         ]) / 7.0
         return 1.0 / (1.0 + variance)  # Higher variance = lower coherence
     
+    def to_array(self) -> List[float]:
+        """
+        Convert to canonical 7-element array for Rust FFI.
+        
+        Returns:
+            [awareness, intention, emotion, cognition, memory, creativity, integration]
+        """
+        return [
+            self.awareness,
+            self.intention,
+            self.emotion,
+            self.cognition,
+            self.memory,
+            self.creativity,
+            self.integration
+        ]
+    
     def to_ternary(self) -> List[float]:
         """
         Project 7D consciousness to 3D ternary representation for Ouroboros.
         
         Returns:
-            [cognitive, affective, creative] normalized to sum = 1.0
+            [cognitive, temporal, affective] normalized to sum = 1.0
         """
-        # Group dimensions into ternary categories
+        # Group dimensions into ternary categories (matches Rust in sync.rs lines 95-116)
+        # Cognitive axis: awareness + cognition + integration
         cognitive = (self.awareness + self.cognition + self.integration) / 3.0
-        affective = (self.intention + self.emotion) / 2.0
-        creative = (self.memory + self.creativity) / 2.0
+        # Temporal axis: intention + memory
+        temporal = (self.intention + self.memory) / 2.0
+        # Affective axis: emotion + creativity
+        affective = (self.emotion + self.creativity) / 2.0
         
         # Normalize to sum = 1.0
-        total = cognitive + affective + creative
+        total = cognitive + temporal + affective
         if total > 0.0:
-            return [cognitive / total, affective / total, creative / total]
+            return [cognitive / total, temporal / total, affective / total]
         return [1.0 / 3.0, 1.0 / 3.0, 1.0 / 3.0]
 
 
