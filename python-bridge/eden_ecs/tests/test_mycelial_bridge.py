@@ -116,7 +116,7 @@ class TestForgeBridgePythonFallback:
         # Push 5 identical states
         identical_state = [0.7] * 7
         for i in range(5):
-            bridge.update_agent(f"entity-{i}", identical_state)
+            bridge.update_agent(f"entity-{i}", identical_state, slot=i)
         
         snapshot = bridge.consensus_round()
         
@@ -131,7 +131,7 @@ class TestForgeBridgePythonFallback:
         # Push divergent states
         for i in range(5):
             state = [0.1 + i * 0.15] * 7  # Very different states
-            bridge.update_agent(f"entity-{i}", state)
+            bridge.update_agent(f"entity-{i}", state, slot=i)
         
         snapshot = bridge.consensus_round()
         
@@ -147,7 +147,7 @@ class TestForgeBridgePythonFallback:
         # Push some states
         for i in range(3):
             state = [0.6 + i * 0.1] * 7
-            bridge.update_agent(f"entity-{i}", state)
+            bridge.update_agent(f"entity-{i}", state, slot=i)
         
         snapshot = bridge.consensus_round()
         
@@ -184,8 +184,9 @@ class TestHyphalNodeComponent:
         node.advance_phase(dt)
         
         # Expected phase: 2π × 0.1 × 1.0 = 0.2π
+        # Using small tolerance for floating-point rounding in multiplication
         expected = 2.0 * math.pi * 0.1
-        assert abs(node.phase - expected) < 1e-9
+        assert abs(node.phase - expected) < 1e-10
     
     def test_phase_wrap(self):
         """Test phase wrapping to [0, 2π)."""
@@ -217,7 +218,8 @@ class TestHyphalNodeComponent:
         node2 = HyphalNodeComponent(phase=0.2)
         
         dist = node1.phase_distance_to(node2)
-        assert abs(dist - 0.1) < 1e-9
+        # Exact equality for simple subtraction
+        assert dist == 0.1
         
         # Test wrap-around distance
         node3 = HyphalNodeComponent(phase=0.1)
@@ -236,8 +238,8 @@ class TestHyphalNodeComponent:
         node.record_latency(200.0)
         node.record_latency(300.0)
         
-        # Average should be 200.0
-        assert abs(node.avg_latency_us - 200.0) < 1e-6
+        # Average should be exactly 200.0 (simple arithmetic mean)
+        assert node.avg_latency_us == 200.0
     
     def test_to_dict_serialization(self):
         """Test to_dict serialization."""

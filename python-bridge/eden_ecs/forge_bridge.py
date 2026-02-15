@@ -215,13 +215,14 @@ class ForgeBridge:
             c_size_t
         ]
     
-    def update_agent(self, entity_id: str, state_7d: List[float]) -> bool:
+    def update_agent(self, entity_id: str, state_7d: List[float], slot: int = None) -> bool:
         """
         Update agent state in the Forge engine.
         
         Args:
-            entity_id: Entity UUID (will be mapped to slot internally)
+            entity_id: Entity UUID (for logging/tracking)
             state_7d: 7-element list [awareness, intention, emotion, cognition, memory, creativity, integration]
+            slot: Pre-assigned slot index. If None, this method cannot be called.
             
         Returns:
             True if update succeeded
@@ -229,9 +230,10 @@ class ForgeBridge:
         if len(state_7d) != 7:
             return False
         
-        # For now, use a simple hash to map entity_id to slot
-        # In MycelialSyncSystem, SlotAllocator will manage this properly
-        slot = hash(entity_id) % self.num_agents
+        if slot is None:
+            raise ValueError(
+                "slot parameter is required. Use MycelialSyncSystem which manages slots via SlotAllocator."
+            )
         
         if self.rust_available:
             # Call Rust FFI
@@ -270,11 +272,14 @@ class ForgeBridge:
         
         # For now, we don't have per-agent gamma FFI, so use empty dict
         # This would require additional FFI functions (see #8 in requirements)
+        # Track active agents via Python-side counter
+        num_active = len(self._py_agents)
+        
         return ConsensusSnapshot(
             round=self._round_counter,
             consensus_achieved=consensus_achieved,
             network_gamma=network_gamma,
-            num_active_agents=len(self._py_agents),  # Approximation
+            num_active_agents=num_active,
             agreement_ratio=1.0 if consensus_achieved else 0.0,
             per_agent_gammas={}
         )

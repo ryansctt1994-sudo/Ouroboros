@@ -99,9 +99,9 @@ class MycelialSyncSystem(System):
             # Release forge slot
             slot = self.allocator.release(entity_id)
             if slot is not None:
-                # Push neutral state to freed slot
+                # Push neutral state to freed slot using the slot directly
                 neutral_state = [0.5] * 7
-                self.bridge.update_agent(entity_id, neutral_state)
+                self.bridge.update_agent(entity_id, neutral_state, slot=slot)
         
         # Update known set
         self._known_entity_ids = current_entity_ids
@@ -111,10 +111,10 @@ class MycelialSyncSystem(System):
             hyphal = entity.get_component(HyphalNodeComponent)
             
             if hyphal is None:
-                # Create new hyphal node
+                # Create new hyphal node with uninitialized phase marker
                 hyphal = HyphalNodeComponent(
                     node_id=entity.entity_id,
-                    phase=0.0,
+                    phase=-1.0,  # Sentinel value for uninitialized
                     frequency=0.0997,
                     synchronized=False,
                     avg_latency_us=0.0,
@@ -157,7 +157,8 @@ class MycelialSyncSystem(System):
             hyphal = entity.get_component(HyphalNodeComponent)
             if hyphal:
                 # Initial phase: evenly spaced around [0, 2π)
-                if hyphal.phase == 0.0:  # Only set if not already initialized
+                # Only set if not already initialized (phase == -1.0)
+                if hyphal.phase == -1.0:
                     hyphal.phase = (2.0 * math.pi * i) / n
                 
                 # Build neighbor list (ring topology)
@@ -169,13 +170,14 @@ class MycelialSyncSystem(System):
     
     def _push_states(self, world: World) -> None:
         """Push all Consciousness7D states to Forge engine."""
-        conscious_entities = world.query_entities(None, Consciousness7D)
+        conscious_entities = world.query_entities(None, Consciousness7D, HyphalNodeComponent)
         
         for entity in conscious_entities:
             c7d = entity.get_component(Consciousness7D)
-            if c7d:
+            hyphal = entity.get_component(HyphalNodeComponent)
+            if c7d and hyphal and hyphal.forge_slot >= 0:
                 state_array = c7d.to_array()
-                self.bridge.update_agent(entity.entity_id, state_array)
+                self.bridge.update_agent(entity.entity_id, state_array, slot=hyphal.forge_slot)
     
     def _run_consensus_round(self, world: World) -> None:
         """
@@ -202,9 +204,13 @@ class MycelialSyncSystem(System):
         for entity in conscious_entities:
             hyphal = entity.get_component(HyphalNodeComponent)
             if hyphal:
-                # Get gamma for this agent's slot
+                # Get gamma for this agent's slot (if available in snapshot)
                 if hyphal.forge_slot in snapshot.per_agent_gammas:
                     hyphal.last_gamma = snapshot.per_agent_gammas[hyphal.forge_slot]
+                else:
+                    # If per_agent_gammas not available (Rust mode without extended FFI),
+                    # use network gamma as approximation
+                    hyphal.last_gamma = snapshot.network_gamma
                 
                 hyphal.last_agreement_ratio = snapshot.agreement_ratio
                 hyphal.consensus_participant = True

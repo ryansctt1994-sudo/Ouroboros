@@ -256,11 +256,18 @@ class SynchronizationSystem(System):
         """Update synchronization and consensus."""
         # Check if any entity has forge_consensus tag
         # If so, propagate it to all entities and skip old logic
-        has_forge_consensus = any(
-            e.has_tag("forge_consensus") for e in world.entities.values()
-        )
+        # Cache the first check result to avoid repeated O(n) iteration
+        if not hasattr(self, '_forge_mode_active'):
+            self._forge_mode_active = False
         
-        if has_forge_consensus:
+        if not self._forge_mode_active:
+            has_forge_consensus = any(
+                e.has_tag("forge_consensus") for e in world.entities.values()
+            )
+            if has_forge_consensus:
+                self._forge_mode_active = True
+        
+        if self._forge_mode_active:
             # Propagate forge_consensus to all entities
             for entity in world.entities.values():
                 entity.add_tag("forge_consensus")
