@@ -10,6 +10,7 @@ License: MIT
 Version: 1.0.0
 """
 
+import bisect
 import ctypes
 import os
 import platform
@@ -31,6 +32,18 @@ class ConsensusSnapshot:
     num_active_agents: int
     agreement_ratio: float
     per_agent_gammas: Dict[int, float] = field(default_factory=dict)
+    
+    def to_dict(self) -> Dict:
+        """Serialize to dictionary for JSON export."""
+        return {
+            'round': self.round,
+            'consensus_achieved': self.consensus_achieved,
+            'network_gamma': self.network_gamma,
+            'num_active_agents': self.num_active_agents,
+            'agreement_ratio': self.agreement_ratio,
+            'per_agent_gammas': self.per_agent_gammas,
+        }
+
 
 
 class SlotAllocator:
@@ -90,9 +103,8 @@ class SlotAllocator:
         del self._entity_to_slot[entity_id]
         del self._slot_to_entity[slot]
         
-        # Insert back into free pool in sorted order
-        self._free_slots.append(slot)
-        self._free_slots.sort()
+        # Insert back into free pool in sorted order using bisect.insort()
+        bisect.insort(self._free_slots, slot)
         
         return slot
     
@@ -214,6 +226,14 @@ class ForgeBridge:
             POINTER(c_double),
             c_size_t
         ]
+        
+        # forge_engine_get_agent_gamma(engine: *const ForgeEngine, agent_id: usize) -> f64
+        self._lib.forge_engine_get_agent_gamma.restype = c_double
+        self._lib.forge_engine_get_agent_gamma.argtypes = [c_void_p, c_size_t]
+        
+        # forge_engine_get_consensus_agreement(engine: *const ForgeEngine) -> f64
+        self._lib.forge_engine_get_consensus_agreement.restype = c_double
+        self._lib.forge_engine_get_consensus_agreement.argtypes = [c_void_p]
     
     def update_agent(self, entity_id: str, state_7d: List[float], slot: int = None) -> bool:
         """
@@ -269,19 +289,23 @@ class ForgeBridge:
         consensus_achieved_u8 = self._lib.forge_engine_consensus_round(self._engine)
         consensus_achieved = bool(consensus_achieved_u8)
         network_gamma = self._lib.forge_engine_get_network_gamma(self._engine)
+        agreement_ratio = self._lib.forge_engine_get_consensus_agreement(self._engine)
         
-        # For now, we don't have per-agent gamma FFI, so use empty dict
-        # This would require additional FFI functions (see #8 in requirements)
-        # Track active agents via Python-side counter
-        num_active = len(self._py_agents)
+        # Get per-agent gammas only for allocated slots
+        per_agent_gammas = {}
+        for slot in self._py_agents.keys():  # Only iterate over allocated slots
+            gamma = self._lib.forge_engine_get_agent_gamma(self._engine, slot)
+            per_agent_gammas[slot] = gamma
+        
+        num_active = len(per_agent_gammas)
         
         return ConsensusSnapshot(
             round=self._round_counter,
             consensus_achieved=consensus_achieved,
             network_gamma=network_gamma,
             num_active_agents=num_active,
-            agreement_ratio=1.0 if consensus_achieved else 0.0,
-            per_agent_gammas={}
+            agreement_ratio=agreement_ratio,
+            per_agent_gammas=per_agent_gammas
         )
     
     def _python_consensus_round(self) -> ConsensusSnapshot:
@@ -325,22 +349,50 @@ class ForgeBridge:
     
     def _compute_gamma(self, state: List[float]) -> float:
         """
-        Compute gamma (coherence) for a 7D state.
+        Compute gamma (unified metric) for a 7D state using the Rust formula.
         
-        Uses Rust-compatible formula: max(0, 1 - CV) where CV is coefficient of variation.
+        Γ = sqrt(D×C) × E^(1/3) × S
+        
+        Where:
+        - D (diversity) = standard deviation
+        - C (coherence) = max(0, 1 - (std_dev / mean))
+        - E (efficiency) = mean
+        - S (synergy) = geometric mean
+        
+        Note: If any dimension is zero, synergy will be zero (matches Rust behavior).
         """
         if len(state) != 7:
             return 0.0
         
+        # Calculate mean (Efficiency)
         mean = sum(state) / 7.0
         if mean == 0.0:
             return 0.0
         
+        # Calculate variance and standard deviation (Diversity)
         variance = sum((v - mean) ** 2 for v in state) / 7.0
-        std_dev = variance ** 0.5
-        cv = std_dev / mean  # Coefficient of variation
+        diversity = variance ** 0.5
         
-        return max(0.0, 1.0 - cv)
+        # Calculate coherence
+        coherence = max(0.0, 1.0 - (diversity / mean))
+        
+        # Calculate efficiency (already have as mean)
+        efficiency = mean
+        
+        # Calculate synergy (geometric mean)
+        # Matches Rust implementation: product will be 0 if any dimension is 0
+        product = 1.0
+        for v in state:
+            product *= v
+        synergy = product ** (1.0 / 7.0)
+        
+        # Unified metric: Γ = sqrt(D×C) × E^(1/3) × S
+        dc_product = diversity * coherence
+        dc_sqrt = dc_product ** 0.5
+        e_cbrt = efficiency ** (1.0 / 3.0)
+        gamma = dc_sqrt * e_cbrt * synergy
+        
+        return gamma
     
     def __del__(self):
         """Clean up Rust engine on destruction."""

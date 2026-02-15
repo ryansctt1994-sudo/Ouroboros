@@ -109,6 +109,26 @@ class TestSlotAllocator:
 class TestForgeBridgePythonFallback:
     """Tests for ForgeBridge with Python fallback (use_rust=False)."""
     
+    def test_consensus_snapshot_to_dict(self):
+        """Test ConsensusSnapshot.to_dict() serialization."""
+        snapshot = ConsensusSnapshot(
+            round=42,
+            consensus_achieved=True,
+            network_gamma=0.75,
+            num_active_agents=10,
+            agreement_ratio=0.82,
+            per_agent_gammas={0: 0.7, 1: 0.75, 2: 0.8}
+        )
+        
+        d = snapshot.to_dict()
+        
+        assert d['round'] == 42
+        assert d['consensus_achieved'] is True
+        assert d['network_gamma'] == 0.75
+        assert d['num_active_agents'] == 10
+        assert d['agreement_ratio'] == 0.82
+        assert d['per_agent_gammas'] == {0: 0.7, 1: 0.75, 2: 0.8}
+    
     def test_identical_states_achieve_consensus(self):
         """Pushing identical states should achieve consensus."""
         bridge = ForgeBridge(num_agents=256, use_rust=False)
@@ -159,18 +179,21 @@ class TestForgeBridgePythonFallback:
             assert 0.0 <= gamma <= 1.0
     
     def test_gamma_computation(self):
-        """Test gamma computation matches formula: max(0, 1 - CV)."""
+        """Test gamma computation matches formula: Γ = sqrt(D×C) × E^(1/3) × S."""
         bridge = ForgeBridge(num_agents=256, use_rust=False)
         
-        # Perfectly uniform state should have high gamma
+        # Perfectly uniform state should have perfect coherence
+        # but diversity=0, so gamma = sqrt(0*1) * E^(1/3) * S = 0
         uniform_state = [0.5] * 7
         gamma_uniform = bridge._compute_gamma(uniform_state)
-        assert gamma_uniform == 1.0  # CV=0, so gamma=1
+        # With uniform state: D=0, C=1, E=0.5, S=0.5
+        # Γ = sqrt(0*1) * 0.5^(1/3) * 0.5 = 0
+        assert gamma_uniform == 0.0
         
-        # Non-uniform state should have lower gamma
-        varied_state = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
+        # Non-uniform state should have positive gamma
+        varied_state = [0.6, 0.7, 0.5, 0.6, 0.7, 0.5, 0.6]
         gamma_varied = bridge._compute_gamma(varied_state)
-        assert 0.0 <= gamma_varied < 1.0
+        assert gamma_varied > 0.0
 
 
 class TestHyphalNodeComponent:
@@ -469,6 +492,91 @@ class TestTernaryAxisConsistency:
         
         assert len(arr) == 7
         assert arr == [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
+
+
+class TestFullIntegration:
+    """Integration tests for complete mycelial bridge flow."""
+    
+    def test_end_to_end_world_tick(self):
+        """Test full integration: World + MycelialSyncSystem + entities."""
+        # Create world
+        world = World("Test-Mycelial-World")
+        
+        # Add MycelialSyncSystem (Python fallback for CI)
+        sync_system = MycelialSyncSystem(priority=45, use_rust=False)
+        world.add_system(sync_system)
+        
+        # Create 5 AI agent entities with consciousness
+        for i in range(5):
+            entity = world.create_entity(EntityType.AI_AGENT, f"agent-{i}")
+            c7d = Consciousness7D(
+                awareness=0.6 + i * 0.05,
+                intention=0.7,
+                emotion=0.65,
+                cognition=0.7 + i * 0.02,
+                memory=0.6,
+                creativity=0.55,
+                integration=0.68
+            )
+            entity.add_component(c7d)
+        
+        # Tick the world 10 times
+        for _ in range(10):
+            world.tick(dt=0.05)
+        
+        # Verify all entities have HyphalNodeComponents
+        hyphal_entities = world.query_entities(None, HyphalNodeComponent)
+        assert len(hyphal_entities) == 5
+        
+        # Verify metrics
+        metrics = sync_system.get_metrics()
+        assert metrics['total_syncs'] == 10
+        assert metrics['avg_sync_latency_us'] > 0
+        
+        # Verify all have forge slots
+        for entity in hyphal_entities:
+            hyphal = entity.get_component(HyphalNodeComponent)
+            assert hyphal.forge_slot >= 0
+            assert hyphal.last_gamma >= 0.0
+        
+        # Verify world metrics
+        world_metrics = world.get_metrics()
+        assert world_metrics['entity_count'] == 5
+        assert world_metrics['ticks'] == 10
+    
+    def test_dynamic_entity_lifecycle(self):
+        """Test entities being added and removed during runtime."""
+        world = World("Dynamic-Test-World")
+        sync_system = MycelialSyncSystem(priority=45, use_rust=False)
+        world.add_system(sync_system)
+        
+        # Start with 3 entities
+        entities = []
+        for i in range(3):
+            entity = world.create_entity(EntityType.AI_AGENT)
+            entity.add_component(Consciousness7D())
+            entities.append(entity)
+        
+        # Tick once
+        world.tick(dt=0.1)
+        assert sync_system.allocator.get_slot(entities[0].entity_id) == 0
+        
+        # Remove middle entity
+        world.destroy_entity(entities[1].entity_id)
+        
+        # Tick again
+        world.tick(dt=0.1)
+        
+        # Add a new entity - should reuse freed slot
+        new_entity = world.create_entity(EntityType.AI_AGENT)
+        new_entity.add_component(Consciousness7D())
+        
+        # Tick to allocate
+        world.tick(dt=0.1)
+        
+        # New entity should have reused slot 1
+        hyphal = new_entity.get_component(HyphalNodeComponent)
+        assert hyphal.forge_slot == 1
 
 
 if __name__ == '__main__':

@@ -79,6 +79,38 @@ pub extern "C" fn forge_engine_update_agent_array(
     }
 }
 
+/// Get unified metric (gamma) for a specific agent
+#[no_mangle]
+pub extern "C" fn forge_engine_get_agent_gamma(
+    engine: *const ForgeEngine,
+    agent_id: usize,
+) -> f64 {
+    if engine.is_null() {
+        return 0.0;
+    }
+    
+    unsafe {
+        match (*engine).get_agent_gamma(agent_id) {
+            Ok(gamma) => gamma,
+            Err(_) => 0.0,
+        }
+    }
+}
+
+/// Get the agreement ratio from the last consensus round
+#[no_mangle]
+pub extern "C" fn forge_engine_get_consensus_agreement(
+    engine: *const ForgeEngine,
+) -> f64 {
+    if engine.is_null() {
+        return 0.0;
+    }
+    
+    unsafe {
+        (*engine).get_consensus_agreement()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

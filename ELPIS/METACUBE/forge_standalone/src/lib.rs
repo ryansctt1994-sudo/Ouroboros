@@ -45,6 +45,9 @@ pub use ffi::{
     forge_engine_free,
     forge_engine_consensus_round,
     forge_engine_get_network_gamma,
+    forge_engine_update_agent_array,
+    forge_engine_get_agent_gamma,
+    forge_engine_get_consensus_agreement,
 };
 
 /// Main Forge engine combining synchronization and consensus
@@ -52,6 +55,7 @@ pub struct ForgeEngine {
     sync: SyncEngine,
     consensus: ForgeConsensus,
     rounds: AtomicU64,
+    last_agreement_ratio: std::sync::Mutex<f64>,
 }
 
 impl ForgeEngine {
@@ -61,6 +65,7 @@ impl ForgeEngine {
             sync: SyncEngine::new(num_agents),
             consensus: ForgeConsensus::new(num_agents),
             rounds: AtomicU64::new(0),
+            last_agreement_ratio: std::sync::Mutex::new(0.0),
         }
     }
 
@@ -81,7 +86,12 @@ impl ForgeEngine {
         let gammas = self.sync.agent_gammas();
         
         // Use ForgeConsensus for the actual consensus check (replaces hardcoded 0.7)
-        let consensus_achieved = self.consensus.check_epsilon_consensus(&gammas);
+        let (consensus_achieved, agreement_ratio) = self.consensus.check_epsilon_consensus(&gammas);
+        
+        // Store agreement ratio for FFI access
+        if let Ok(mut ratio) = self.last_agreement_ratio.lock() {
+            *ratio = agreement_ratio;
+        }
         
         // Compute network-level gamma
         let network_gamma = if gammas.is_empty() {
@@ -95,12 +105,32 @@ impl ForgeEngine {
             consensus_achieved,
             network_gamma,
             num_agents: gammas.len(),
+            agreement_ratio,
         }
     }
 
     /// Get current network metrics
     pub fn network_metrics(&self) -> NetworkMetrics {
         self.sync.network_metrics()
+    }
+
+    /// Get unified metric (gamma) for a specific agent
+    pub fn get_agent_gamma(&self, agent_id: usize) -> Result<f64, String> {
+        self.sync.get_agent_gamma(agent_id)
+            .map_err(|e| format!("{:?}", e))
+    }
+
+    /// Get the agreement ratio from the last consensus round
+    /// 
+    /// Returns 0.0 if the mutex is poisoned (due to a panic while the lock was held).
+    /// This is a safe fallback that indicates no consensus.
+    pub fn get_consensus_agreement(&self) -> f64 {
+        self.last_agreement_ratio.lock()
+            .map(|r| *r)
+            .unwrap_or_else(|e| {
+                eprintln!("Warning: Failed to acquire lock on last_agreement_ratio (poisoned mutex): {}. Returning 0.0 as fallback.", e);
+                0.0
+            })
     }
 }
 
