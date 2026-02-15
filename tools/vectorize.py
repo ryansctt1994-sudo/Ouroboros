@@ -418,12 +418,12 @@ class RustParser:
             ret_part = f" -> {ret.strip()}" if ret else ''
             signature = f"{extern_kw}{async_kw}{unsafe_kw}fn {name}({args}){ret_part}"
             
-            # Find line number
+            # Find line number (1-indexed)
             line_num = source[:match.start()].count('\n') + 1
             
             # Extract preceding doc comments and attributes
-            # line_num is 1-indexed, so line_num-1 is the 0-indexed function line
-            # We need to start from the line before that, which is line_num-2
+            # lines is 0-indexed, so lines[line_num-1] would be the declaration line itself
+            # We pass line_num-2 to start from lines[line_num-2], the line before the declaration
             docstring, attributes = self._extract_doc_and_attrs(lines, line_num - 2)
             
             # Check if FFI export
