@@ -2,7 +2,20 @@
 //!
 //! Implements Byzantine fault tolerant consensus for METACUBE networks
 
-use crate::sync::{ConsciousnessState, MetacubeMetrics};
+/// Parameters for ε-consensus checking
+#[derive(Debug, Clone, Copy)]
+pub struct ConsensusParams {
+    /// Maximum deviation from mean gamma for an agent to count as "agreeing"
+    pub epsilon: f64,
+}
+
+impl Default for ConsensusParams {
+    fn default() -> Self {
+        // Default epsilon of 0.15 (15% deviation from mean) provides a reasonable
+        // balance between strictness and tolerance for typical multi-agent systems
+        Self { epsilon: 0.15 }
+    }
+}
 
 /// Status of a consensus proposal
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,6 +40,7 @@ pub struct ForgeConsensus {
     num_agents: usize,
     fault_tolerance: usize,
     consensus_threshold: f64,
+    params: ConsensusParams,
 }
 
 impl ForgeConsensus {
@@ -47,6 +61,7 @@ impl ForgeConsensus {
             num_agents,
             fault_tolerance,
             consensus_threshold,
+            params: ConsensusParams::default(),
         }
     }
 
@@ -78,6 +93,31 @@ impl ForgeConsensus {
         } else {
             ProposalStatus::Rejected
         }
+    }
+
+    /// Check ε-consensus: what fraction of agents have gamma within epsilon of the mean?
+    /// Returns true if that fraction meets or exceeds the BFT-derived consensus_threshold.
+    pub fn check_epsilon_consensus(&self, gammas: &[f64]) -> bool {
+        if gammas.is_empty() {
+            return false;
+        }
+        let n = gammas.len() as f64;
+        let mean = gammas.iter().sum::<f64>() / n;
+        let agreeing = gammas.iter()
+            .filter(|&&g| (g - mean).abs() <= self.params.epsilon)
+            .count();
+        let agreement_ratio = agreeing as f64 / n;
+        agreement_ratio >= self.consensus_threshold
+    }
+
+    /// Get the BFT-derived consensus threshold
+    pub fn threshold(&self) -> f64 {
+        self.consensus_threshold
+    }
+
+    /// Set the epsilon parameter for consensus checking
+    pub fn set_epsilon(&mut self, epsilon: f64) {
+        self.params.epsilon = epsilon;
     }
 }
 
@@ -117,5 +157,27 @@ mod tests {
     #[should_panic(expected = "BFT requires at least 4 agents")]
     fn test_consensus_too_few_agents() {
         ForgeConsensus::new(3);
+    }
+
+    #[test]
+    fn test_epsilon_consensus_all_agree() {
+        let consensus = ForgeConsensus::new(5);
+        // All gammas very close to each other
+        let gammas = vec![0.7, 0.71, 0.69, 0.7, 0.72];
+        assert!(consensus.check_epsilon_consensus(&gammas));
+    }
+
+    #[test]
+    fn test_epsilon_consensus_disagreement() {
+        let consensus = ForgeConsensus::new(5);
+        // Gammas spread far apart — agents disagree
+        let gammas = vec![0.9, 0.1, 0.5, 0.3, 0.8];
+        assert!(!consensus.check_epsilon_consensus(&gammas));
+    }
+
+    #[test]
+    fn test_epsilon_consensus_empty() {
+        let consensus = ForgeConsensus::new(4);
+        assert!(!consensus.check_epsilon_consensus(&[]));
     }
 }

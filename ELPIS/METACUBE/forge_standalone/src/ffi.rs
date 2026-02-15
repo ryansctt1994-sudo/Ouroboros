@@ -2,7 +2,6 @@
 //!
 //! Provides C-compatible API for integration with Python and other languages
 
-use std::ptr;
 use crate::{ForgeEngine, ConsciousnessState};
 
 /// Create a new Forge engine
