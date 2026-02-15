@@ -291,13 +291,11 @@ class ForgeBridge:
         network_gamma = self._lib.forge_engine_get_network_gamma(self._engine)
         agreement_ratio = self._lib.forge_engine_get_consensus_agreement(self._engine)
         
-        # Get per-agent gammas for all allocated slots
+        # Get per-agent gammas only for allocated slots
         per_agent_gammas = {}
-        for slot in range(self.num_agents):
-            # Check if slot is allocated (via internal tracking in Python)
-            if slot in self._py_agents:  # Track which slots are active
-                gamma = self._lib.forge_engine_get_agent_gamma(self._engine, slot)
-                per_agent_gammas[slot] = gamma
+        for slot in self._py_agents.keys():  # Only iterate over allocated slots
+            gamma = self._lib.forge_engine_get_agent_gamma(self._engine, slot)
+            per_agent_gammas[slot] = gamma
         
         num_active = len(per_agent_gammas)
         

@@ -121,10 +121,16 @@ impl ForgeEngine {
     }
 
     /// Get the agreement ratio from the last consensus round
+    /// 
+    /// Returns 0.0 if the mutex is poisoned (due to a panic while the lock was held).
+    /// This is a safe fallback that indicates no consensus.
     pub fn get_consensus_agreement(&self) -> f64 {
         self.last_agreement_ratio.lock()
             .map(|r| *r)
-            .unwrap_or(0.0)
+            .unwrap_or_else(|e| {
+                eprintln!("Warning: agreement_ratio mutex poisoned: {}", e);
+                0.0
+            })
     }
 }
 
