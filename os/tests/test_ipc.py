@@ -145,7 +145,8 @@ class TestSocketConnection(unittest.TestCase):
         # Close server
         try:
             self.server.close()
-        except:
+        except (OSError, AttributeError):
+            # Socket already closed or doesn't exist
             pass
         
         # Remove socket
@@ -186,7 +187,8 @@ class TestSocketConnection(unittest.TestCase):
             
             except socket.timeout:
                 continue
-            except Exception:
+            except (OSError, ConnectionError) as e:
+                # Socket closed during shutdown
                 break
     
     def test_socket_connection(self):

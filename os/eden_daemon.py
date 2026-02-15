@@ -294,6 +294,7 @@ class EdenDaemon:
                 result = {
                     "id": entity.entity_id,
                     "name": entity.name,
+                    # entity_type is an EntityType enum, so get its value
                     "type": entity.entity_type.value if hasattr(entity.entity_type, 'value') else str(entity.entity_type)
                 }
                 
