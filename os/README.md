@@ -1,21 +1,34 @@
 # EDEN Daemon System
 
-Background service for the EDEN Mycelial Engine, exposing control via Unix domain socket with JSON-RPC protocol.
+Background service for the EDEN Mycelial Engine with integrated AI assistant, sandboxed code execution, and patch management.
 
 ## Overview
 
 The EDEN daemon runs the ECS world from `python-bridge/eden_ecs/` as a background service, enabling:
 
 - **Continuous simulation** of consciousness evolution and mycelial synchronization
+- **AI Assistant** - Local GGUF model integration via llama-cpp-python
+- **Sandboxed code execution** - Secure Python/shell execution via bubblewrap
+- **Patch management** - Apply unified diffs with dry-run support
 - **IPC control** via Unix domain socket (`/tmp/eden.sock`)
 - **Cross-platform support** for macOS and Linux
 - **Multiple init systems**: systemd, launchd, OpenRC, or manual execution
 
 ## Prerequisites
 
-- **Python 3.8+** (tested with 3.8, 3.9, 3.10, 3.11)
+- **Python 3.8+** (tested with 3.8, 3.9, 3.10, 3.11, 3.12)
 - **EDEN ECS** (from `python-bridge/eden_ecs/`) - optional, daemon will work with mock world if unavailable
 - **Rust ForgeEngine** (optional) - for consensus and synchronization
+
+### Optional Dependencies
+
+For AI features:
+- **llama-cpp-python** - `pip install llama-cpp-python`
+- **GGUF model file** - Place in `~/.local/eden/models/` (e.g., DeepSeek 8B or similar)
+
+For secure sandboxing:
+- **bubblewrap** - `apt-get install bubblewrap` (Ubuntu/Debian) or `dnf install bubblewrap` (Fedora/RHEL)
+- **patch** - Usually pre-installed on most systems
 
 ## Quick Start
 
@@ -75,6 +88,8 @@ sudo rc-service eden start
 
 Once the daemon is running, use the `eden` CLI to control it:
 
+### Core Commands
+
 ```bash
 # Show daemon status
 eden status
@@ -107,6 +122,43 @@ eden shutdown
 eden help
 ```
 
+### AI Assistant Commands
+
+```bash
+# Chat with the AI assistant
+eden chat "Hello EDEN"
+eden chat "Explain the mycelial synchronization system"
+
+# Note: Requires llama-cpp-python and a GGUF model file
+# If not available, returns error message with installation instructions
+```
+
+### Sandbox Execution Commands
+
+```bash
+# Execute Python code in sandbox
+eden execute "print('Hello, World!')"
+eden execute "import sys; print(sys.version)"
+
+# Execute shell commands in sandbox
+eden execute "echo 'test'" --language shell
+
+# Note: Uses bubblewrap for secure sandboxing on Linux
+# Falls back to basic subprocess execution if bubblewrap not available
+```
+
+### Patch Management Commands
+
+```bash
+# Test applying a patch (dry-run)
+eden patch changes.patch --dry-run
+
+# Apply a patch for real
+eden patch changes.patch
+
+# Note: Uses the 'patch' command with unified diff format
+```
+
 ## Architecture
 
 ```
@@ -128,19 +180,39 @@ eden help
   - Runs tick loop at 60 Hz when started
   - Handles JSON-RPC requests over Unix socket
   - Thread-safe entity/system access
+  - Integrates AI, sandbox, and patch manager services
+
+- **`eden_ai.py`** - AI service
+  - Loads GGUF models via llama-cpp-python (CPU-only)
+  - Generates responses to chat messages
+  - Searches vectors.json for code context
+  - Graceful degradation when model not available
+
+- **`eden_sandbox.py`** - Sandboxed code execution
+  - Uses bubblewrap for secure sandboxing on Linux
+  - Falls back to subprocess with timeout if bwrap unavailable
+  - Supports Python and shell script execution
+  - 5-second timeout by default
+
+- **`eden_patch.py`** - Patch manager
+  - Applies unified diffs using the `patch` command
+  - Supports dry-run mode for testing
+  - Can restart EDEN systemd service after patching
 
 - **`eden_cli.py`** - Command-line client
   - Connects to daemon socket
   - Sends JSON-RPC requests
   - Pretty-prints results
+  - Supports all core, AI, sandbox, and patch commands
 
 - **`eden_ipc.py`** - IPC protocol definition
   - JSON-RPC request/response serialization
   - Socket path and PID file paths
 
-- **`eden.service`** - systemd user unit
+- **`eden.service`** / **`eden-ai.service`** - systemd user units
 - **`org.ouroboros.eden.plist`** - launchd plist for macOS
 - **`openrc/eden`** - OpenRC init script
+- **`Dockerfile.ai`** - Optional Docker container with AI runtime
 - **`Makefile`** - Installation targets
 
 ## IPC Protocol Reference
@@ -180,17 +252,23 @@ Messages are newline-delimited JSON.
 | `start` | - | Start tick loop |
 | `stop` | - | Stop tick loop |
 | `step` | - | Run single tick |
+| `chat` | `message` | Send message to AI assistant, returns response |
+| `execute_code` | `code`, `language` | Execute code in sandbox, returns output |
+| `apply_patch` | `diff`, `dry_run` | Apply unified diff, returns success status |
 | `shutdown` | - | Gracefully shut down daemon |
 
 ## Graceful Degradation
 
-The daemon is designed to work even if EDEN ECS modules are unavailable:
+The daemon is designed to work even if optional components are unavailable:
 
-1. If `python-bridge/eden_ecs/` is not found, it uses a **mock world** with simulated entities
-2. If `MycelialSyncSystem` is unavailable, it runs with just `ConsciousnessSystem`
-3. Warnings are logged but the daemon remains functional
+1. **No EDEN ECS**: Uses a **mock world** with simulated entities
+2. **No MycelialSyncSystem**: Runs with just `ConsciousnessSystem`
+3. **No llama-cpp-python**: AI features return helpful error messages with installation instructions
+4. **No AI model file**: Chat requests return error explaining where to place model file
+5. **No bubblewrap**: Sandbox falls back to basic subprocess (with warning about reduced security)
+6. **No patch command**: Patch management returns error if `patch` utility not installed
 
-This allows testing the daemon system without building the full ECS.
+This allows testing and using the daemon even without all dependencies installed.
 
 ## Logging
 
@@ -285,11 +363,48 @@ rm /tmp/eden.sock
 
 ## Development
 
+### Setting Up the AI Assistant
+
+To use the AI chat feature:
+
+1. **Install llama-cpp-python:**
+   ```bash
+   pip install llama-cpp-python
+   ```
+
+2. **Download a GGUF model:**
+   - Download a compatible GGUF model (e.g., DeepSeek 8B, Llama 2, etc.)
+   - Recommended sources: Hugging Face (search for "GGUF")
+   - Example: [TheBloke's GGUF models](https://huggingface.co/TheBloke)
+
+3. **Place model in the default location:**
+   ```bash
+   mkdir -p ~/.local/eden/models
+   mv your-model.gguf ~/.local/eden/models/
+   ```
+
+4. **Restart the daemon:**
+   ```bash
+   eden shutdown  # If running
+   python3 os/eden_daemon.py
+   ```
+
+5. **Test the AI:**
+   ```bash
+   eden chat "Hello, can you hear me?"
+   ```
+
 ### Running tests
 
 ```bash
 cd os/
-python3 -m unittest tests/test_ipc.py
+python3 -m pytest tests/ -v
+
+# Or run specific test files
+python3 -m pytest tests/test_ipc.py
+python3 -m pytest tests/test_ai.py
+python3 -m pytest tests/test_sandbox.py
+python3 -m pytest tests/test_patch.py
 ```
 
 ### Debugging
