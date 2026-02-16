@@ -97,3 +97,13 @@ runs/
 target/
 Cargo.lock
 *.rlib
+
+# Additional patterns for EDEN
+vectors.json
+*.so
+*.dylib
+*.dll
+*.pyd
+
+# Logs
+*.log
