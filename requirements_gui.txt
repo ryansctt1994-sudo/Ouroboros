@@ -1,0 +1,25 @@
+# GUI and Crucible Requirements for Ouroboros
+# Install with: pip install -r requirements_gui.txt
+
+# Core GUI framework (built-in with Python, listed for reference)
+# tkinter - bundled with Python
+
+# Enhanced GUI capabilities
+Pillow>=10.0.0
+
+# Data processing
+numpy>=1.21.0
+
+# Optional GPU acceleration (for gpu_vector_enhancement.py)
+# Uncomment if you want to use GPU features
+# jax>=0.4.0
+# jaxlib>=0.4.0
+
+# Code analysis tools
+ast-comments>=1.1.0
+
+# JSON handling (built-in)
+# json - bundled with Python
+
+# For testing
+pytest>=7.0.0
