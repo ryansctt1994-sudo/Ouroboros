@@ -4,11 +4,12 @@ EDEN Daemon - Background System Service
 ========================================
 
 Runs the EDEN ECS world as a background service, exposing control
-via Unix domain socket with JSON-RPC protocol.
+via Unix domain socket with JSON-RPC protocol. Includes AI assistant,
+sandboxed code execution, and patch management.
 
 Author: AIOSPANDORA Development Team
 License: MIT
-Version: 1.0.0
+Version: 1.1.0
 """
 
 import argparse
@@ -31,6 +32,11 @@ if PYTHON_BRIDGE_DIR.exists():
 
 # Import IPC protocol
 from eden_ipc import SOCKET_PATH, PID_FILE, make_response, make_error, parse_message
+
+# Import new services
+from eden_ai import EdenAI
+from eden_sandbox import EdenSandbox
+from eden_patch import EdenPatch
 
 # Try to import EDEN ECS modules
 try:
@@ -116,7 +122,8 @@ class EdenDaemon:
     """
     EDEN daemon service.
     
-    Manages the ECS world, tick loop, and socket server.
+    Manages the ECS world, tick loop, socket server, AI assistant,
+    sandbox, and patch manager.
     """
     
     def __init__(self):
@@ -128,8 +135,50 @@ class EdenDaemon:
         self.shutdown_flag = False
         self.socket_server: Optional[socket.socket] = None
         
+        # Initialize AI, sandbox, and patch services
+        self._init_services()
+        
         # Initialize world
         self._init_world()
+    
+    def _init_services(self):
+        """Initialize AI, sandbox, and patch manager services."""
+        # Initialize AI service
+        try:
+            logger.info("Initializing AI service...")
+            self.ai = EdenAI()
+            
+            # Try to load vectors.json if it exists
+            vectors_path = SCRIPT_DIR.parent / "vectors.json"
+            if vectors_path.exists():
+                self.ai.load_vectors(str(vectors_path))
+            
+            if self.ai.is_available():
+                logger.info("AI service initialized and model loaded")
+            else:
+                logger.warning("AI service initialized but no model loaded")
+        except Exception as e:
+            logger.error(f"Failed to initialize AI service: {e}")
+            self.ai = None
+        
+        # Initialize sandbox
+        try:
+            logger.info("Initializing sandbox...")
+            self.sandbox = EdenSandbox()
+            logger.info("Sandbox initialized")
+        except Exception as e:
+            logger.error(f"Failed to initialize sandbox: {e}")
+            self.sandbox = None
+        
+        # Initialize patch manager
+        try:
+            logger.info("Initializing patch manager...")
+            repo_root = SCRIPT_DIR.parent
+            self.patch_mgr = EdenPatch(str(repo_root))
+            logger.info("Patch manager initialized")
+        except Exception as e:
+            logger.error(f"Failed to initialize patch manager: {e}")
+            self.patch_mgr = None
     
     def _init_world(self):
         """Initialize the ECS world."""
@@ -428,6 +477,26 @@ class EdenDaemon:
             elif method == "step":
                 success = self.step()
                 result = {"success": success}
+            elif method == "chat":
+                # AI chat method
+                message = params.get("message")
+                if not message:
+                    return make_error(request_id, -32602, "Missing message parameter")
+                result = self.handle_chat(message)
+            elif method == "execute_code":
+                # Sandbox execution method
+                code = params.get("code")
+                language = params.get("language", "python")
+                if not code:
+                    return make_error(request_id, -32602, "Missing code parameter")
+                result = self.handle_execute_code(code, language)
+            elif method == "apply_patch":
+                # Patch application method
+                diff = params.get("diff")
+                dry_run = params.get("dry_run", False)
+                if not diff:
+                    return make_error(request_id, -32602, "Missing diff parameter")
+                result = self.handle_apply_patch(diff, dry_run)
             elif method == "shutdown":
                 logger.info("Shutdown requested")
                 self.shutdown_flag = True
@@ -440,6 +509,111 @@ class EdenDaemon:
         except Exception as e:
             logger.error(f"Error handling request: {e}", exc_info=True)
             return make_error(request_id, -32603, str(e))
+    
+    def handle_chat(self, message: str) -> Dict[str, Any]:
+        """
+        Handle AI chat request.
+        
+        Args:
+            message: User message
+        
+        Returns:
+            Response dictionary with "response" key or error
+        """
+        if self.ai is None:
+            return {
+                "response": "AI service not initialized",
+                "error": "AI service unavailable"
+            }
+        
+        if not self.ai.is_available():
+            return {
+                "response": "No AI model is loaded. Please place a GGUF model file in ~/.local/eden/models/",
+                "error": "Model not loaded"
+            }
+        
+        try:
+            # Build messages list
+            messages = [{"role": "user", "content": message}]
+            
+            # Generate response
+            response_text = self.ai.generate(messages)
+            
+            return {"response": response_text}
+        
+        except Exception as e:
+            logger.error(f"Error generating AI response: {e}", exc_info=True)
+            return {
+                "response": f"Error: {str(e)}",
+                "error": str(e)
+            }
+    
+    def handle_execute_code(self, code: str, language: str = "python") -> Dict[str, Any]:
+        """
+        Handle code execution request.
+        
+        Args:
+            code: Code to execute
+            language: Language (python or shell)
+        
+        Returns:
+            Response dictionary with output, success, and error keys
+        """
+        if self.sandbox is None:
+            return {
+                "output": "",
+                "success": False,
+                "error": "Sandbox not initialized"
+            }
+        
+        try:
+            output, success, error = self.sandbox.execute(code, language)
+            
+            return {
+                "output": output,
+                "success": success,
+                "error": error
+            }
+        
+        except Exception as e:
+            logger.error(f"Error executing code: {e}", exc_info=True)
+            return {
+                "output": "",
+                "success": False,
+                "error": str(e)
+            }
+    
+    def handle_apply_patch(self, diff: str, dry_run: bool = False) -> Dict[str, Any]:
+        """
+        Handle patch application request.
+        
+        Args:
+            diff: Unified diff content
+            dry_run: Whether to do a dry run
+        
+        Returns:
+            Response dictionary with success and message keys
+        """
+        if self.patch_mgr is None:
+            return {
+                "success": False,
+                "message": "Patch manager not initialized"
+            }
+        
+        try:
+            success, message = self.patch_mgr.apply(diff, dry_run)
+            
+            return {
+                "success": success,
+                "message": message
+            }
+        
+        except Exception as e:
+            logger.error(f"Error applying patch: {e}", exc_info=True)
+            return {
+                "success": False,
+                "message": str(e)
+            }
     
     def handle_client(self, client_socket: socket.socket, address):
         """Handle a client connection."""

@@ -306,6 +306,99 @@ def cmd_shutdown(args):
         return 1
 
 
+def cmd_chat(args):
+    """Send a message to the AI assistant."""
+    try:
+        # Get message from args
+        if not args.args:
+            print("Error: chat command requires a message", file=sys.stderr)
+            print("Usage: eden chat \"your message here\"", file=sys.stderr)
+            return 1
+        
+        message = " ".join(args.args)
+        
+        result = send_request("chat", {"message": message})
+        
+        if "error" in result:
+            print(f"Error: {result['error']}", file=sys.stderr)
+            return 1
+        
+        print(result.get("response", "No response"))
+        return 0
+    except ConnectionError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
+
+def cmd_execute(args):
+    """Execute code in the sandbox."""
+    try:
+        # Get code from args
+        if not args.args:
+            print("Error: execute command requires code", file=sys.stderr)
+            print("Usage: eden execute \"print('hello')\"", file=sys.stderr)
+            return 1
+        
+        code = " ".join(args.args)
+        language = getattr(args, 'language', 'python')
+        
+        result = send_request("execute_code", {"code": code, "language": language})
+        
+        if result.get("success"):
+            print(result.get("output", ""))
+            return 0
+        else:
+            print(f"Execution failed: {result.get('error', 'Unknown error')}", file=sys.stderr)
+            if result.get("output"):
+                print(result["output"], file=sys.stderr)
+            return 1
+    except ConnectionError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
+
+def cmd_patch(args):
+    """Apply a patch file."""
+    try:
+        # Get patch file from args
+        if not args.args:
+            print("Error: patch command requires a file path", file=sys.stderr)
+            print("Usage: eden patch <file> [--dry-run]", file=sys.stderr)
+            return 1
+        
+        patch_file = args.args[0]
+        dry_run = getattr(args, 'dry_run', False)
+        
+        # Read patch file
+        if not os.path.exists(patch_file):
+            print(f"Error: Patch file not found: {patch_file}", file=sys.stderr)
+            return 1
+        
+        with open(patch_file, 'r') as f:
+            diff = f.read()
+        
+        result = send_request("apply_patch", {"diff": diff, "dry_run": dry_run})
+        
+        if result.get("success"):
+            print(result.get("message", "Patch applied successfully"))
+            return 0
+        else:
+            print(f"Patch failed: {result.get('message', 'Unknown error')}", file=sys.stderr)
+            return 1
+    except ConnectionError as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
+
 def cmd_help(args):
     """Show help message."""
     print("""EDEN CLI - Control the EDEN daemon
@@ -319,6 +412,9 @@ Usage:
   eden entity <id>         Show entity details (7D values, phase, gamma)
   eden graph               Show graph topology (nodes + edges)
   eden metrics             Show network metrics
+  eden chat "message"      Send a message to the AI assistant
+  eden execute "code"      Execute code in sandbox (Python by default)
+  eden patch <file>        Apply a patch file (use --dry-run to test)
   eden shutdown            Shut down the daemon
   eden help                Show this help
 
@@ -328,6 +424,9 @@ Examples:
   eden entities            # List all AI agents
   eden entity abc-123      # Show details for specific entity
   eden metrics             # Show network-level metrics
+  eden chat "Hello"        # Chat with AI assistant
+  eden execute "print('hello world')"  # Execute Python code
+  eden patch my.patch --dry-run        # Test applying a patch
 """)
     return 0
 
@@ -341,6 +440,10 @@ def main():
     parser.add_argument("command", nargs='?', default="help",
                        help="Command to execute")
     parser.add_argument("args", nargs='*', help="Command arguments")
+    parser.add_argument("--dry-run", action="store_true",
+                       help="Dry run for patch command")
+    parser.add_argument("--language", default="python",
+                       help="Language for execute command (python or shell)")
     
     args = parser.parse_args()
     
@@ -354,6 +457,9 @@ def main():
         "entity": cmd_entity,
         "graph": cmd_graph,
         "metrics": cmd_metrics,
+        "chat": cmd_chat,
+        "execute": cmd_execute,
+        "patch": cmd_patch,
         "shutdown": cmd_shutdown,
         "help": cmd_help,
     }
