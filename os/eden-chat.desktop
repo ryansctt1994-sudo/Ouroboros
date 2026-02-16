@@ -1,8 +1,11 @@
 [Desktop Entry]
+# This is a template - install-eden.sh creates the actual desktop entry
+# with correct paths during installation
 Name=EDEN Chat
 Comment=EDEN AI Assistant
-Exec=python3 /usr/local/lib/eden/eden_chat.py
+Exec=python3 eden_chat.py
 Icon=utilities-terminal
 Terminal=false
 Type=Application
 Categories=Utility;
+

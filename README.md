@@ -264,7 +264,7 @@ MIT License - See LICENSE file for details
 
 ## 🤝 Contributing
 
-Contributions welcome! See the [ARCHITECTURE.md](ARCHITECTURE.md) for system design details.
+Contributions welcome! Please see the issue tracker for open issues and feature requests.
 
 ## 🌟 Features
 
