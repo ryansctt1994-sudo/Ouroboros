@@ -1,0 +1,48 @@
+# EDEN AI Runtime Docker Container
+# ==================================
+# Optional container for running EDEN with AI features in an isolated environment.
+#
+# Build:
+#   docker build -f Dockerfile.ai -t eden-ai .
+#
+# Run:
+#   docker run -v ~/.local/eden/models:/models -v $(pwd):/repo -it eden-ai
+
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    bubblewrap \
+    patch \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Install Python dependencies
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install llama-cpp-python (CPU-only)
+RUN pip install --no-cache-dir llama-cpp-python
+
+# Copy EDEN code
+COPY os/ /app/os/
+COPY python-bridge/ /app/python-bridge/
+COPY EDEN-ECS/ /app/EDEN-ECS/
+
+# Create model directory
+RUN mkdir -p /models
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV EDEN_MODEL_PATH=/models
+
+# Expose Unix socket directory
+VOLUME /tmp
+
+# Run daemon
+CMD ["python3", "/app/os/eden_daemon.py"]
