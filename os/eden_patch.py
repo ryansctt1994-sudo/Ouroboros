@@ -122,7 +122,7 @@ class EdenPatch:
             # Clean up temporary file
             try:
                 os.unlink(diff_file)
-            except:
+            except Exception:
                 pass
     
     def restart_service(self) -> Tuple[bool, str]:

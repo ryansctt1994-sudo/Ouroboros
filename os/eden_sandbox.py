@@ -188,13 +188,19 @@ class EdenSandbox:
         cmd = interpreter + [str(code_file)]
         
         try:
+            # Create minimal safe environment
+            safe_env = {
+                'PATH': '/usr/bin:/bin:/usr/local/bin',
+                'HOME': '/tmp',
+                'LANG': 'C.UTF-8',
+            }
+            
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
                 timeout=timeout,
-                # Minimal safety: empty environment
-                env={}
+                env=safe_env
             )
             
             output = result.stdout + result.stderr
