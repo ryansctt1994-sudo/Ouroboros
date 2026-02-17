@@ -1,0 +1,132 @@
+# Hybrid AI-Powered UTe2 System Configuration
+# Central configuration for operation modes, AI learning, caching, and communication
+
+# Execution Mode Settings
+execution:
+  # Default mode: offline, local, hybrid, cloud
+  default_mode: "local"
+  
+  # Mode-specific settings
+  modes:
+    offline:
+      enabled: true
+      max_grid_size: 24
+      precision: "float32"
+      
+    local:
+      enabled: true
+      max_grid_size: 64
+      precision: "float64"
+      use_gpu: false
+      
+    hybrid:
+      enabled: true
+      cloud_threshold_size: 100  # Grid sizes above this use cloud
+      fallback_to_local: true
+      timeout_seconds: 30
+      
+    cloud:
+      enabled: false  # Disabled by default for offline-first
+      endpoint: null
+      api_key: null
+      max_retries: 3
+
+# AI Advisor Settings
+ai_advisor:
+  enabled: true
+  offline_mode: true
+  
+  # Learning parameters
+  learning:
+    enabled: true
+    save_frequency: 10  # Save knowledge every N simulations
+    max_history: 1000
+    
+  # Optimization settings
+  optimization:
+    auto_suggest: true
+    resource_profiling: true
+    adaptive_precision: true
+
+# Simulation Engine Parameters
+simulation:
+  # UTe2 Material Properties
+  material:
+    name: "UTe2"
+    lattice_constant: 4.0  # Angstroms
+    spin_triplet: true
+    
+  # Default simulation parameters
+  defaults:
+    temperature_K: 0.5
+    magnetic_field_T: 0.0
+    k_grid_size: 32
+    energy_cutoff_eV: 10.0
+    
+  # BdG equation solver settings
+  solver:
+    method: "sparse"  # sparse or dense
+    convergence_threshold: 1e-6
+    max_iterations: 1000
+
+# Caching System
+cache:
+  enabled: true
+  storage_path: "./ute2_cache"
+  max_size_mb: 500
+  ttl_days: 30
+  compression: true
+  
+  # Cache strategy
+  strategy:
+    hash_parameters: ["temperature", "magnetic_field", "k_grid_size"]
+    fuzzy_matching: false
+    max_entries: 10000
+
+# Visualization Settings
+visualization:
+  backend: "plotly"
+  default_theme: "plotly_dark"
+  
+  plots:
+    phase_diagram:
+      resolution: 100
+      colorscale: "Viridis"
+      
+    band_structure:
+      num_kpoints: 200
+      show_fermi_level: true
+      
+    gap_structure:
+      contour_levels: 20
+      show_nodes: true
+
+# Performance & Resource Limits
+performance:
+  max_memory_mb: 2048
+  max_cpu_cores: 4
+  enable_profiling: false
+  
+  # Device-specific optimizations
+  devices:
+    raspberry_pi:
+      k_grid_size: 24
+      precision: "float32"
+      max_memory_mb: 512
+      
+    desktop:
+      k_grid_size: 64
+      precision: "float64"
+      max_memory_mb: 4096
+      
+    server:
+      k_grid_size: 128
+      precision: "float64"
+      max_memory_mb: 16384
+
+# Logging
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  file: "./ute2_hybrid.log"
+  console: true
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"

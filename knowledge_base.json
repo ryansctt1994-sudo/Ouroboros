@@ -1,0 +1,174 @@
+{
+  "version": "1.0",
+  "description": "AI Knowledge Base for UTe2 Hybrid System - Optimization heuristics and learned patterns",
+  
+  "material_properties": {
+    "UTe2": {
+      "description": "Uranium ditelluride - unconventional spin-triplet superconductor",
+      "critical_temperature_K": 1.6,
+      "reentrant_superconductivity": {
+        "enabled": true,
+        "field_range_T": [40, 65],
+        "description": "Reentrant superconducting region at high magnetic fields"
+      },
+      "crystal_structure": "orthorhombic",
+      "space_group": "Immm",
+      "lattice_parameters": {
+        "a": 4.0,
+        "b": 5.7,
+        "c": 13.4,
+        "unit": "Angstrom"
+      }
+    }
+  },
+  
+  "simulation_regions": {
+    "low_field": {
+      "description": "Normal superconducting phase at low fields",
+      "magnetic_field_range_T": [0, 20],
+      "optimal_parameters": {
+        "k_grid_size": 32,
+        "temperature_K": 0.5,
+        "convergence_threshold": 1e-6
+      }
+    },
+    "reentrant": {
+      "description": "Reentrant superconducting region at high fields",
+      "magnetic_field_range_T": [40, 65],
+      "optimal_parameters": {
+        "k_grid_size": 48,
+        "temperature_K": 0.3,
+        "convergence_threshold": 1e-7
+      },
+      "notes": "Requires finer grid for accurate gap structure"
+    },
+    "normal_state": {
+      "description": "Normal metallic state above Tc or between SC regions",
+      "magnetic_field_range_T": [20, 40],
+      "optimal_parameters": {
+        "k_grid_size": 24,
+        "temperature_K": 2.0,
+        "convergence_threshold": 1e-5
+      }
+    }
+  },
+  
+  "device_optimizations": {
+    "raspberry_pi": {
+      "recommended_k_grid": 24,
+      "precision": "float32",
+      "memory_limit_mb": 512,
+      "tips": [
+        "Use sparse matrix solvers",
+        "Enable aggressive caching",
+        "Reduce energy cutoff to 5 eV for faster convergence",
+        "Disable real-time plotting during computation"
+      ]
+    },
+    "laptop": {
+      "recommended_k_grid": 48,
+      "precision": "float64",
+      "memory_limit_mb": 2048,
+      "tips": [
+        "Balance between accuracy and speed",
+        "Use hybrid mode for large calculations",
+        "Enable GPU acceleration if available"
+      ]
+    },
+    "desktop": {
+      "recommended_k_grid": 64,
+      "precision": "float64",
+      "memory_limit_mb": 8192,
+      "tips": [
+        "Use dense solvers for better accuracy",
+        "Enable high-resolution phase diagrams",
+        "Parallel computation recommended"
+      ]
+    },
+    "hpc_cluster": {
+      "recommended_k_grid": 128,
+      "precision": "float64",
+      "memory_limit_mb": 32768,
+      "tips": [
+        "Distribute calculations across nodes",
+        "Use cloud mode for coordination",
+        "Enable detailed convergence monitoring"
+      ]
+    }
+  },
+  
+  "solver_strategies": {
+    "fast_preview": {
+      "k_grid_size": 16,
+      "max_iterations": 100,
+      "precision": "float32",
+      "use_case": "Quick parameter exploration"
+    },
+    "standard": {
+      "k_grid_size": 32,
+      "max_iterations": 500,
+      "precision": "float64",
+      "use_case": "Default production runs"
+    },
+    "high_accuracy": {
+      "k_grid_size": 64,
+      "max_iterations": 2000,
+      "precision": "float64",
+      "use_case": "Publication-quality results"
+    }
+  },
+  
+  "common_patterns": {
+    "gap_nodes": {
+      "description": "Nodal structure in superconducting gap",
+      "detection_method": "Look for sign changes in gap function",
+      "visualization": "Use contour plots with fine resolution"
+    },
+    "phase_transitions": {
+      "description": "Identify phase boundaries in T-H diagram",
+      "detection_method": "Monitor discontinuities in order parameter",
+      "recommended_resolution": 100
+    },
+    "spin_structure": {
+      "description": "Spin-triplet pairing structure",
+      "components": ["d-vector orientation", "spin polarization"],
+      "visualization": "Vector field plots on Fermi surface"
+    }
+  },
+  
+  "error_handling": {
+    "convergence_failure": {
+      "symptoms": "Solver does not converge within max_iterations",
+      "solutions": [
+        "Reduce k_grid_size",
+        "Increase max_iterations",
+        "Adjust initial guess",
+        "Check for numerical instabilities"
+      ]
+    },
+    "memory_overflow": {
+      "symptoms": "Out of memory error",
+      "solutions": [
+        "Switch to sparse solver",
+        "Reduce k_grid_size",
+        "Enable disk-based caching",
+        "Use lower precision (float32)"
+      ]
+    },
+    "invalid_parameters": {
+      "symptoms": "Physical parameters outside valid range",
+      "solutions": [
+        "Check temperature > 0",
+        "Verify magnetic field >= 0",
+        "Ensure grid size is power of 2 (recommended)"
+      ]
+    }
+  },
+  
+  "learned_insights": {
+    "description": "AI-learned patterns from simulation history",
+    "patterns": [],
+    "last_updated": null,
+    "total_simulations": 0
+  }
+}
