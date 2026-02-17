@@ -1,9 +1,18 @@
 #!/usr/bin/env python3
 """Test EDEN ECS Core"""
 import sys
-sys.path.insert(0, '.')
+import os
 
-from core import World, EntityType
+# Add parent directory to path so we can import EDEN-ECS modules
+PARENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PARENT_DIR not in sys.path:
+    sys.path.insert(0, PARENT_DIR)
+
+# Import using absolute path through parent
+import importlib
+eden_ecs = importlib.import_module('EDEN-ECS')
+World = eden_ecs.World
+EntityType = eden_ecs.EntityType
 
 print("🔥 Testing EDEN ECS Core\n")
 
