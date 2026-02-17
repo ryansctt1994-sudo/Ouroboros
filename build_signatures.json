@@ -1,0 +1,12 @@
+{
+  "vectors.json": "ea7e461c4548c3d371f3e21bb86e5f033074cf51b056a24fa9215d08f5d467df",
+  "python-bridge/eden_ecs/__init__.py": "d55e36e9ab80ff9e40d2c4264989fa11bb2212c9611430d07966de357c01b121",
+  "python-bridge/eden_ecs/core.py": "4b571a91fa14860d9e84edc7fdcd4b598219921eb2865b25dbbf0222b724402f",
+  "python-bridge/eden_ecs/systems.py": "cf9c97e0e18ea89f0e9e48a639a8e09050f6afaa64979bae6dff89873884309b",
+  "python-bridge/eden_ecs/components.py": "e17d272d5d79e765c010db4d757a7ee29afd552ef98330fb61de1c66c09f2ecc",
+  "python-bridge/eden_ecs/adapters/__init__.py": "05ef5761fe044edd78fe4ac5924b169cb8223a35bf2472fd87908531102a72e6",
+  "tools/vectorize.py": "5e6ff52b36521788434ee54ece0c2c49f544524a27aff0a988c5a8c5213dacfa",
+  "tools/runtime_validator.py": "917f1fbc9686e8afcb114627e2ffa407410114961e0dcfbfa15c343661b71cff",
+  "tools/manuscript_validator.py": "625223177887ccf68ab14ec846b559cf7151967ee34bdf77ac1817d7231ca8a5",
+  "tools/integration_orchestrator.py": "18101ac4d02d42e8ece657e46f411d50f2c2713fc471e43dd31bf20f2fb55365"
+}
