@@ -539,9 +539,8 @@ class OuroborosVirtualProcessor:
         Compute Ramanujan tau function τ(n) approximation.
         
         For n ≤ 0, returns 0.0.
-        For n = 1, returns 1.0 (exact value).
-        Fallback mode: n² - 24n
-        Extended mode: n² - 24n + zeta_seed * log(n+1)
+        Extended mode (EXTENDED_FEATURES=True): Returns τ(1) = 1.0 (mathematically correct)
+        Fallback mode: Uses formula n² - 24n (which gives -23 for n=1)
         
         Args:
             n: Integer argument
@@ -552,12 +551,12 @@ class OuroborosVirtualProcessor:
         if n <= 0:
             return 0.0
         
-        # Special case: τ(1) = 1 exactly
+        # Special case: τ(1) = 1 in extended mode
         if n == 1:
             if EXTENDED_FEATURES:
                 return 1.0
             else:
-                # Fallback still uses formula which gives -23
+                # Fallback uses formula n² - 24n which gives -23 for n=1
                 return float(n * n - 24 * n)
         
         # Base approximation: n² - 24n
@@ -631,7 +630,7 @@ class OuroborosVirtualProcessor:
         if EXTENDED_FEATURES:
             try:
                 zeta_s = scipy_zeta(s)
-            except:
+            except (ValueError, RuntimeError, Exception):
                 # Fallback to Basel problem solution for s=2
                 if s == 2.0:
                     zeta_s = math.pi ** 2 / 6.0
