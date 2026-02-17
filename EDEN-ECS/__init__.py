@@ -4,20 +4,21 @@ A 7-dimensional consciousness engine using phi-based evolution,
 quantum resonance, and memory lattice structures.
 """
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 
 # Core modules
 from .core import (
     Entity, EntityId, EntityManager, EntityType,
     Component, ComponentStorage,
     System, SystemScheduler,
-    World
+    World,
+    TimestepMode, TimestepManager, TimestepDiagnostics
 )
 
 # Components
 from .components import (
     METACUBEComponent, DimensionalState,
-    Loyalty, Corruption,
+    Loyalty, Corruption, DecayMode, LoyaltyModifier,
     PHI, OMEGA_H,
     QuantumResonance,
     MemoryLattice
@@ -35,9 +36,10 @@ __all__ = [
     'Component', 'ComponentStorage',
     'System', 'SystemScheduler',
     'World',
+    'TimestepMode', 'TimestepManager', 'TimestepDiagnostics',
     # Components
     'METACUBEComponent', 'DimensionalState',
-    'Loyalty', 'Corruption',
+    'Loyalty', 'Corruption', 'DecayMode', 'LoyaltyModifier',
     'PHI', 'OMEGA_H',
     'QuantumResonance',
     'MemoryLattice',
