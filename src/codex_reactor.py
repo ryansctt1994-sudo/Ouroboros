@@ -58,7 +58,7 @@ class Event:
     event_type: EventType
     author: Author
     payload: Dict[str, Any]
-    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat().replace('+00:00', 'Z'))
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%S.%fZ'))
     event_id: Optional[str] = None
     
     def __post_init__(self):
@@ -316,7 +316,7 @@ class Tablet:
         for line in content.strip().split('\n'):
             if line:
                 entry_dict = json.loads(line)
-                # Reconstruct entry (simplified - full reconstruction would be more complex)
+                # Store as dictionary for consistency
                 self.entries.append(entry_dict)
     
     def append(self, event: Event, signature: SignatureResult) -> ManifestEntry:
@@ -330,6 +330,7 @@ class Tablet:
             The created ManifestEntry
         """
         sequence = len(self.entries)
+        # Get previous hash from last entry (which is a dict)
         previous_hash = self.entries[-1]["entry_hash"] if self.entries else "0" * 64
         
         entry = ManifestEntry(

@@ -80,16 +80,20 @@ class SovereignSigner:
         self._signer = oqs.Signature("Dilithium5")
         
         if private_key is not None:
-            self._private_key = private_key
-            # Derive public key from private key
-            # Note: liboqs doesn't directly support this, so we generate new keys
-            self._public_key = self._signer.generate_keypair()
-            self._private_key = self._signer.export_secret_key()
-        else:
-            # Generate new key pair
-            self._public_key = self._signer.generate_keypair()
-            self._private_key = self._signer.export_secret_key()
+            # For liboqs, we cannot directly restore from private key alone
+            # This is a limitation of the current implementation
+            # In production, you would store both private and public keys
+            # For now, we generate new keys and warn
+            import warnings
+            warnings.warn(
+                "liboqs does not support restoring from private key alone. "
+                "Generating new keypair. Store both public and private keys for restoration.",
+                RuntimeWarning
+            )
         
+        # Generate new key pair
+        self._public_key = self._signer.generate_keypair()
+        self._private_key = self._signer.export_secret_key()
         self.public_key = self._public_key.hex()
     
     def _init_hmac_fallback(self, private_key: Optional[bytes] = None):
@@ -143,7 +147,7 @@ class SovereignSigner:
             signature=signature_bytes.hex(),
             public_key=self.public_key,
             algorithm=self.algorithm,
-            timestamp=datetime.now(UTC).isoformat().replace('+00:00', 'Z')
+            timestamp=datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
         )
     
     def verify(self, data: Any, signature: str, public_key: str) -> bool:
