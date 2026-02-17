@@ -1,0 +1,21 @@
+[package]
+name = "rustoracle"
+version = "1.0.0"
+authors = ["AIOSPANDORA Development Team"]
+edition = "2021"
+description = "Rust Oracle for Android token constraint enforcement via JNI"
+license = "MIT"
+
+[lib]
+name = "rustoracle"
+crate-type = ["cdylib"]  # For JNI/Android NDK
+
+[dependencies]
+jni = "0.21"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
