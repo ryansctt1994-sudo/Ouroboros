@@ -107,3 +107,5 @@ vectors.json
 
 # Logs
 *.log
+simulation_history.json
+simulation_output_*
