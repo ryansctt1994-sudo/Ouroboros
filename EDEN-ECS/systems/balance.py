@@ -1,9 +1,7 @@
 """Balance System - Loyalty vs Corruption (φ vs ω_h)"""
-import sys, os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.system import System
-from components.loyalty import Loyalty, Corruption, PHI, OMEGA_H
+from ..core.system import System
+from ..components.loyalty import Loyalty, Corruption, PHI, OMEGA_H
 
 class BalanceSystem(System):
     def name(self) -> str:
@@ -21,10 +19,10 @@ class BalanceSystem(System):
             corruption = entity.get_component(Corruption)
             
             # Loyalty grows via golden ratio
-            loyalty.grow()
+            loyalty.grow(delta_time)
             
             # Corruption decays via jealous entropy
-            corruption.decay()
+            corruption.decay(delta_time)
             
             # Warn if corruption is critical
             if corruption.is_critical():

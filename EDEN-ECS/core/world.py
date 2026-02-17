@@ -1,14 +1,13 @@
 """World container"""
 from typing import List, Type
 from .entity import Entity, EntityManager, EntityType
-from .component import Component, ComponentStorage
+from .component import Component
 from .system import System, SystemScheduler
 
 class World:
     def __init__(self, name: str = "EDEN-Cosmos"):
         self.name = name
         self.entity_manager = EntityManager()
-        self.component_storages = {}
         self.scheduler = SystemScheduler()
         self.time = 0.0
         self.metrics = {'ticks': 0, 'entities_created': 0}
@@ -19,10 +18,6 @@ class World:
         return entity
     
     def add_component(self, entity: Entity, component: Component) -> None:
-        comp_type = component.__class__.__name__
-        if comp_type not in self.component_storages:
-            self.component_storages[comp_type] = ComponentStorage()
-        self.component_storages[comp_type].add(entity.id, component)
         entity.add_component(component)
     
     def add_system(self, system: System) -> None:

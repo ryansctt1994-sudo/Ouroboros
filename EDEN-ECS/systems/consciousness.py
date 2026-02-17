@@ -1,11 +1,7 @@
 """Consciousness Evolution System"""
-import sys
-import os
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from core.system import System
-from components.metacube import METACUBEComponent
+from ..core.system import System
+from ..components.metacube import METACUBEComponent
 
 class ConsciousnessSystem(System):
     def name(self) -> str:
