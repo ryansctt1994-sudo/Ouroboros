@@ -13,7 +13,7 @@ from collections import deque
 
 from src.dna_helix_magnetar import QuaternionNodeBalancer, TensorGradientSystem
 from src.ggcc.coupling_interface import CouplingInterface
-from ouroboros_processor import OuroborosVirtualProcessor
+from ouroboros_processor import TaskScheduler
 
 
 # ============================================================================
@@ -97,8 +97,8 @@ class TestQuaternionSafeNormalization:
         assert np.isclose(np.linalg.norm(result), 1.0, atol=1e-6)
     
     def test_ouroboros_quaternion_state_zero_norm_fallback(self):
-        """Verify OuroborosVirtualProcessor.quaternion_state uses identity fallback."""
-        processor = OuroborosVirtualProcessor()
+        """Verify TaskScheduler.quaternion_state uses identity fallback."""
+        processor = TaskScheduler()
         
         # Test with normal values - should work without errors
         quat = processor.quaternion_state(0.0, 0.0)
@@ -192,15 +192,15 @@ class TestDequeHistoryEviction:
         assert len(coupling.state_history) <= coupling.state_history.maxlen
     
     def test_ouroboros_monitoring_data_uses_deque(self):
-        """Verify OuroborosVirtualProcessor uses deque for monitoring_data."""
-        processor = OuroborosVirtualProcessor()
+        """Verify TaskScheduler uses deque for monitoring_data."""
+        processor = TaskScheduler()
         
         assert isinstance(processor._monitoring_data, deque)
         assert processor._monitoring_data.maxlen == 1000
     
     def test_ouroboros_monitoring_data_auto_eviction(self):
         """Verify monitoring_data auto-evicts old entries."""
-        processor = OuroborosVirtualProcessor()
+        processor = TaskScheduler()
         
         # Add more than maxlen entries (disable rate limiting)
         for i in range(1500):
@@ -264,8 +264,8 @@ class TestStabilizingFixesIntegration:
             assert len(bucket) <= bucket.maxlen
     
     def test_ouroboros_processor_with_all_fixes(self):
-        """Test OuroborosVirtualProcessor with safe quaternion norm and deque."""
-        processor = OuroborosVirtualProcessor()
+        """Test TaskScheduler with safe quaternion norm and deque."""
+        processor = TaskScheduler()
         
         # Exercise the monitoring system (disable rate limiting)
         for i in range(50):
