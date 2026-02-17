@@ -191,7 +191,7 @@ class TelemetryClient:
         self._channel = None
         self._stub = None
         self._enabled = GRPC_AVAILABLE
-        self._queue: asyncio.Queue = asyncio.Queue(maxsize=1000)
+        self._queue = None  # Created lazily in connect()
         self._background_task = None
     
     async def connect(self):
@@ -203,6 +203,10 @@ class TelemetryClient:
         try:
             # Create async channel
             self._channel = grpc_aio.insecure_channel(self.endpoint)
+            
+            # Create queue in async context
+            self._queue = asyncio.Queue(maxsize=1000)
+            
             # Note: In production, use generated stub from protobuf
             logger.info(f"Connected to telemetry server at {self.endpoint}")
             
@@ -227,7 +231,7 @@ class TelemetryClient:
     
     async def send_metric(self, name: str, value: float, labels: Optional[Dict] = None):
         """Send a metric asynchronously."""
-        if not self._enabled:
+        if not self._enabled or self._queue is None:
             return
         
         metric_data = {

@@ -14,7 +14,7 @@ import functools
 import logging
 import time
 from typing import Callable, Any, Dict, Optional
-from collections import defaultdict
+from collections import defaultdict, deque
 from threading import Lock
 
 logger = logging.getLogger("eden_performance")
@@ -177,7 +177,7 @@ class LRUCache:
         """
         self.max_size = max_size
         self._cache = {}
-        self._access_order = []
+        self._access_order = deque()  # Using deque for O(1) popleft
         self._lock = Lock()
         self._hits = 0
         self._misses = 0
@@ -202,8 +202,8 @@ class LRUCache:
                 # Update existing
                 self._access_order.remove(key)
             elif len(self._cache) >= self.max_size:
-                # Evict least recently used
-                lru_key = self._access_order.pop(0)
+                # Evict least recently used - O(1) operation
+                lru_key = self._access_order.popleft()
                 del self._cache[lru_key]
             
             self._cache[key] = value

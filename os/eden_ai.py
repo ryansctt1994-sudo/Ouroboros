@@ -175,10 +175,11 @@ class EdenAI:
             docstring_lower = vector.get('docstring', '').lower()
             module_lower = vector.get('module', '').lower()
             
-            # Use any() for short-circuit evaluation
+            # Use set intersection for faster keyword matching (avoid redundant computation)
             name_words = set(name_lower.split())
-            if keyword_set & name_words:
-                score += 2 * len(keyword_set & name_words)
+            name_matches = keyword_set & name_words
+            if name_matches:
+                score += 2 * len(name_matches)
             
             # Check docstring for any keyword match
             for keyword in keywords:
