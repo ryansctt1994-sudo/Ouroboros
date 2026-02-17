@@ -82,17 +82,27 @@ class QuantumAdapter:
         if qubit_index >= self.num_qubits:
             raise ValueError(f"Qubit index {qubit_index} out of range")
         
-        # Hadamard matrix
-        H = np.array([[1, 1], [1, -1]], dtype=complex) / np.sqrt(2)
+        # Hadamard matrix: (1/√2) * [[1, 1], [1, -1]]
+        H_val = 1.0 / np.sqrt(2)
         
-        # Apply to full state
+        # Apply Hadamard by transforming amplitudes
         new_amplitudes = np.zeros_like(self.state.amplitudes)
+        
         for i in range(self.dimension):
+            # Get the bit value at qubit_index position
             bit = (i >> qubit_index) & 1
+            # Compute the index with the qubit flipped
             i_flipped = i ^ (1 << qubit_index)
             
-            new_amplitudes[i] += H[bit, 0] * self.state.amplitudes[i & ~(1 << qubit_index)]
-            new_amplitudes[i] += H[bit, 1] * self.state.amplitudes[i_flipped & ~(1 << qubit_index) | (1 << qubit_index)]
+            # Apply Hadamard transformation
+            if bit == 0:
+                # |0⟩ → (|0⟩ + |1⟩)/√2
+                new_amplitudes[i] += H_val * self.state.amplitudes[i]
+                new_amplitudes[i_flipped] += H_val * self.state.amplitudes[i]
+            else:
+                # |1⟩ → (|0⟩ - |1⟩)/√2
+                new_amplitudes[i_flipped] += H_val * self.state.amplitudes[i]
+                new_amplitudes[i] -= H_val * self.state.amplitudes[i]
         
         self.state.amplitudes = new_amplitudes
         self.state._normalize()

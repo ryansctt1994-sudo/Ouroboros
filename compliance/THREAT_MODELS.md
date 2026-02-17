@@ -19,7 +19,7 @@ Using STRIDE framework:
 - **R**epudiation: Denying actions
 - **I**nformation Disclosure: Exposing sensitive data
 - **D**enial of Service: Making system unavailable
-- **E**levation of Privilege**: Gaining unauthorized access
+- **E**levation of Privilege: Gaining unauthorized access
 
 ---
 

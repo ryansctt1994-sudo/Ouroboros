@@ -19,6 +19,9 @@ class TeleportAdapter:
     contexts, worlds, or system boundaries while maintaining coherence.
     """
     
+    # Placeholder encryption key (replace with proper key management in production)
+    _PLACEHOLDER_KEY = "OUROBOROS_TELEPORT_KEY"
+    
     def __init__(self, use_encryption: bool = True):
         """
         Initialize the teleport adapter.
@@ -163,19 +166,17 @@ class TeleportAdapter:
         In production, use proper encryption like AES.
         """
         # Simple XOR with key for demonstration
-        key = "OUROBOROS_TELEPORT_KEY"
         encrypted = bytearray()
         for i, char in enumerate(state_snapshot.encode()):
-            encrypted.append(char ^ ord(key[i % len(key)]))
+            encrypted.append(char ^ ord(self._PLACEHOLDER_KEY[i % len(self._PLACEHOLDER_KEY)]))
         return encrypted.hex()
     
     def _decrypt_state(self, encrypted_data: str) -> str:
         """Decrypt state using XOR (placeholder)."""
-        key = "OUROBOROS_TELEPORT_KEY"
         encrypted = bytearray.fromhex(encrypted_data)
         decrypted = bytearray()
         for i, byte in enumerate(encrypted):
-            decrypted.append(byte ^ ord(key[i % len(key)]))
+            decrypted.append(byte ^ ord(self._PLACEHOLDER_KEY[i % len(self._PLACEHOLDER_KEY)]))
         return decrypted.decode()
     
     def _transform_component(self, component: Dict[str, Any]) -> Dict[str, Any]:
