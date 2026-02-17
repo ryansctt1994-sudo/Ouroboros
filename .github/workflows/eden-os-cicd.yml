@@ -1,0 +1,273 @@
+name: EDEN OS - CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'os/**'
+      - '.github/workflows/eden-os-cicd.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'os/**'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/eden-ai
+
+jobs:
+  # ==============================
+  # Matrix Testing
+  # ==============================
+  test:
+    name: Test on ${{ matrix.os }} - Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.9', '3.10', '3.11']
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-asyncio
+    
+    - name: Run tests
+      run: |
+        cd os
+        pytest tests/ -v --tb=short --color=yes
+    
+    - name: Run tests with coverage
+      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+      run: |
+        cd os
+        pytest tests/ --cov=. --cov-report=xml --cov-report=term-missing
+    
+    - name: Upload coverage reports
+      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./os/coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  # ==============================
+  # Performance Benchmarks
+  # ==============================
+  benchmark:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-benchmark
+    
+    - name: Run benchmarks
+      run: |
+        cd os
+        # Create a simple benchmark test
+        python3 << 'EOF'
+        import time
+        import sys
+        sys.path.insert(0, '.')
+        
+        from performance import profile, get_profiler, LRUCache
+        
+        # Benchmark cache operations
+        cache = LRUCache(max_size=100)
+        start = time.perf_counter()
+        for i in range(10000):
+            cache.put(f"key_{i % 1000}", f"value_{i}")
+            cache.get(f"key_{i % 1000}")
+        duration = time.perf_counter() - start
+        
+        print(f"Cache operations: {duration*1000:.2f}ms for 20k ops")
+        print(f"Stats: {cache.get_stats()}")
+        
+        # Benchmark profiler
+        @profile
+        def test_function():
+            time.sleep(0.001)
+        
+        start = time.perf_counter()
+        for i in range(100):
+            test_function()
+        duration = time.perf_counter() - start
+        
+        print(f"Profiler overhead: {duration*1000:.2f}ms for 100 calls")
+        print(get_profiler().report())
+        EOF
+
+  # ==============================
+  # Build Docker Images
+  # ==============================
+  build-images:
+    name: Build Container Images
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      packages: write
+    
+    strategy:
+      matrix:
+        dockerfile: [Dockerfile.ai, Dockerfile.alpine]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+        flavor: |
+          suffix=${{ matrix.dockerfile == 'Dockerfile.alpine' && '-alpine' || '' }}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: os/${{ matrix.dockerfile }}
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        platforms: linux/amd64,linux/arm64
+
+  # ==============================
+  # Security Scanning
+  # ==============================
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build-images
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy results to GitHub Security
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # ==============================
+  # Load Testing
+  # ==============================
+  load-test:
+    name: Load Testing
+    runs-on: ubuntu-latest
+    needs: build-images
+    if: github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Compose
+      run: |
+        docker compose version
+    
+    - name: Start services
+      run: |
+        cd os
+        # Create a simple docker-compose for testing
+        cat > docker-compose.test.yml << 'EOF'
+        version: '3.8'
+        services:
+          eden-ai:
+            image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ports:
+              - "8080:8080"
+            environment:
+              - EDEN_LOG_LEVEL=WARNING
+        EOF
+        docker compose -f docker-compose.test.yml up -d
+        sleep 10
+    
+    - name: Install Apache Bench
+      run: sudo apt-get update && sudo apt-get install -y apache2-utils
+    
+    - name: Run load test
+      run: |
+        # Simple health check load test
+        ab -n 1000 -c 10 http://localhost:8080/health || true
+    
+    - name: Stop services
+      if: always()
+      run: |
+        cd os
+        docker compose -f docker-compose.test.yml down
+
+  # ==============================
+  # Deployment Notification
+  # ==============================
+  notify:
+    name: Deployment Notification
+    runs-on: ubuntu-latest
+    needs: [test, build-images]
+    if: always() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    
+    steps:
+    - name: Send notification
+      run: |
+        echo "CI/CD Pipeline completed!"
+        echo "Tests: ${{ needs.test.result }}"
+        echo "Images: ${{ needs.build-images.result }}"

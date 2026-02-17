@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: eden-ai
+  namespace: default
+  labels:
+    app: eden-ai
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: http
+    protocol: TCP
+    name: http
+  - port: 9090
+    targetPort: metrics
+    protocol: TCP
+    name: metrics
+  - port: 50051
+    targetPort: grpc
+    protocol: TCP
+    name: grpc
+  selector:
+    app: eden-ai
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eden-ai-external
+  namespace: default
+  labels:
+    app: eden-ai
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: http
+    protocol: TCP
+    name: http
+  - port: 50051
+    targetPort: grpc
+    protocol: TCP
+    name: grpc
+  selector:
+    app: eden-ai
