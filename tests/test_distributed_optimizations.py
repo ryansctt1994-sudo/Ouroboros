@@ -229,7 +229,7 @@ class TestAPIVersionGuard:
         # Different major version - not compatible
         incompatible = guard.check_compatibility('ouroboros', '3.0.0')
         
-        assert incompatible == False
+        assert not incompatible
     
     def test_register_adapter(self):
         """Test adapter registration."""
@@ -333,7 +333,7 @@ class TestGlobalConfigRegistry:
         registry.set('test.key', 'value')
         deleted = registry.delete('test.key')
         
-        assert deleted == True
+        assert deleted
         assert registry.get('test.key') is None
     
     def test_validator(self):
@@ -348,11 +348,11 @@ class TestGlobalConfigRegistry:
         
         # Valid value
         success = registry.set('test.number', 10)
-        assert success == True
+        assert success
         
         # Invalid value
         failed = registry.set('test.number', -5)
-        assert failed == False
+        assert not failed
     
     def test_watcher(self):
         """Test config watchers."""

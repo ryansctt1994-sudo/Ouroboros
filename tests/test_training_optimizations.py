@@ -123,7 +123,7 @@ class TestDynamicTensorWardenV2:
         tensor = np.zeros((100, 100))
         success = warden.register_tensor('test_tensor', tensor, size_mb=1)
         
-        assert success == True
+        assert success
         assert 'test_tensor' in warden._tensors
     
     def test_request_tensor(self):
@@ -147,7 +147,7 @@ class TestDynamicTensorWardenV2:
         
         success = warden.release_tensor('test_tensor')
         
-        assert success == True
+        assert success
         assert 'test_tensor' not in warden._tensors
     
     def test_eviction(self):
@@ -166,7 +166,7 @@ class TestDynamicTensorWardenV2:
         success = warden.register_tensor('tensor2', tensor2, size_mb=5)
         
         # Should succeed after eviction
-        assert success == True
+        assert success
         assert warden._eviction_count > 0
     
     def test_critical_tensor(self):

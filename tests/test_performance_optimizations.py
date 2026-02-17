@@ -145,7 +145,7 @@ class TestAdaptiveBackpressureManagerV2:
         item = {'data': 'test'}
         success = manager.enqueue('test_queue', item)
         
-        assert success == True
+        assert success
         
         dequeued = manager.dequeue('test_queue')
         assert dequeued == item
@@ -232,7 +232,7 @@ class TestGPUMemoryOptimizer:
         block_id = optimizer.allocate_pinned(size_mb=10)
         success = optimizer.zero_copy_transfer(block_id, 'host_to_device')
         
-        assert success == True
+        assert success
         assert optimizer._zero_copy_count > 0
     
     def test_memory_limit(self):
@@ -296,7 +296,7 @@ class TestGPUMemoryOptimizer:
         
         success = optimizer.resize_pool(200)
         
-        assert success == True
+        assert success
         assert optimizer.pool_size_mb == 200
 
 
