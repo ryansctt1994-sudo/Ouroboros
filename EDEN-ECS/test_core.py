@@ -28,7 +28,7 @@ print(f"✅ Created entity: {bunny.entity_type.value} {bunny.name}")
 print(f"\n📊 Total entities: {world.entity_manager.count()}")
 
 for i in range(10):
-    world.tick()
+    world.tick(delta_time=1.0/60.0)
 
 print(f"📊 Final time: {world.time:.2f}s")
 print(f"📊 Total ticks: {world.metrics['ticks']}")
