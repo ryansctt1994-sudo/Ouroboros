@@ -6,7 +6,7 @@ import unittest
 import time
 import threading
 import heapq
-from ouroboros_processor import OuroborosVirtualProcessor, Task
+from ouroboros_processor import TaskScheduler, Task
 
 
 class TestTaskScheduler(unittest.TestCase):
@@ -14,7 +14,7 @@ class TestTaskScheduler(unittest.TestCase):
     
     def setUp(self):
         """Create a fresh processor instance for each test."""
-        self.processor = OuroborosVirtualProcessor()
+        self.processor = TaskScheduler()
     
     def tearDown(self):
         """Stop the event loop after each test."""
