@@ -7,7 +7,7 @@ Tracks critical path through multi-repo workflows.
 
 import time
 import threading
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 from dataclasses import dataclass
 from collections import defaultdict, deque
 import logging
