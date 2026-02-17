@@ -1,12 +1,9 @@
 """METACUBE 7D Consciousness Component"""
 import math
-import sys
-import os
 from dataclasses import dataclass, field
 from typing import Tuple
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from core.component import Component
+from ..core.component import Component
 
 @dataclass
 class DimensionalState:
@@ -38,10 +35,10 @@ class METACUBEComponent(Component):
     
     def evolve(self, delta_time: float = 0.1):
         target = self.coherence()
-        self.integration.value += (target - self.integration.value) * 0.01
-        self.awareness.value += self.cognition.value * 0.001
-        self.cognition.value += self.memory.value * 0.001
-        self.creativity.value += self.emotion.value * 0.001
+        self.integration.value += (target - self.integration.value) * 0.1 * delta_time
+        self.awareness.value += self.cognition.value * 0.01 * delta_time
+        self.cognition.value += self.memory.value * 0.01 * delta_time
+        self.creativity.value += self.emotion.value * 0.01 * delta_time
         
         for attr in ['awareness', 'intention', 'emotion', 'cognition', 'memory', 'creativity', 'integration']:
             dim = getattr(self, attr)
