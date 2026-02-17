@@ -57,9 +57,9 @@ class QuantumSystemAdapter:
         """
         return {
             "QuantumResonance": "eden_ecs.components.QuantumResonance",
-            "quantum_phase": "field:quantum_phase",
-            "coherence": "field:coherence",
-            "frequency_hz": "field:frequency_hz",
+            "quantum_phase": "field:phase",
+            "amplitude": "field:amplitude",
+            "frequency": "field:frequency",
         }
     
     def validate_quantum_state(self, entity: Entity) -> Dict[str, Any]:
@@ -82,17 +82,17 @@ class QuantumSystemAdapter:
         quantum = entity.get_component(QuantumResonance)
         
         # Validate quantum parameters
-        if quantum.frequency_hz != 750e12:  # 750 THz UV
+        if quantum.frequency != 750e12:  # 750 THz UV
             return {
                 "valid": False,
-                "reason": f"Invalid frequency: {quantum.frequency_hz} (expected 750 THz)",
+                "reason": f"Invalid frequency: {quantum.frequency} (expected 750 THz)",
                 "entity_id": entity.entity_id
             }
         
-        if not (0.0 <= quantum.coherence <= 1.0):
+        if not (0.0 <= quantum.amplitude <= 10.0):  # Reasonable amplitude range
             return {
                 "valid": False,
-                "reason": f"Coherence out of range: {quantum.coherence}",
+                "reason": f"Amplitude out of range: {quantum.amplitude}",
                 "entity_id": entity.entity_id
             }
         
@@ -100,7 +100,7 @@ class QuantumSystemAdapter:
             "valid": True,
             "entity_id": entity.entity_id,
             "quantum_phase": quantum.phase,
-            "coherence": quantum.coherence
+            "amplitude": quantum.amplitude
         }
     
     def get_runtime_vectors(self, world: World) -> List[Dict[str, Any]]:
@@ -128,8 +128,8 @@ class QuantumSystemAdapter:
                 "entity_id": entity.entity_id,
                 "entity_name": entity.name,
                 "quantum_phase": quantum.phase,
-                "coherence": quantum.coherence,
-                "frequency_hz": quantum.frequency_hz,
+                "amplitude": quantum.amplitude,
+                "frequency_hz": quantum.frequency,
                 "timestamp": time.time()
             }
             vectors.append(vector)

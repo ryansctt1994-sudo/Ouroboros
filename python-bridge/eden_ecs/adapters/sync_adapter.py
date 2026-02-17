@@ -91,18 +91,18 @@ class SynchronizationSystemAdapter:
         hyphal = entity.get_component(HyphalNodeComponent)
         
         # Validate node state
-        if hyphal.slot_id < 0:
+        if hyphal.forge_slot < -1:
             return {
                 "valid": False,
-                "reason": f"Invalid slot_id: {hyphal.slot_id}",
+                "reason": f"Invalid forge_slot: {hyphal.forge_slot}",
                 "entity_id": entity.entity_id
             }
         
         return {
             "valid": True,
             "entity_id": entity.entity_id,
-            "slot_id": hyphal.slot_id,
-            "pll_phase": hyphal.pll_phase,
+            "forge_slot": hyphal.forge_slot,
+            "phase": hyphal.phase,
             "coherence": consciousness.coherence()
         }
     
@@ -130,10 +130,10 @@ class SynchronizationSystemAdapter:
                 "name": f"MycelialNode_{entity.entity_id[:8]}",
                 "entity_id": entity.entity_id,
                 "entity_name": entity.name,
-                "slot_id": hyphal.slot_id,
-                "pll_phase": hyphal.pll_phase,
-                "pll_locked": hyphal.pll_locked,
-                "neighbors": list(hyphal.neighbor_phases.keys()),
+                "forge_slot": hyphal.forge_slot,
+                "phase": hyphal.phase,
+                "synchronized": hyphal.synchronized,
+                "neighbors": hyphal.neighbor_ids,
                 "coherence": consciousness.coherence(),
                 "timestamp": time.time()
             }
