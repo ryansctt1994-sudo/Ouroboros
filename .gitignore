@@ -107,3 +107,7 @@ vectors.json
 
 # Logs
 *.log
+
+# UTe2 Hybrid System cache directories
+ute2_cache/
+test_cache/
