@@ -11,16 +11,21 @@ from pathlib import Path
 import sys
 import os
 
-# Add EDEN-ECS to path
-EDEN_ECS_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, EDEN_ECS_DIR)
+# Add parent directory to path so we can import EDEN-ECS modules
+PARENT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if PARENT_DIR not in sys.path:
+    sys.path.insert(0, PARENT_DIR)
 
-from core.world import World
-from core.entity import EntityType
-from components.metacube import METACUBEComponent
-from components.loyalty import Loyalty, Corruption
-from systems.consciousness import ConsciousnessSystem
-from systems.balance import BalanceSystem
+# Import using absolute path through parent
+import importlib
+eden_ecs = importlib.import_module('EDEN-ECS')
+World = eden_ecs.World
+EntityType = eden_ecs.EntityType
+METACUBEComponent = eden_ecs.METACUBEComponent
+Loyalty = eden_ecs.Loyalty
+Corruption = eden_ecs.Corruption
+ConsciousnessSystem = eden_ecs.ConsciousnessSystem
+BalanceSystem = eden_ecs.BalanceSystem
 
 class HistoryTracker:
     """Tracks simulation history for analysis"""
