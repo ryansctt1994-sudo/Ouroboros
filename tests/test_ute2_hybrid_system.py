@@ -104,7 +104,7 @@ class TestSimulationCache:
         # Retrieve result
         cached = cache.get(params)
         assert cached is not None
-        assert cached['success'] == True
+        assert cached['success'] is True
         assert np.array_equal(cached['gap'], result['gap'])
     
     def test_cache_miss(self, test_config, temp_cache_dir):

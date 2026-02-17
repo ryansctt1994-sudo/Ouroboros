@@ -90,7 +90,7 @@ class HybridExecutionEngine:
         self.task_counter = 0
         self.completed_tasks: List[TaskResult] = []
         
-        # Internet availability (would check in real implementation)
+        # Internet availability (offline-first: defaults to False, would check in _check_internet() in production)
         self.internet_available = False
         
         logger.info(f"Hybrid Execution Engine initialized (mode={self.current_mode.value})")

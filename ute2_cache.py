@@ -154,7 +154,8 @@ class SimulationCache:
             
             # Check size limits
             data_size_mb = len(data) / (1024 * 1024)
-            if data_size_mb > self.max_size_mb / 10:  # Single entry max 10% of total
+            MAX_SINGLE_ENTRY_PERCENTAGE = 0.1  # Single entry can use max 10% of total cache
+            if data_size_mb > self.max_size_mb * MAX_SINGLE_ENTRY_PERCENTAGE:
                 logger.warning(f"Result too large to cache: {data_size_mb:.2f} MB")
                 return False
             

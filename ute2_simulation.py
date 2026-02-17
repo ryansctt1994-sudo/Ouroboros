@@ -114,7 +114,7 @@ class UTe2SimulationEngine:
         Delta = np.zeros((n_k, 2, 2), dtype=complex)
         
         # Critical temperature and field dependence
-        Tc = self.material.get('critical_temperature_K', 1.6)
+        Tc = self.material.get('critical_temperature_K', 1.6)  # Tc = critical temperature
         
         # BCS-like gap suppression with temperature
         gap_magnitude = 1.76 * Tc * np.sqrt(max(0, 1 - (temperature / Tc)**2))

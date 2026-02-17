@@ -237,9 +237,10 @@ class AIAdvisor:
         
         # Simple pattern detection (would use ML in full implementation)
         # For now, just track success rates by parameter ranges
-        if len(self.simulation_history) >= 10:
-            success_count = sum(1 for r in self.simulation_history[-10:] if r['success'])
-            logger.debug(f"Recent success rate: {success_count}/10")
+        RECENT_HISTORY_WINDOW = 10  # Number of recent simulations to analyze
+        if len(self.simulation_history) >= RECENT_HISTORY_WINDOW:
+            success_count = sum(1 for r in self.simulation_history[-RECENT_HISTORY_WINDOW:] if r['success'])
+            logger.debug(f"Recent success rate: {success_count}/{RECENT_HISTORY_WINDOW}")
     
     def _update_learned_insights(self):
         """Update learned insights in knowledge base"""
