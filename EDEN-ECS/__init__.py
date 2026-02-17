@@ -20,8 +20,8 @@ from .components import (
     METACUBEComponent, DimensionalState,
     Loyalty, Corruption, DecayMode, LoyaltyModifier,
     PHI, OMEGA_H,
-    QuantumResonance,
-    MemoryLattice
+    QuantumResonance, QuantumCircuit, QuantumGate, NoiseChannel,
+    MemoryLattice, MemoryBlock, MemoryAlignment
 )
 
 # Systems
@@ -41,8 +41,8 @@ __all__ = [
     'METACUBEComponent', 'DimensionalState',
     'Loyalty', 'Corruption', 'DecayMode', 'LoyaltyModifier',
     'PHI', 'OMEGA_H',
-    'QuantumResonance',
-    'MemoryLattice',
+    'QuantumResonance', 'QuantumCircuit', 'QuantumGate', 'NoiseChannel',
+    'MemoryLattice', 'MemoryBlock', 'MemoryAlignment',
     # Systems
     'ConsciousnessSystem',
     'BalanceSystem',
