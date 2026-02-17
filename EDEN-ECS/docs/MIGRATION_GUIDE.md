@@ -29,7 +29,7 @@ world.tick(delta_time=0.016)  # Manual timestep
 
 #### v2.0 (Recommended)
 ```python
-from EDEN-ECS import World, TimestepMode
+from EDEN_ECS import World, TimestepMode
 
 # Hybrid mode with automatic timestep management
 world = World(
@@ -63,7 +63,7 @@ loyalty.grow(delta_time=1.0)
 
 #### v2.0 (Enhanced)
 ```python
-from EDEN-ECS import Loyalty, DecayMode
+from EDEN_ECS import Loyalty, DecayMode
 
 # Four decay modes
 loyalty = Loyalty(
@@ -102,7 +102,7 @@ quantum.resonate(delta_time=0.1)
 
 #### v2.0 (Full quantum circuits)
 ```python
-from EDEN-ECS import QuantumResonance, QuantumCircuit, NoiseChannel
+from EDEN_ECS import QuantumResonance, QuantumCircuit, NoiseChannel
 
 quantum = QuantumResonance(frequency=528.0)
 
@@ -146,7 +146,7 @@ memory.decay(delta_time=0.1)
 
 #### v2.0 (Advanced allocation)
 ```python
-from EDEN-ECS import MemoryLattice, MemoryAlignment
+from EDEN_ECS import MemoryLattice, MemoryAlignment
 
 memory = MemoryLattice(max_capacity_bytes=1024*1024)
 
@@ -219,7 +219,7 @@ print(f"Fragmentation: {stats['fragmentation_count']}")
 ## Example: Full v2.0 Upgrade
 
 ```python
-from EDEN-ECS import (
+from EDEN_ECS import (
     World, EntityType,
     TimestepMode,
     Loyalty, DecayMode,

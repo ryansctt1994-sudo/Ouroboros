@@ -1,7 +1,7 @@
 """Hybrid Timestep System for EDEN-ECS v2.0.0"""
 from enum import Enum
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Tuple, List
 import time
 
 
@@ -57,7 +57,7 @@ class TimestepManager:
         self.diagnostics = TimestepDiagnostics()
         self._frame_times: list[float] = []
         
-    def update(self) -> tuple[list[float], float]:
+    def update(self) -> Tuple[List[float], float]:
         """
         Update timestep and return physics steps and interpolation alpha.
         
@@ -90,17 +90,17 @@ class TimestepManager:
         else:  # HYBRID
             return self._update_hybrid(frame_time)
     
-    def _update_fixed(self) -> tuple[list[float], float]:
+    def _update_fixed(self) -> Tuple[List[float], float]:
         """Fixed timestep mode - deterministic but may skip frames"""
         return ([self.fixed_timestep], 1.0)
     
-    def _update_variable(self, frame_time: float) -> tuple[list[float], float]:
+    def _update_variable(self, frame_time: float) -> Tuple[List[float], float]:
         """Variable timestep mode - smooth but non-deterministic"""
         # Clamp frame time to prevent huge jumps
         clamped_time = min(frame_time, self.max_accumulator)
         return ([clamped_time], 1.0)
     
-    def _update_hybrid(self, frame_time: float) -> tuple[list[float], float]:
+    def _update_hybrid(self, frame_time: float) -> Tuple[List[float], float]:
         """
         Hybrid mode - fixed timestep physics with variable rendering.
         Uses accumulator pattern to decouple physics from rendering.

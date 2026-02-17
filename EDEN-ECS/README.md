@@ -78,6 +78,7 @@ loyalty.add_modifier("boost", 5.0, duration=10.0)  # Temporary boost
 world.add_component(entity, loyalty)
 
 # Quantum circuit with noise modeling
+from EDEN_ECS import NoiseChannel
 quantum = QuantumResonance()
 circuit = quantum.create_circuit(num_qubits=3)
 circuit.h(0)
