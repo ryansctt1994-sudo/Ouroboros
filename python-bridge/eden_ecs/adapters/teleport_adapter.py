@@ -17,6 +17,11 @@ from ..components import SpatialLocation
 from ..systems import TeleportationSystem
 
 
+# Constants
+MAX_COORDINATE_MAGNITUDE = 1e6  # Maximum reasonable coordinate magnitude
+MAX_HISTORY_SIZE = 1000  # Maximum teleport history entries to keep
+
+
 class TeleportationSystemAdapter:
     """
     Adapter for TeleportationSystem integration with ECS validation framework.
@@ -83,10 +88,10 @@ class TeleportationSystemAdapter:
         
         # Validate coordinates (basic sanity checks)
         coords = [location.x, location.y, location.z]
-        if any(abs(c) > 1e6 for c in coords):
+        if any(abs(c) > MAX_COORDINATE_MAGNITUDE for c in coords):
             return {
                 "valid": False,
-                "reason": f"Coordinates out of range: ({location.x}, {location.y}, {location.z})",
+                "reason": f"Coordinates out of range: ({location.x}, {location.y}, {location.z}) (max magnitude {MAX_COORDINATE_MAGNITUDE})",
                 "entity_id": entity.entity_id
             }
         
@@ -193,8 +198,8 @@ class TeleportationSystemAdapter:
         self.teleport_history.append(history_entry)
         
         # Keep history bounded
-        if len(self.teleport_history) > 1000:
-            self.teleport_history = self.teleport_history[-1000:]
+        if len(self.teleport_history) > MAX_HISTORY_SIZE:
+            self.teleport_history = self.teleport_history[-MAX_HISTORY_SIZE:]
         
         return {
             "success": success,

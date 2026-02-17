@@ -17,6 +17,11 @@ from ..components import QuantumResonance
 from ..systems import QuantumSystem
 
 
+# Constants
+QUANTUM_RESONANCE_FREQUENCY = 750e12  # 750 THz UV
+MAX_QUANTUM_AMPLITUDE = 10.0  # Maximum reasonable amplitude
+
+
 class QuantumSystemAdapter:
     """
     Adapter for QuantumSystem integration with ECS validation framework.
@@ -82,17 +87,17 @@ class QuantumSystemAdapter:
         quantum = entity.get_component(QuantumResonance)
         
         # Validate quantum parameters
-        if quantum.frequency != 750e12:  # 750 THz UV
+        if quantum.frequency != QUANTUM_RESONANCE_FREQUENCY:
             return {
                 "valid": False,
-                "reason": f"Invalid frequency: {quantum.frequency} (expected 750 THz)",
+                "reason": f"Invalid frequency: {quantum.frequency} (expected {QUANTUM_RESONANCE_FREQUENCY} Hz)",
                 "entity_id": entity.entity_id
             }
         
-        if not (0.0 <= quantum.amplitude <= 10.0):  # Reasonable amplitude range
+        if not (0.0 <= quantum.amplitude <= MAX_QUANTUM_AMPLITUDE):
             return {
                 "valid": False,
-                "reason": f"Amplitude out of range: {quantum.amplitude}",
+                "reason": f"Amplitude out of range: {quantum.amplitude} (max {MAX_QUANTUM_AMPLITUDE})",
                 "entity_id": entity.entity_id
             }
         

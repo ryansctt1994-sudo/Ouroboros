@@ -126,17 +126,17 @@ def validate_quantum_state(self, entity: Entity) -> Dict[str, Any]:
     quantum = entity.get_component(QuantumResonance)
     
     # Validate 750 THz frequency
-    if quantum.frequency_hz != 750e12:
+    if quantum.frequency != 750e12:
         return {
             "valid": False,
-            "reason": f"Invalid frequency: {quantum.frequency_hz}"
+            "reason": f"Invalid frequency: {quantum.frequency}"
         }
     
-    # Validate coherence range [0, 1]
-    if not (0.0 <= quantum.coherence <= 1.0):
+    # Validate amplitude range [0.0, 10.0]
+    if not (0.0 <= quantum.amplitude <= 10.0):
         return {
             "valid": False,
-            "reason": f"Coherence out of range: {quantum.coherence}"
+            "reason": f"Amplitude out of range: {quantum.amplitude}"
         }
     
     return {"valid": True, "entity_id": entity.entity_id}
