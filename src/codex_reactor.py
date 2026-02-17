@@ -17,7 +17,7 @@ import json
 import os
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 from enum import Enum
@@ -58,7 +58,7 @@ class Event:
     event_type: EventType
     author: Author
     payload: Dict[str, Any]
-    timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat() + 'Z')
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat().replace('+00:00', 'Z'))
     event_id: Optional[str] = None
     
     def __post_init__(self):

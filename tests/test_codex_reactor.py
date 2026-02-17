@@ -479,9 +479,11 @@ class TestInvariants:
         
         # Verify each entry links to previous
         for i in range(1, len(entries)):
-            # Note: entries are dicts after being stored
-            # In production, we'd have proper object reconstruction
-            pass
+            # Verify that current entry's previous_hash matches prior entry's entry_hash
+            expected_prev_hash = entries[i-1].entry_hash
+            actual_prev_hash = entries[i].previous_hash
+            assert actual_prev_hash == expected_prev_hash, \
+                f"Entry {i} hash chain broken: expected {expected_prev_hash}, got {actual_prev_hash}"
     
     def test_burden_decay_by_phi(self):
         """Test that burden decays by PHI in propagation."""

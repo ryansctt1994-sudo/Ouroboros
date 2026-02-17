@@ -14,7 +14,7 @@ import json
 import os
 from typing import Optional, Dict, Any, Tuple
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, UTC
 
 
 # Try to import liboqs for post-quantum cryptography
@@ -143,7 +143,7 @@ class SovereignSigner:
             signature=signature_bytes.hex(),
             public_key=self.public_key,
             algorithm=self.algorithm,
-            timestamp=datetime.utcnow().isoformat() + 'Z'
+            timestamp=datetime.now(UTC).isoformat().replace('+00:00', 'Z')
         )
     
     def verify(self, data: Any, signature: str, public_key: str) -> bool:
