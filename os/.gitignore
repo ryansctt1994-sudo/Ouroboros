@@ -4,11 +4,19 @@ __pycache__/
 *$py.class
 *.so
 .Python
+*.egg-info/
+dist/
+build/
+
+# Models
+*.gguf
+models/
 
 # Testing
 .pytest_cache/
 .coverage
 htmlcov/
+*.cover
 
 # Logs
 *.log
@@ -18,7 +26,22 @@ htmlcov/
 .idea/
 *.swp
 *.swo
+*~
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Environment
+.env
+*.pid
+
+# Generated protobuf files
+*_pb2.py
+*_pb2_grpc.py
+*.pb.go
+*.pb.h
+*.pb.cc
+
+# Docker
+.dockerignore

@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package eden.telemetry;
+
+// Telemetry service for real-time metrics reporting
+service TelemetryService {
+  // Stream metrics to the server
+  rpc StreamMetrics(stream MetricData) returns (MetricResponse);
+  
+  // Send a single metric (unary)
+  rpc SendMetric(MetricData) returns (MetricResponse);
+  
+  // Get metrics summary
+  rpc GetSummary(SummaryRequest) returns (MetricSummary);
+}
+
+// Metric data point
+message MetricData {
+  string metric_name = 1;
+  double value = 2;
+  int64 timestamp = 3;  // Unix timestamp in milliseconds
+  map<string, string> labels = 4;
+  MetricType type = 5;
+}
+
+// Metric type
+enum MetricType {
+  COUNTER = 0;
+  GAUGE = 1;
+  HISTOGRAM = 2;
+  SUMMARY = 3;
+}
+
+// Response for metric submission
+message MetricResponse {
+  bool success = 1;
+  string message = 2;
+  int64 server_timestamp = 3;
+}
+
+// Request for metrics summary
+message SummaryRequest {
+  string metric_name = 1;
+  int64 start_time = 2;
+  int64 end_time = 3;
+}
+
+// Summary of metrics
+message MetricSummary {
+  string metric_name = 1;
+  int32 count = 2;
+  double min = 3;
+  double max = 4;
+  double avg = 5;
+  double p50 = 6;
+  double p95 = 7;
+  double p99 = 8;
+}

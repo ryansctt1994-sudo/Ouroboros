@@ -10,11 +10,25 @@ License: MIT
 Version: 1.0.0
 """
 
+import hashlib
 import json
 import logging
 import os
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Iterator
+
+# Import performance profiling
+try:
+    from performance import profile, LRUCache, get_profiler
+    PROFILING_AVAILABLE = True
+except ImportError:
+    # Fallback if performance module not available
+    PROFILING_AVAILABLE = False
+    def profile(func=None, **kwargs):
+        """No-op profile decorator."""
+        def decorator(f):
+            return f
+        return decorator(func) if func else decorator
 
 logger = logging.getLogger("eden_ai")
 
@@ -27,12 +41,13 @@ class EdenAI:
     degradation when llama-cpp-python is not available.
     """
     
-    def __init__(self, model_path: Optional[str] = None):
+    def __init__(self, model_path: Optional[str] = None, cache_size: int = 100):
         """
         Initialize the AI service.
         
         Args:
             model_path: Path to GGUF model file. If None, uses default location.
+            cache_size: Size of LRU cache for inference results (0 to disable)
         
         Raises:
             ImportError: If llama-cpp-python is not installed (with instructions)
@@ -41,6 +56,14 @@ class EdenAI:
         self.model = None
         self.model_loaded = False
         self.vectors_data = None
+        
+        # Initialize cache for inference results
+        if PROFILING_AVAILABLE and cache_size > 0:
+            self._cache = LRUCache(max_size=cache_size)
+            self._cache_enabled = True
+        else:
+            self._cache = None
+            self._cache_enabled = False
         
         # Determine model path
         if model_path is None:
@@ -88,6 +111,7 @@ class EdenAI:
                 "AI features will be unavailable until a model is loaded."
             )
     
+    @profile(name="eden_ai.load_vectors")
     def load_vectors(self, vectors_path: str = "vectors.json") -> bool:
         """
         Load vectors.json for code context.
@@ -111,6 +135,7 @@ class EdenAI:
             logger.error(f"Failed to load vectors.json: {e}")
             return False
     
+    @profile(name="eden_ai.search_vectors", log_threshold_ms=50)
     def search_vectors(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
         """
         Search vectors for relevant code units based on query.
@@ -131,28 +156,39 @@ class EdenAI:
         # Extract keywords from query (simple tokenization)
         keywords = query.lower().split()
         
-        # Search vectors
+        # Optimized search: pre-filter vectors that might match
         results = []
-        for vector in self.vectors_data.get('vectors', []):
+        vectors = self.vectors_data.get('vectors', [])
+        
+        # Early exit if no vectors
+        if not vectors:
+            return []
+        
+        # Use set intersection for faster keyword matching
+        keyword_set = set(keywords)
+        
+        for vector in vectors:
             score = 0
             
-            # Check name
-            name = vector.get('name', '').lower()
-            for keyword in keywords:
-                if keyword in name:
-                    score += 2
+            # Pre-compute lowercase strings once
+            name_lower = vector.get('name', '').lower()
+            docstring_lower = vector.get('docstring', '').lower()
+            module_lower = vector.get('module', '').lower()
             
-            # Check docstring
-            docstring = vector.get('docstring', '').lower()
+            # Use set intersection for faster keyword matching (avoid redundant computation)
+            name_words = set(name_lower.split())
+            name_matches = keyword_set & name_words
+            if name_matches:
+                score += 2 * len(name_matches)
+            
+            # Check docstring for any keyword match
             for keyword in keywords:
-                if keyword in docstring:
+                if keyword in docstring_lower:
                     score += 1
             
             # Check module
-            module = vector.get('module', '').lower()
-            for keyword in keywords:
-                if keyword in module:
-                    score += 1
+            if any(keyword in module_lower for keyword in keywords):
+                score += 1
             
             if score > 0:
                 results.append({
@@ -198,6 +234,7 @@ class EdenAI:
         
         return "\n".join(context_parts)
     
+    @profile(name="eden_ai.generate", log_threshold_ms=200)
     def generate(
         self,
         messages: List[Dict[str, str]],
@@ -231,6 +268,14 @@ class EdenAI:
                 "No AI model is loaded. "
                 f"Please place a GGUF model at {self.model_path} or specify a valid path."
             )
+        
+        # Check cache if enabled
+        if self._cache_enabled:
+            cache_key = self._generate_cache_key(messages, temperature, max_tokens)
+            cached_result = self._cache.get(cache_key)
+            if cached_result is not None:
+                logger.debug(f"Cache hit for key: {cache_key[:16]}...")
+                return cached_result
         
         # Build prompt from messages
         prompt_parts = []
@@ -282,6 +327,10 @@ class EdenAI:
         
         logger.debug(f"Generated response: {text[:100]}...")
         
+        # Cache the result if caching is enabled
+        if self._cache_enabled:
+            self._cache.put(cache_key, text)
+        
         return text
     
     def is_available(self) -> bool:
@@ -293,6 +342,26 @@ class EdenAI:
         """
         return self._llama_available and self.model_loaded
     
+    def _generate_cache_key(self, messages: List[Dict[str, str]], temperature: float, max_tokens: int) -> str:
+        """
+        Generate a cache key for the given parameters.
+        
+        Args:
+            messages: Conversation messages
+            temperature: Sampling temperature
+            max_tokens: Maximum tokens
+        
+        Returns:
+            SHA256 hash of the parameters
+        """
+        # Serialize parameters to create a unique key
+        key_data = json.dumps({
+            'messages': messages,
+            'temperature': temperature,
+            'max_tokens': max_tokens
+        }, sort_keys=True)
+        return hashlib.sha256(key_data.encode()).hexdigest()
+    
     def get_status(self) -> Dict[str, Any]:
         """
         Get AI service status.
@@ -300,10 +369,34 @@ class EdenAI:
         Returns:
             Status dictionary
         """
-        return {
+        status = {
             "llama_available": self._llama_available,
             "model_loaded": self.model_loaded,
             "model_path": self.model_path,
             "vectors_loaded": self.vectors_data is not None,
             "vector_count": len(self.vectors_data.get('vectors', [])) if self.vectors_data else 0
         }
+        
+        # Add cache stats if available
+        if self._cache_enabled and self._cache:
+            status['cache'] = self._cache.get_stats()
+        
+        # Add profiling stats if available
+        if PROFILING_AVAILABLE:
+            profiler = get_profiler()
+            status['profiling'] = profiler.get_stats()
+        
+        return status
+    
+    def get_performance_report(self) -> str:
+        """
+        Get a formatted performance profiling report.
+        
+        Returns:
+            Performance report string
+        """
+        if not PROFILING_AVAILABLE:
+            return "Profiling not available. Install performance module."
+        
+        profiler = get_profiler()
+        return profiler.report()

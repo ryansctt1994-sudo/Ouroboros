@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: eden-models-pvc
+  namespace: default
+  labels:
+    app: eden-ai
+spec:
+  accessModes:
+    - ReadOnlyMany
+  resources:
+    requests:
+      storage: 5Gi
+  # Adjust storageClassName based on your cluster
+  # Examples: standard, gp2, premium-rwo, etc.
+  storageClassName: standard
