@@ -8,7 +8,7 @@ license = "MIT"
 
 [lib]
 name = "rustoracle"
-crate-type = ["cdylib"]  # For JNI/Android NDK
+crate-type = ["cdylib", "rlib"]  # For JNI/Android NDK and examples
 
 [dependencies]
 jni = "0.21"
