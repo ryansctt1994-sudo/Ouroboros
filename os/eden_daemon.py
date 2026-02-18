@@ -179,6 +179,7 @@ class EdenDaemon:
         except Exception as e:
             logger.error(f"Failed to initialize patch manager: {e}")
             self.patch_mgr = None
+        self.chat_history = []
     
     def _init_world(self):
         """Initialize the ECS world."""
@@ -511,43 +512,104 @@ class EdenDaemon:
             return make_error(request_id, -32603, str(e))
     
     def handle_chat(self, message: str) -> Dict[str, Any]:
-        """
-        Handle AI chat request.
-        
-        Args:
-            message: User message
-        
-        Returns:
-            Response dictionary with "response" key or error
-        """
+        """Handle AI chat with conversation memory and tool detection."""
         if self.ai is None:
-            return {
-                "response": "AI service not initialized",
-                "error": "AI service unavailable"
-            }
-        
+            return {"response": "AI service not initialized", "error": "AI service unavailable"}
+
         if not self.ai.is_available():
-            return {
-                "response": "No AI model is loaded. Please place a GGUF model file in ~/.local/eden/models/",
-                "error": "Model not loaded"
-            }
-        
+            return {"response": "No AI model loaded.", "error": "Model not loaded"}
+
         try:
-            # Build messages list
-            messages = [{"role": "user", "content": message}]
-            
-            # Generate response
-            response_text = self.ai.generate(messages)
-            
+            # Detect tool commands in natural language
+            tool_result = self._detect_and_run_tool(message)
+            if tool_result:
+                return tool_result
+
+            # Add user message to history
+            self.chat_history.append({"role": "user", "content": message})
+
+            # Keep last 20 messages for context window
+            if len(self.chat_history) > 20:
+                self.chat_history = self.chat_history[-20:]
+
+            # Generate with full conversation history
+            response_text = self.ai.generate(self.chat_history)
+
+            # Add assistant response to history
+            self.chat_history.append({"role": "assistant", "content": response_text})
+
             return {"response": response_text}
-        
+
         except Exception as e:
             logger.error(f"Error generating AI response: {e}", exc_info=True)
-            return {
-                "response": f"Error: {str(e)}",
-                "error": str(e)
-            }
-    
+            return {"response": f"Error: {str(e)}", "error": str(e)}
+
+    def _detect_and_run_tool(self, message):
+        """Detect if user wants a git/file operation and run it."""
+        import subprocess
+        msg = message.lower().strip()
+
+        # Git status
+        if any(p in msg for p in ["git status", "what changed", "any changes", "uncommitted"]):
+            r = subprocess.run(["git", "status", "--short"], capture_output=True, text=True, cwd=os.getcwd())
+            out = r.stdout.strip() or "Working tree clean."
+            return {"response": "```\n" + out + "\n```"}
+
+        # Git log
+        if any(p in msg for p in ["git log", "recent commits", "last commits", "commit history"]):
+            r = subprocess.run(["git", "log", "--oneline", "-10"], capture_output=True, text=True, cwd=os.getcwd())
+            return {"response": "Last 10 commits:\n```\n" + r.stdout.strip() + "\n```"}
+
+        # Git diff
+        if any(p in msg for p in ["git diff", "show diff", "what did i change", "show changes"]):
+            r = subprocess.run(["git", "diff", "--stat"], capture_output=True, text=True, cwd=os.getcwd())
+            out = r.stdout.strip() or "No unstaged changes."
+            return {"response": "```\n" + out + "\n```"}
+
+        # Git commit + push
+        if any(p in msg for p in ["commit and push", "commit & push", "push changes", "commit everything"]):
+            subprocess.run(["git", "add", "-A"], capture_output=True, cwd=os.getcwd())
+            commit_msg = "chore: auto-commit via EDEN chat"
+            if "message:" in msg:
+                commit_msg = msg.split("message:", 1)[1].strip()
+            elif "msg:" in msg:
+                commit_msg = msg.split("msg:", 1)[1].strip()
+            r = subprocess.run(["git", "commit", "-m", commit_msg], capture_output=True, text=True, cwd=os.getcwd())
+            if r.returncode != 0:
+                return {"response": "Nothing to commit or error:\n```\n" + r.stderr.strip() + "\n```"}
+            p = subprocess.run(["git", "push"], capture_output=True, text=True, cwd=os.getcwd())
+            if p.returncode != 0:
+                return {"response": "Committed but push failed:\n```\n" + p.stderr.strip() + "\n```"}
+            return {"response": "Done:\n```\n" + r.stdout.strip() + "\n```"}
+
+        # Show file
+        for prefix in ["show me ", "show file ", "read file ", "open file "]:
+            if prefix in msg:
+                fname = msg.split(prefix, 1)[1].strip().strip("'").strip('"')
+                # Try direct path and os/ path
+                for try_path in [fname, "os/" + fname]:
+                    if os.path.isfile(try_path):
+                        with open(try_path, "r") as f:
+                            txt = f.read()
+                        if len(txt) > 3000:
+                            txt = txt[:3000] + "\n... (truncated)"
+                        return {"response": "**" + try_path + "**:\n```\n" + txt + "\n```"}
+                return {"response": "File not found: " + fname}
+
+        # List files
+        if any(p in msg for p in ["list files", "what files", "show directory", "show folder"]):
+            target = "."
+            for prefix in ["in ", "of ", "inside "]:
+                if prefix in msg:
+                    target = msg.split(prefix, 1)[1].strip().strip("/")
+                    break
+            if os.path.isdir(target):
+                files = sorted(os.listdir(target))
+                listing = "\n".join(files[:50])
+                return {"response": "**" + target + "/**:\n```\n" + listing + "\n```"}
+
+        return None
+
     def handle_execute_code(self, code: str, language: str = "python") -> Dict[str, Any]:
         """
         Handle code execution request.

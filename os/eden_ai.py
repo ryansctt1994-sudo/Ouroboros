@@ -89,7 +89,7 @@ class LLMRouter:
         ]
         return len(provider.request_timestamps) < provider.rate_limit_rpm
 
-    def _call_cloud(self, provider: ProviderConfig, prompt: str,
+    def _call_cloud(self, provider: ProviderConfig, messages: list,
                     max_tokens: int, temperature: float) -> Optional[str]:
         """Call an OpenAI-compatible cloud API."""
         if not self._check_rate_limit(provider):
@@ -102,10 +102,7 @@ class LLMRouter:
         }
         payload = {
             "model": provider.model,
-            "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": prompt}
-            ],
+            "messages": [{"role": "system", "content": SYSTEM_PROMPT}] + messages,
             "max_tokens": max_tokens,
             "temperature": temperature
         }
@@ -132,10 +129,15 @@ class LLMRouter:
             logger.warning(f"Router: {provider.name} exception: {e}")
             return None
 
-    def _call_ollama(self, prompt: str, max_tokens: int,
+    def _call_ollama(self, messages: list, max_tokens: int,
                      temperature: float) -> str:
         """Call local Ollama as final fallback."""
-        full_prompt = f"System: {SYSTEM_PROMPT}\n\nUser: {prompt}\n\nAssistant:"
+        parts = [f"System: {SYSTEM_PROMPT}"]
+        for m in messages:
+            role = m["role"].capitalize()
+            parts.append(f"{role}: {m['content']}")
+        parts.append("Assistant:")
+        full_prompt = "\n\n".join(parts)
 
         r = requests.post(
             f"{OLLAMA_HOST}/api/generate",
@@ -155,16 +157,16 @@ class LLMRouter:
         self.last_provider = f"Ollama ({OLLAMA_MODEL})"
         return r.json().get("response", "").strip()
 
-    def query(self, prompt: str, max_tokens: int = 512,
+    def query(self, messages: list, max_tokens: int = 512,
               temperature: float = 0.7) -> str:
         """Try cloud providers in order, fall back to Ollama."""
         for provider in self.providers:
-            result = self._call_cloud(provider, prompt, max_tokens, temperature)
+            result = self._call_cloud(provider, messages, max_tokens, temperature)
             if result:
                 return result
 
         logger.info("Router: Using local Ollama")
-        return self._call_ollama(prompt, max_tokens, temperature)
+        return self._call_ollama(messages, max_tokens, temperature)
 
 
 class EdenAI:
@@ -267,17 +269,19 @@ class EdenAI:
             if cache_key in self._cache:
                 return self._cache[cache_key]
 
-        # Build prompt with context
+        # Build context from last user message and prepend if available
         last_user_msg = next(
             (m['content'] for m in reversed(messages) if m['role'] == 'user'), ""
         )
         context = self._build_context(last_user_msg)
-        prompt = last_user_msg
-        if context:
-            prompt = context + "\n\n" + prompt
 
-        # Route through providers
-        text = self.router.query(prompt, max_tokens, temperature)
+        # Inject context into the conversation
+        enriched = list(messages)
+        if context:
+            enriched.insert(0, {"role": "system", "content": context})
+
+        # Route through providers with full conversation
+        text = self.router.query(enriched, max_tokens, temperature)
 
         # Cache
         if self._cache_enabled:
