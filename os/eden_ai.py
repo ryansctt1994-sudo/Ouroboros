@@ -3,32 +3,174 @@
 EDEN AI Service
 ===============
 
-Local AI assistant using Ollama API for inference.
+Multi-provider LLM router with local Ollama fallback.
+Tries free cloud APIs first for speed, falls back to local Ollama.
+
+Provider order: Groq → Together → Mistral → Local Ollama
+All API keys via environment variables. No keys = local only.
 
 Author: AIOSPANDORA Development Team
 License: MIT
-Version: 2.0.0 - Ollama Backend
+Version: 3.0.0 - Multi-Provider Router
 """
 
 import hashlib
 import json
 import logging
 import os
+import time
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+from dataclasses import dataclass, field
 
 import requests
 
 logger = logging.getLogger("eden_ai")
 
-# Ollama API endpoint - use host.lima.internal when inside Lima VM
+# Local Ollama config
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://host.lima.internal:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "deepseek-coder:6.7b")
+
+SYSTEM_PROMPT = (
+    "You are EDEN, an AI assistant integrated into the Ouroboros framework. "
+    "You help with code understanding, system monitoring, and development tasks. "
+    "Be concise and helpful."
+)
+
+
+@dataclass
+class ProviderConfig:
+    name: str
+    api_base: str
+    api_key_env: str
+    model: str
+    rate_limit_rpm: int
+    request_timestamps: list = field(default_factory=list)
+
+
+class LLMRouter:
+    """
+    Routes to the fastest available free provider.
+    Falls back to local Ollama when cloud APIs are exhausted.
+    """
+
+    def __init__(self):
+        self.providers: List[ProviderConfig] = []
+        self._init_providers()
+        self.last_provider = None
+
+    def _init_providers(self):
+        """Register providers that have API keys set."""
+        configs = [
+            ("Groq", "https://api.groq.com/openai/v1/chat/completions",
+             "GROQ_API_KEY", "llama-3.3-70b-versatile", 30),
+            ("Together", "https://api.together.xyz/v1/chat/completions",
+             "TOGETHER_API_KEY", "mistralai/Mixtral-8x7B-Instruct-v0.1", 60),
+            ("Mistral", "https://api.mistral.ai/v1/chat/completions",
+             "MISTRAL_API_KEY", "mistral-small-latest", 1),
+        ]
+        for name, base, env, model, rpm in configs:
+            if os.getenv(env):
+                self.providers.append(ProviderConfig(
+                    name=name, api_base=base, api_key_env=env,
+                    model=model, rate_limit_rpm=rpm
+                ))
+                logger.info(f"Router: {name} provider registered")
+
+        if not self.providers:
+            logger.info("Router: No cloud API keys found, using Ollama only")
+
+    def _check_rate_limit(self, provider: ProviderConfig) -> bool:
+        """Return True if we can make a request (token bucket by minute)."""
+        now = time.time()
+        cutoff = now - 60
+        provider.request_timestamps = [
+            t for t in provider.request_timestamps if t > cutoff
+        ]
+        return len(provider.request_timestamps) < provider.rate_limit_rpm
+
+    def _call_cloud(self, provider: ProviderConfig, prompt: str,
+                    max_tokens: int, temperature: float) -> Optional[str]:
+        """Call an OpenAI-compatible cloud API."""
+        if not self._check_rate_limit(provider):
+            logger.info(f"Router: {provider.name} rate limited, skipping")
+            return None
+
+        headers = {
+            "Authorization": f"Bearer {os.getenv(provider.api_key_env)}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": provider.model,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt}
+            ],
+            "max_tokens": max_tokens,
+            "temperature": temperature
+        }
+
+        try:
+            r = requests.post(provider.api_base, headers=headers,
+                              json=payload, timeout=30)
+            if r.status_code == 200:
+                provider.request_timestamps.append(time.time())
+                text = r.json()["choices"][0]["message"]["content"]
+                self.last_provider = provider.name
+                logger.info(f"Router: Response from {provider.name}")
+                return text.strip()
+            elif r.status_code == 429:
+                logger.info(f"Router: {provider.name} returned 429, skipping")
+                return None
+            else:
+                logger.warning(f"Router: {provider.name} error {r.status_code}")
+                return None
+        except requests.exceptions.Timeout:
+            logger.warning(f"Router: {provider.name} timed out")
+            return None
+        except Exception as e:
+            logger.warning(f"Router: {provider.name} exception: {e}")
+            return None
+
+    def _call_ollama(self, prompt: str, max_tokens: int,
+                     temperature: float) -> str:
+        """Call local Ollama as final fallback."""
+        full_prompt = f"System: {SYSTEM_PROMPT}\n\nUser: {prompt}\n\nAssistant:"
+
+        r = requests.post(
+            f"{OLLAMA_HOST}/api/generate",
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": full_prompt,
+                "stream": False,
+                "options": {
+                    "temperature": temperature,
+                    "num_predict": max_tokens,
+                    "stop": ["User:", "System:"]
+                }
+            },
+            timeout=300  # local can be slow
+        )
+        r.raise_for_status()
+        self.last_provider = f"Ollama ({OLLAMA_MODEL})"
+        return r.json().get("response", "").strip()
+
+    def query(self, prompt: str, max_tokens: int = 512,
+              temperature: float = 0.7) -> str:
+        """Try cloud providers in order, fall back to Ollama."""
+        for provider in self.providers:
+            result = self._call_cloud(provider, prompt, max_tokens, temperature)
+            if result:
+                return result
+
+        logger.info("Router: Using local Ollama")
+        return self._call_ollama(prompt, max_tokens, temperature)
 
 
 class EdenAI:
     """
-    AI service for EDEN using Ollama API backend.
+    AI service for EDEN. Uses LLMRouter for multi-provider support.
+    Maintains full API compatibility with eden_daemon.py.
     """
 
     def __init__(self, model_path: Optional[str] = None, cache_size: int = 100):
@@ -38,6 +180,7 @@ class EdenAI:
         self._cache = {}
         self._cache_enabled = cache_size > 0
         self._max_cache = cache_size
+        self.router = LLMRouter()
 
         # Test Ollama connection
         try:
@@ -46,13 +189,17 @@ class EdenAI:
                 models = [m["name"] for m in r.json().get("models", [])]
                 if any(OLLAMA_MODEL in m for m in models):
                     self.model_loaded = True
-                    logger.info(f"Connected to Ollama. Model: {OLLAMA_MODEL}")
+                    logger.info(f"Ollama connected. Model: {OLLAMA_MODEL}")
                 else:
-                    logger.warning(f"Ollama running but model {OLLAMA_MODEL} not found. Available: {models}")
-            else:
-                logger.warning(f"Ollama returned status {r.status_code}")
+                    logger.warning(f"Ollama running but {OLLAMA_MODEL} not found")
+            # Even without Ollama, cloud providers may work
+            if self.router.providers:
+                self.model_loaded = True
         except Exception as e:
-            logger.warning(f"Cannot connect to Ollama at {OLLAMA_HOST}: {e}")
+            logger.warning(f"Cannot connect to Ollama: {e}")
+            if self.router.providers:
+                self.model_loaded = True
+                logger.info("Cloud providers available as fallback")
 
     def load_vectors(self, vectors_path: str = "vectors.json") -> bool:
         try:
@@ -61,9 +208,7 @@ class EdenAI:
                     self.vectors_data = json.load(f)
                 logger.info(f"Loaded {len(self.vectors_data.get('vectors', []))} code vectors")
                 return True
-            else:
-                logger.warning(f"vectors.json not found at {vectors_path}")
-                return False
+            return False
         except Exception as e:
             logger.error(f"Failed to load vectors.json: {e}")
             return False
@@ -71,61 +216,40 @@ class EdenAI:
     def search_vectors(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
         if not self.vectors_data:
             return []
-
-        keywords = query.lower().split()
-        keyword_set = set(keywords)
+        keywords = set(query.lower().split())
         results = []
-        vectors = self.vectors_data.get('vectors', [])
-
-        if not vectors:
-            return []
-
-        for vector in vectors:
+        for vector in self.vectors_data.get('vectors', []):
             score = 0
             name_lower = vector.get('name', '').lower()
             docstring_lower = vector.get('docstring', '').lower()
             module_lower = vector.get('module', '').lower()
-
-            name_words = set(name_lower.split())
-            name_matches = keyword_set & name_words
+            name_matches = keywords & set(name_lower.split())
             if name_matches:
                 score += 2 * len(name_matches)
-
-            for keyword in keywords:
-                if keyword in docstring_lower:
+            for kw in keywords:
+                if kw in docstring_lower:
                     score += 1
-
-            if any(keyword in module_lower for keyword in keywords):
+            if any(kw in module_lower for kw in keywords):
                 score += 1
-
             if score > 0:
                 results.append({'vector': vector, 'score': score})
-
         results.sort(key=lambda x: x['score'], reverse=True)
         return [r['vector'] for r in results[:limit]]
 
     def _build_context(self, user_message: str) -> str:
         if not self.vectors_data:
             return ""
-
         relevant = self.search_vectors(user_message, limit=3)
         if not relevant:
             return ""
-
-        context_parts = ["Relevant code context:"]
-        for vector in relevant:
-            name = vector.get('name', 'unknown')
-            file_path = vector.get('file_path', 'unknown')
-            docstring = vector.get('docstring', '')
-            signature = vector.get('signature', '')
-
-            context_parts.append(f"- {name} in {file_path}")
-            if signature:
-                context_parts.append(f"  Signature: {signature}")
-            if docstring:
-                context_parts.append(f"  Description: {docstring}")
-
-        return "\n".join(context_parts)
+        parts = ["Relevant code context:"]
+        for v in relevant:
+            parts.append(f"- {v.get('name', '?')} in {v.get('file_path', '?')}")
+            if sig := v.get('signature', ''):
+                parts.append(f"  Signature: {sig}")
+            if doc := v.get('docstring', ''):
+                parts.append(f"  Description: {doc}")
+        return "\n".join(parts)
 
     def generate(
         self,
@@ -135,72 +259,27 @@ class EdenAI:
         max_tokens: int = 512
     ) -> str:
         if not self.model_loaded:
-            raise RuntimeError(
-                f"Ollama model {OLLAMA_MODEL} is not available. "
-                f"Check that Ollama is running at {OLLAMA_HOST}"
-            )
+            raise RuntimeError("No LLM provider available")
 
         # Check cache
         if self._cache_enabled:
             cache_key = self._generate_cache_key(messages, temperature, max_tokens)
             if cache_key in self._cache:
-                logger.debug("Cache hit")
                 return self._cache[cache_key]
 
-        # Build system prompt
-        system_msg = (
-            "You are EDEN, an AI assistant integrated into the Ouroboros framework. "
-            "You help with code understanding, system monitoring, and development tasks. "
-            "Be concise and helpful."
+        # Build prompt with context
+        last_user_msg = next(
+            (m['content'] for m in reversed(messages) if m['role'] == 'user'), ""
         )
+        context = self._build_context(last_user_msg)
+        prompt = last_user_msg
+        if context:
+            prompt = context + "\n\n" + prompt
 
-        # Add context from vectors if available
-        if messages:
-            last_user_msg = next(
-                (m['content'] for m in reversed(messages) if m['role'] == 'user'), None
-            )
-            if last_user_msg:
-                context = self._build_context(last_user_msg)
-                if context:
-                    system_msg += "\n\n" + context
+        # Route through providers
+        text = self.router.query(prompt, max_tokens, temperature)
 
-        # Build Ollama API request
-        prompt_parts = [f"System: {system_msg}"]
-        for msg in messages:
-            role = msg['role'].capitalize()
-            content = msg['content']
-            prompt_parts.append(f"{role}: {content}")
-        prompt_parts.append("Assistant:")
-
-        prompt = "\n\n".join(prompt_parts)
-
-        logger.debug(f"Sending to Ollama: {prompt[:100]}...")
-
-        try:
-            r = requests.post(
-                f"{OLLAMA_HOST}/api/generate",
-                json={
-                    "model": OLLAMA_MODEL,
-                    "prompt": prompt,
-                    "stream": False,
-                    "options": {
-                        "temperature": temperature,
-                        "num_predict": max_tokens,
-                        "stop": ["User:", "System:"]
-                    }
-                },
-                timeout=120
-            )
-            r.raise_for_status()
-            text = r.json().get("response", "").strip()
-        except requests.exceptions.Timeout:
-            raise RuntimeError("Ollama request timed out (120s)")
-        except Exception as e:
-            raise RuntimeError(f"Ollama API error: {e}")
-
-        logger.debug(f"Generated response: {text[:100]}...")
-
-        # Cache result
+        # Cache
         if self._cache_enabled:
             if len(self._cache) >= self._max_cache:
                 oldest = next(iter(self._cache))
@@ -222,9 +301,11 @@ class EdenAI:
 
     def get_status(self) -> Dict[str, Any]:
         return {
-            "backend": "ollama",
+            "backend": "multi-provider-router",
             "ollama_host": OLLAMA_HOST,
             "ollama_model": OLLAMA_MODEL,
+            "cloud_providers": [p.name for p in self.router.providers],
+            "last_provider": self.router.last_provider,
             "model_loaded": self.model_loaded,
             "vectors_loaded": self.vectors_data is not None,
             "vector_count": len(self.vectors_data.get('vectors', [])) if self.vectors_data else 0,
@@ -232,4 +313,7 @@ class EdenAI:
         }
 
     def get_performance_report(self) -> str:
-        return f"Ollama backend at {OLLAMA_HOST} using {OLLAMA_MODEL}"
+        providers = ", ".join(p.name for p in self.router.providers) or "none"
+        return (f"Router: cloud=[{providers}], "
+                f"local=Ollama@{OLLAMA_HOST} ({OLLAMA_MODEL}), "
+                f"last_used={self.router.last_provider}")
