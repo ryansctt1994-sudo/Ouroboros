@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2025 Jan Olabegoya Estrela
+Copyright (c) 2025-2026 The Ouroboros Foundation
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +19,75 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+================================================================================
+OUROBOROS FOUNDATION — ETHICAL USE COVENANT
+================================================================================
+
+This software is released under the MIT License above. The following covenant
+is a binding addendum to the license. By using this software, you agree to
+these terms in addition to the MIT License.
+
+1. NO WALLED GARDENS
+   You may not use this software to create closed, proprietary services that
+   restrict users from self-hosting, exporting their data, or migrating to
+   alternative implementations. If you offer this software as a service, you
+   must provide users a path to sovereignty.
+
+2. NO RENT-SEEKING
+   You may not charge subscription fees for access to unmodified versions of
+   this software. Value-added services (hosting, support, integration) may be
+   monetized, but the core software must remain free. Peer-to-peer transactions
+   between users are unrestricted.
+
+3. NO SURVEILLANCE CAPITALISM
+   You may not collect, sell, or monetize user data generated through the use
+   of this software without explicit, informed, and revocable consent from
+   each user. Dark patterns are prohibited.
+
+4. NO WEAPONIZATION
+   You may not use this software for:
+   (a) Mass surveillance or warrantless monitoring of populations;
+   (b) Autonomous weapons systems or kill chains;
+   (c) Social credit scoring or behavioural compliance systems;
+   (d) Any system designed to coerce, manipulate, or suppress human autonomy.
+
+5. NO DIGITAL CAGES
+   You may not use this software to implement, enforce, or facilitate:
+   (a) Compulsory digital identity systems that condition access to essential
+       services or goods (food, shelter, healthcare, transit, communication,
+       finance, medicine) on possession of a digital credential;
+   (b) Carbon credit, social credit, or any token system that rations, scores,
+       or restricts the natural rights and free movement of human beings;
+   (c) Centralized identity registries controlled by governments, supra-
+       national organizations, or corporate entities that require individuals
+       to surrender biometric data (including facial recognition, gait
+       analysis, or other biometric identifiers), behavioural data, or proof
+       of compliance as a condition of participation in society;
+   (d) Any "programmable" currency, voucher, or access mechanism that allows
+       a third party to restrict what a person may buy, where they may travel,
+       or how they may live.
+
+   Human beings are born sovereign. No technology built with this software
+   shall be used to condition that sovereignty on obedience.
+
+6. CONTRIBUTE BACK
+   If you modify this software and deploy it as a public service, you are
+   encouraged (but not required) to contribute improvements upstream. The
+   ecosystem thrives on reciprocity.
+
+7. SOVEREIGN NODES
+   Any deployment of this software operates as a sovereign node. No entity —
+   including The Ouroboros Foundation — may claim authority over another
+   entity's deployment, data, or operational decisions, provided they comply
+   with this covenant.
+
+Violation of clauses 1-5 constitutes a breach of this license and terminates
+your rights under the MIT License above. This termination is automatic and
+does not require notice from The Ouroboros Foundation.
+
+The Ouroboros Foundation does not recognize the authority of any organization,
+governmental or otherwise, to compel the modification or weakening of these
+terms.
+
+For questions: https://github.com/AIOSPANDORA/Ouroboros
