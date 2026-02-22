@@ -16,8 +16,6 @@ import threading
 import time
 import heapq
 import uuid
-import importlib
-import importlib.util
 from collections import deque
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional, Tuple, Callable
@@ -27,14 +25,12 @@ np = None
 scipy_zeta = None
 EXTENDED_FEATURES = False
 
-_NUMPY_SPEC = importlib.util.find_spec("numpy")
-_SCIPY_SPECIAL_SPEC = importlib.util.find_spec("scipy.special")
-
-if _NUMPY_SPEC is not None and _SCIPY_SPECIAL_SPEC is not None:
-    np = importlib.import_module("numpy")
-    scipy_special = importlib.import_module("scipy.special")
-    scipy_zeta = scipy_special.zeta
+try:
+    import numpy as np
+    from scipy.special import zeta as scipy_zeta
     EXTENDED_FEATURES = True
+except ImportError:
+    pass
 
 
 def _py_scalar(x: Any) -> Any:
