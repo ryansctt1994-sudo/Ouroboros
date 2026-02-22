@@ -402,14 +402,14 @@ class TestDeltaCheck:
 # ============================================================================
 
 class TestGeodesicFlow:
-    """Tests for parametric horn torus geodesic flow.
-    
-    Parametric equations for horn torus:
-    x = R(1 + cos(φ))cos(θ)
-    y = R(1 + cos(φ))sin(θ)
-    z = R sin(φ)
-    
-    Where R is the torus radius, φ is the poloidal angle, θ is the toroidal angle.
+    """Tests for torus geodesic parameterization.
+
+    General equations:
+    x = (R + r cos(φ))cos(θ)
+    y = (R + r cos(φ))sin(θ)
+    z = r sin(φ)
+
+    Historical behavior is preserved by default with horn torus r = R.
     """
     
     def test_parametric_equations(self, default_processor):
@@ -493,6 +493,62 @@ class TestGeodesicFlow:
         assert isinstance(result, tuple)
         assert len(result) == 3
         assert all(isinstance(val, float) for val in result)
+
+    def test_general_torus_parameterization_with_minor_radius(self):
+        """Verify generalized torus equations when minor radius differs from major radius."""
+        R = 2.0
+        r = 0.5
+        phi = math.pi / 3
+        theta = math.pi / 4
+
+        processor = OuroborosVirtualProcessor(radius=R, minor_radius=r)
+        x, y, z = processor.geodesic_flow(phi, theta)
+
+        expected_x = (R + r * math.cos(phi)) * math.cos(theta)
+        expected_y = (R + r * math.cos(phi)) * math.sin(theta)
+        expected_z = r * math.sin(phi)
+
+        assert pytest.approx(x, rel=1e-10) == expected_x
+        assert pytest.approx(y, rel=1e-10) == expected_y
+        assert pytest.approx(z, rel=1e-10) == expected_z
+
+    def test_torus_metric_coefficients(self):
+        """Verify first fundamental form coefficients E, F, G."""
+        R = 2.0
+        r = 0.5
+        phi = math.pi / 3
+        processor = OuroborosVirtualProcessor(radius=R, minor_radius=r)
+
+        E, F, G = processor.torus_metric(phi)
+
+        assert pytest.approx(E, rel=1e-10) == r ** 2
+        assert F == 0.0
+        assert pytest.approx(G, rel=1e-10) == (R + r * math.cos(phi)) ** 2
+
+    def test_torus_area_element(self):
+        """Verify torus area element sqrt(det(g)) = r(R + r cos(phi))."""
+        R = 2.0
+        r = 0.5
+        phi = math.pi / 6
+        processor = OuroborosVirtualProcessor(radius=R, minor_radius=r)
+
+        dA = processor.torus_area_element(phi)
+        expected = r * (R + r * math.cos(phi))
+
+        assert pytest.approx(dA, rel=1e-10) == expected
+
+    def test_torus_type_classification(self):
+        """Verify ring/horn/spindle classification by radii."""
+        assert OuroborosVirtualProcessor(radius=2.0, minor_radius=0.5).torus_type() == "ring"
+        assert OuroborosVirtualProcessor(radius=1.0, minor_radius=1.0).torus_type() == "horn"
+        assert OuroborosVirtualProcessor(radius=1.0, minor_radius=2.0).torus_type() == "spindle"
+
+    def test_invalid_radii_raise(self):
+        """Invalid torus radii should raise ValueError."""
+        with pytest.raises(ValueError):
+            OuroborosVirtualProcessor(radius=0.0)
+        with pytest.raises(ValueError):
+            OuroborosVirtualProcessor(radius=1.0, minor_radius=0.0)
 
 
 # ============================================================================
@@ -635,6 +691,24 @@ class TestSnapshotState:
         assert "ergotropy" in snapshot
         assert "modular_class" in snapshot
 
+    def test_snapshot_includes_torus_type(self, default_processor):
+        """Snapshot includes torus_type and JSON-safe scalar values."""
+        snapshot = default_processor.snapshot_state()
+        assert snapshot["torus_type"] in ["ring", "horn", "spindle"]
+        if "ergotropy" in snapshot:
+            assert isinstance(snapshot["ergotropy"], float)
+
+    def test_snapshot_includes_geometry_patch_signature(self, default_processor):
+        """Snapshot exposes rollback-friendly torus geometry patch signature."""
+        snapshot = default_processor.snapshot_state()
+        sig = snapshot["geometry_patch_signature"]
+        assert isinstance(sig, dict)
+        assert sig["id"] == "torus-runtime-v1-stability"
+        assert "commits" in sig and isinstance(sig["commits"], list)
+        assert "c7144c0" in sig["commits"]
+        assert "3044ce7" in sig["commits"]
+
+
 
 # ============================================================================
 # Edge Cases Tests
@@ -757,3 +831,81 @@ class TestIntegration:
             assert not math.isnan(x) and not math.isinf(x)
             assert not math.isnan(y) and not math.isinf(y)
             assert not math.isnan(z) and not math.isinf(z)
+
+    def test_snapshot_includes_torus_type(self, default_processor):
+        """Snapshot should expose torus classification and JSON-safe scalars."""
+        snapshot = default_processor.snapshot_state()
+        assert snapshot["torus_type"] in ["ring", "horn", "spindle"]
+        if "ergotropy" in snapshot:
+            assert isinstance(snapshot["ergotropy"], float)
+
+
+class TestRuntimeGeometryIntegration:
+    """Tests for operational torus geometry runtime integration hooks."""
+
+    def test_map_state_to_torus_angles_range(self):
+        from ouroboros_processor import map_state_to_torus_angles
+        import math
+        phi, theta = map_state_to_torus_angles(-0.2, 1.25)
+        assert 0.0 <= phi < 2.0 * math.pi
+        assert 0.0 <= theta < 2.0 * math.pi
+
+    def test_geometry_features_intrinsic_outputs(self):
+        from ouroboros_processor import TorusParams, geometry_features
+        tp = TorusParams(R=2.0, r=0.5)
+        g = geometry_features(tp, phi=0.5, theta=1.0, prev_phi=0.4, prev_theta=0.9)
+        assert 'xyz' in g and len(g['xyz']) == 3
+        assert 'metric' in g and len(g['metric']) == 3
+        assert g['w_area'] >= 0.0 and g['w_area'] <= 1.0
+        assert g['w_curv'] >= 0.0 and g['w_curv'] <= 1.0
+        assert g['ds'] is not None and g['ds'] >= 0.0
+
+    def test_apply_geometry_to_decision_updates_penalty(self):
+        p = OuroborosVirtualProcessor(radius=2.0, minor_radius=0.5, zeta_seed=0.25)
+        out1 = p.apply_geometry_to_decision(base_score=1.0, switch_penalty=0.0, metrics={'u': 0.1, 'v': 0.2})
+        out2 = p.apply_geometry_to_decision(base_score=out1['score'], switch_penalty=out1['switch_penalty'], metrics={'u': 0.2, 'v': 0.3})
+        assert 'geometry' in out1
+        assert out1['switch_penalty'] >= 0.0
+        assert out2['switch_penalty'] >= out1['switch_penalty']
+        assert out2['geometry']['torus_type'] in ['ring', 'horn', 'spindle']
+
+    def test_geometry_features_outputs_and_ds_norm_bounds(self):
+        from ouroboros_processor import TorusParams, geometry_features, map_state_to_torus_angles
+        tp = TorusParams(R=2.0, r=0.5)
+        phi1, th1 = map_state_to_torus_angles(0.1, 0.2)
+        phi2, th2 = map_state_to_torus_angles(0.11, 0.21)
+        g = geometry_features(tp, phi2, th2, prev_phi=phi1, prev_theta=th1, use_curvature=True, normalize_ds=True)
+        assert 'xyz' in g and len(g['xyz']) == 3
+        assert 'metric' in g and len(g['metric']) == 3
+        assert 0.0 <= g['w_area'] <= 1.0
+        assert 0.0 <= g['w_curv'] <= 1.0
+        assert g['ds'] is not None
+        assert g['ds_norm'] is not None
+        assert 0.0 <= g['ds_norm'] <= 1.0
+
+    def test_geometry_truth_serum_knobs_zero_restores_baseline(self):
+        p = OuroborosVirtualProcessor(radius=2.0, minor_radius=0.5, zeta_seed=0.25)
+        base_score = 1.234
+        switch_penalty = 0.5
+        metrics = {'u': 0.33, 'v': 0.77}
+
+        p.geom_score_mix = 0.0
+        p.geom_switch_lambda = 0.0
+        out_off = p.apply_geometry_to_decision(base_score, switch_penalty, metrics)
+        assert abs(out_off['score'] - base_score) < 1e-12
+        assert abs(out_off['switch_penalty'] - switch_penalty) < 1e-12
+
+        p._geom_prev = None
+        p.geom_score_mix = 0.35
+        p.geom_switch_lambda = 0.15
+        out_on = p.apply_geometry_to_decision(base_score, switch_penalty, metrics)
+        changed = (abs(out_on['score'] - base_score) > 1e-12) or (abs(out_on['switch_penalty'] - switch_penalty) > 1e-12)
+        assert changed
+
+    def test_negative_score_handling_is_stable(self):
+        p = OuroborosVirtualProcessor(radius=2.0, minor_radius=0.5, zeta_seed=0.25)
+        p.geom_score_mode = 'magnitude'
+        p.geom_score_mix = 1.0
+        out = p.apply_geometry_to_decision(-2.0, 0.0, {'u': 0.01, 'v': 0.02})
+        assert math.isfinite(out['score'])
+        assert out['score'] < 0.0
