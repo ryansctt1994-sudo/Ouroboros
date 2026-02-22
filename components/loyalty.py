@@ -1,6 +1,6 @@
 """Loyalty and Corruption components"""
 from dataclasses import dataclass
-from ..core import Component
+from core import Component
 
 PHI = 1.618033988749895  # Golden ratio
 OMEGA_H = 1.1            # Jealous entropy

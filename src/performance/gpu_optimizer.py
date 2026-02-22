@@ -87,7 +87,7 @@ class GPUMemoryOptimizer:
         self._zero_copy_count = 0
         self._block_counter = 0
         
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._last_consolidation = time.time()
         
         # Initialize pinned memory pool
