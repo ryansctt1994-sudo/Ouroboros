@@ -115,38 +115,37 @@ class TorusParams:
 def torus_point(phi: float, theta: float, tp: TorusParams) -> Tuple[float, float, float]:
     """Surface parameterization of a torus (surface point, not geodesic integration)."""
     tp.validate()
-    R = _safe_float(tp.R)
-    r = _safe_float(tp.minor())
-    cphi = math.cos(phi)
-    sphi = math.sin(phi)
-    cth = math.cos(theta)
-    sth = math.sin(theta)
-
-    rho = R + r * cphi
-    return (rho * cth, rho * sth, r * sphi)
+    R = tp.R
+    r = tp.minor()
+    rho = R + r * math.cos(phi)
+    return (
+        rho * math.cos(theta),
+        rho * math.sin(theta),
+        r * math.sin(phi),
+    )
 
 
 def torus_metric(phi: float, tp: TorusParams) -> Tuple[float, float, float]:
     """Return first fundamental form coefficients (E, F, G)."""
     tp.validate()
-    R = _safe_float(tp.R)
-    r = _safe_float(tp.minor())
+    R = tp.R
+    r = tp.minor()
     return (r * r, 0.0, (R + r * math.cos(phi)) ** 2)
 
 
 def torus_area_element(phi: float, tp: TorusParams) -> float:
     """Return area element sqrt(det(g)) = r * (R + r*cos(phi))."""
     tp.validate()
-    R = _safe_float(tp.R)
-    r = _safe_float(tp.minor())
+    R = tp.R
+    r = tp.minor()
     return r * (R + r * math.cos(phi))
 
 
 def torus_gaussian_curvature(phi: float, tp: TorusParams, eps: float = 1e-12) -> float:
     """Return Gaussian curvature K(phi) = cos(phi)/(r*(R+r*cos(phi)))."""
     tp.validate()
-    R = _safe_float(tp.R)
-    r = _safe_float(tp.minor())
+    R = tp.R
+    r = tp.minor()
     denom = r * (R + r * math.cos(phi))
     if abs(denom) < eps:
         return 0.0
@@ -155,9 +154,10 @@ def torus_gaussian_curvature(phi: float, tp: TorusParams, eps: float = 1e-12) ->
 
 def map_state_to_torus_angles(u: float, v: float) -> Tuple[float, float]:
     """Deterministically map scalar state values to torus angles in [0, 2π)."""
-    phi = TAU * _frac(_safe_float(u))
-    theta = TAU * _frac(_safe_float(v))
-    return (_wrap_angle_rad(phi), _wrap_angle_rad(theta))
+    return (
+        _wrap_angle_rad(TAU * _frac(_safe_float(u))),
+        _wrap_angle_rad(TAU * _frac(_safe_float(v))),
+    )
 
 
 def geometry_patch_signature() -> Dict[str, Any]:
