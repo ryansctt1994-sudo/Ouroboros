@@ -1,5 +1,5 @@
 """Consciousness Evolution System"""
-from ..core import System
+from core import System
 
 class ConsciousnessSystem(System):
     """Evolves 7D consciousness states"""
@@ -12,7 +12,7 @@ class ConsciousnessSystem(System):
     
     def process(self, world, delta_time: float) -> None:
         # Import here to avoid circular imports
-        from ..components import METACUBEComponent
+        from components import METACUBEComponent
         
         entities = world.query(METACUBEComponent)
         for entity in entities:

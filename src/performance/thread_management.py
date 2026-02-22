@@ -77,7 +77,7 @@ class ResourceAwareZombieHunterV2:
         
         self._threads: Dict[int, ThreadInfo] = {}
         self._children: Dict[int, Set[int]] = defaultdict(set)
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._last_check = time.time()
         
         # Track process for resource monitoring

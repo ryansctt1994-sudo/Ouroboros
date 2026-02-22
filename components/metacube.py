@@ -2,7 +2,7 @@
 import math
 from dataclasses import dataclass, field
 from typing import Tuple
-from ..core import Component
+from core import Component
 
 @dataclass
 class DimensionalState:
