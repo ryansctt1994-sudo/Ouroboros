@@ -6,27 +6,37 @@ This module provides the core mathematical operations for the Ouroboros system:
 - Delta-check with entropy penalties
 - Möbius kernel discretization
 - Ramanujan tau function approximations
-- Geodesic flow on horn torus
+- Geodesic flow on torus manifolds
 - Modular symmetry operations
 - Zeta-seeded ergotropy calculations
 """
 
 import math
+import threading
+import time
+import heapq
+import uuid
+from collections import deque
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional, Tuple, Callable
 
 # Check for extended features (numpy/scipy availability)
+np = None
+scipy_zeta = None
+EXTENDED_FEATURES = False
+
 try:
     import numpy as np
     from scipy.special import zeta as scipy_zeta
     EXTENDED_FEATURES = True
 except ImportError:
-    EXTENDED_FEATURES = False
+    pass
 
 
 def _py_scalar(x: Any) -> Any:
     """Normalize NumPy scalar values to native Python scalar types."""
     try:
+        if np is not None and isinstance(x, np.generic):
         if EXTENDED_FEATURES and isinstance(x, np.generic):
             return x.item()
     except Exception:
@@ -227,11 +237,202 @@ def geometry_features(
 # Task Scheduler (Preserved from original implementation)
 # ============================================================================
 
-import threading
-import time
-import heapq
-import uuid
-from collections import deque
+
+TAU = 2.0 * math.pi
+PHASE_LOCK_RATE_LIMIT_SECONDS = 0.01
+
+# Rollback-friendly signature for operational torus geometry patches
+GEOMETRY_RUNTIME_PATCH_SIGNATURE = {
+    "id": "torus-runtime-v1-stability",
+    "description": "Operational torus decision modulation with normalized penalties",
+    "commits": [
+        "c7144c0",  # initial runtime hook integration
+        "3044ce7",  # stability/normalization upgrades
+    ],
+}
+
+
+def _clamp(x: float, lo: float, hi: float) -> float:
+    return lo if x < lo else hi if x > hi else x
+
+
+def _frac(x: float) -> float:
+    return x - math.floor(x)
+
+
+def _wrap_angle_rad(a: float) -> float:
+    return a % TAU
+
+
+def _angle_delta(a: float, b: float) -> float:
+    """Smallest signed circular difference (a-b) in (-pi, pi]."""
+    d = (a - b) % TAU
+    if d > math.pi:
+        d -= TAU
+    return d
+
+
+def _safe_float(x: Any) -> float:
+    return float(_py_scalar(x))
+
+
+def _finite_or(x: Any, fallback: float = 0.0) -> float:
+    """Return finite float value or fallback when NaN/Inf is encountered."""
+    value = _safe_float(x)
+    return value if math.isfinite(value) else fallback
+
+
+@dataclass(frozen=True)
+class TorusParams:
+    """Major/minor torus radii container with validation and type classification."""
+
+    R: float
+    r: Optional[float] = None
+
+    def minor(self) -> float:
+        return self.R if self.r is None else self.r
+
+    def validate(self) -> None:
+        if self.R <= 0:
+            raise ValueError("Major radius R must be > 0.")
+        if self.minor() <= 0:
+            raise ValueError("Minor radius r must be > 0.")
+
+    def torus_type(self, eps: float = 1e-12) -> str:
+        r = self.minor()
+        if abs(self.R - r) <= eps:
+            return "horn"
+        if self.R > r:
+            return "ring"
+        return "spindle"
+
+
+def torus_point(phi: float, theta: float, tp: TorusParams) -> Tuple[float, float, float]:
+    """Surface parameterization of a torus (surface point, not geodesic integration)."""
+    tp.validate()
+    R = tp.R
+    r = tp.minor()
+    rho = R + r * math.cos(phi)
+    return (
+        rho * math.cos(theta),
+        rho * math.sin(theta),
+        r * math.sin(phi),
+    )
+
+
+def torus_metric(phi: float, tp: TorusParams) -> Tuple[float, float, float]:
+    """Return first fundamental form coefficients (E, F, G)."""
+    tp.validate()
+    R = tp.R
+    r = tp.minor()
+    return (r * r, 0.0, (R + r * math.cos(phi)) ** 2)
+
+
+def torus_area_element(phi: float, tp: TorusParams) -> float:
+    """Return area element sqrt(det(g)) = r * (R + r*cos(phi))."""
+    tp.validate()
+    R = tp.R
+    r = tp.minor()
+    return r * (R + r * math.cos(phi))
+
+
+def torus_gaussian_curvature(phi: float, tp: TorusParams, eps: float = 1e-12) -> float:
+    """Return Gaussian curvature K(phi) = cos(phi)/(r*(R+r*cos(phi)))."""
+    tp.validate()
+    R = tp.R
+    r = tp.minor()
+    denom = r * (R + r * math.cos(phi))
+    if abs(denom) < eps:
+        return 0.0
+    return math.cos(phi) / denom
+
+
+def map_state_to_torus_angles(u: float, v: float) -> Tuple[float, float]:
+    """Deterministically map scalar state values to torus angles in [0, 2π)."""
+    return (
+        _wrap_angle_rad(TAU * _frac(_safe_float(u))),
+        _wrap_angle_rad(TAU * _frac(_safe_float(v))),
+    )
+
+
+def geometry_patch_signature() -> Dict[str, Any]:
+    """Return immutable signature metadata for runtime torus geometry patches."""
+    return {
+        "id": GEOMETRY_RUNTIME_PATCH_SIGNATURE["id"],
+        "description": GEOMETRY_RUNTIME_PATCH_SIGNATURE["description"],
+        "commits": list(GEOMETRY_RUNTIME_PATCH_SIGNATURE["commits"]),
+    }
+
+
+def geometry_features(
+    tp: TorusParams,
+    phi: float,
+    theta: float,
+    prev_phi: Optional[float] = None,
+    prev_theta: Optional[float] = None,
+    curvature_gain: float = 1.0,
+    use_curvature: bool = True,
+    ds_cap: Optional[float] = None,
+    normalize_ds: bool = True,
+) -> Dict[str, Any]:
+    """Compute runtime torus geometry features for control and telemetry."""
+    tp.validate()
+    R = tp.R
+    r = tp.minor()
+
+    phi = _wrap_angle_rad(phi)
+    theta = _wrap_angle_rad(theta)
+
+    x, y, z = torus_point(phi, theta, tp)
+    E, F, G = torus_metric(phi, tp)
+    dA = torus_area_element(phi, tp)
+
+    dA_max = r * (R + r)
+    w_area = 0.0 if dA_max <= 0 else _clamp(_finite_or(dA / dA_max, 0.0), 0.0, 1.0)
+
+    K = 0.0
+    w_curv = 0.5
+    if use_curvature:
+        K = _finite_or(torus_gaussian_curvature(phi, tp), 0.0)
+        gain = _finite_or(curvature_gain, 1.0)
+        w_curv = 0.5 * (1.0 + math.tanh(gain * K))
+
+    ds = None
+    ds_norm = None
+    if prev_phi is not None and prev_theta is not None:
+        dphi = _angle_delta(phi, prev_phi)
+        dtheta = _angle_delta(theta, prev_theta)
+        ds2 = (E * dphi * dphi) + (G * dtheta * dtheta)
+        ds = math.sqrt(max(_finite_or(ds2, 0.0), 0.0))
+
+        if normalize_ds:
+            g_max = (R + r) ** 2
+            ds_char = math.sqrt((r * r) * (math.pi ** 2) + g_max * (math.pi ** 2))
+            ds_char = max(ds_char, 1e-12)
+            ds_norm = _clamp(ds / ds_char, 0.0, 1.0)
+
+        if ds_cap is not None:
+            cap = max(_finite_or(ds_cap, 0.0), 0.0)
+            ds = min(ds, cap)
+
+    return {
+        "phi": float(phi),
+        "theta": float(theta),
+        "xyz": (float(x), float(y), float(z)),
+        "metric": (float(E), float(F), float(G)),
+        "dA": float(dA),
+        "w_area": float(w_area),
+        "K": float(K),
+        "w_curv": float(w_curv),
+        "ds": None if ds is None else float(ds),
+        "ds_norm": None if ds_norm is None else float(ds_norm),
+        "torus_type": tp.torus_type(),
+    }
+
+
+# ----------------------------------------------------------------------------
+# Task Scheduler (Preserved from original implementation)
+# ----------------------------------------------------------------------------
 
 
 class Task:
@@ -243,8 +444,8 @@ class Task:
         fn: Callable,
         priority: int,
         next_run: float,
-        args: tuple = None,
-        kwargs: dict = None,
+        args: Optional[Tuple[Any, ...]] = None,
+        kwargs: Optional[Dict[str, Any]] = None,
         interval: Optional[float] = None,
         name: Optional[str] = None,
     ):
@@ -310,6 +511,7 @@ class TaskScheduler:
         self._on_tick: Optional[Callable] = None
         self._max_tasks_per_tick = 50
         self._tick_time_budget_ms = 10
+        self._last_phase_lock_time = 0.0
     
     def schedule_task(
         self,
@@ -318,8 +520,8 @@ class TaskScheduler:
         priority: int = 10,
         delay: float = 0.0,
         interval: Optional[float] = None,
-        args: tuple = None,
-        kwargs: dict = None,
+        args: Optional[Tuple[Any, ...]] = None,
+        kwargs: Optional[Dict[str, Any]] = None,
         name: Optional[str] = None,
     ) -> str:
         """
@@ -541,10 +743,47 @@ class TaskScheduler:
         with self._lock:
             return list(self._monitoring_data)
 
+    def monitor_phase_lock(self, phi: float, theta: float, rate_limit: bool = True) -> Dict[str, Any]:
+        """Record a phase-lock monitoring sample with optional lightweight rate limiting."""
+        now = time.time()
+        with self._lock:
+            if rate_limit and (now - self._last_phase_lock_time) < PHASE_LOCK_RATE_LIMIT_SECONDS:
+                return {"status": "rate_limited", "timestamp": now}
+            self._last_phase_lock_time = now
 
-# ============================================================================
+        quaternion = self.quaternion_state(phi, theta)
+        sample = {
+            "timestamp": now,
+            "phi": float(phi),
+            "theta": float(theta),
+            "phase_locked": True,
+            "gradient_magnitude": 0.0,
+            "quaternion": quaternion,
+        }
+        with self._lock:
+            self._monitoring_data.append(sample)
+        return sample
+
+    def quaternion_state(self, phi: float, theta: float) -> Tuple[float, float, float, float]:
+        """Return a normalized quaternion state from angular coordinates with identity fallback."""
+        half_phi = 0.5 * phi
+        half_theta = 0.5 * theta
+
+        w = math.cos(half_phi) * math.cos(half_theta)
+        x = math.sin(half_phi) * math.cos(half_theta)
+        y = math.cos(half_phi) * math.sin(half_theta)
+        z = math.sin(half_phi) * math.sin(half_theta)
+
+        norm = math.sqrt(w * w + x * x + y * y + z * z)
+        if norm <= 1e-12 or not math.isfinite(norm):
+            return (1.0, 0.0, 0.0, 0.0)
+
+        return (w / norm, x / norm, y / norm, z / norm)
+
+
+# ----------------------------------------------------------------------------
 # Mathematical/Epistemic OuroborosVirtualProcessor
-# ============================================================================
+# ----------------------------------------------------------------------------
 
 class OuroborosVirtualProcessor:
     """
@@ -555,7 +794,7 @@ class OuroborosVirtualProcessor:
     - Delta-check with entropy penalties
     - Möbius kernel discretization for number-theoretic grounding
     - Ramanujan tau function approximations
-    - Geodesic flow on horn torus
+    - Geodesic flow on torus manifolds
     - Modular symmetry operations
     - Zeta-seeded ergotropy calculations
     """
@@ -1002,7 +1241,7 @@ class OuroborosVirtualProcessor:
         """
         if EXTENDED_FEATURES:
             try:
-                zeta_s = scipy_zeta(s)
+                zeta_s = scipy_zeta(s) if scipy_zeta is not None else (math.pi ** 2 / 6.0 if s == 2.0 else 1.0)
             except (ValueError, RuntimeError, Exception):
                 # Fallback to Basel problem solution for s=2
                 if s == 2.0:
@@ -1090,9 +1329,9 @@ class OuroborosVirtualProcessor:
         }
 
 
-# ============================================================================
+# ----------------------------------------------------------------------------
 # Factory Function
-# ============================================================================
+# ----------------------------------------------------------------------------
 
 def create_elpis_processor(config: Optional[Dict[str, Any]] = None) -> OuroborosVirtualProcessor:
     """
@@ -1125,4 +1364,3 @@ def create_elpis_processor(config: Optional[Dict[str, Any]] = None) -> Ouroboros
         threshold=threshold,
         zeta_seed=zeta_seed
     )
-
