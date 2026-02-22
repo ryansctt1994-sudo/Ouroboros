@@ -233,9 +233,14 @@ def geometry_features(
     }
 
 
-# ============================================================================
-# Task Scheduler (Preserved from original implementation)
-# ============================================================================
+def _py_scalar(x: Any) -> Any:
+    """Normalize NumPy scalar values to native Python scalar types."""
+    try:
+        if np is not None and isinstance(x, np.generic):
+            return x.item()
+    except Exception:
+        pass
+    return x
 
 
 TAU = 2.0 * math.pi

@@ -12,6 +12,12 @@ Ouroboros/EDEN combines:
 - **IPC Control** - Unix socket-based daemon/client architecture
 - **GTK4 Chat UI** - Metro-style native interface
 
+## 📝 Recent Internal Updates (Brief)
+
+- Generalized torus math helpers in `ouroboros_processor.py` for explicit major/minor radius handling.
+- Added runtime geometry utility hooks and cleanup for processor stability and diagnostics.
+- Added source-hygiene tests to catch merge-conflict markers and duplicate core geometry definitions early.
+
 ## 🏗️ Architecture
 
 ```
