@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ABRAXIS Phase H — Observer Dashboard</title>
+  <style>
+    :root {
+      --bg:        #0a0a0f;
+      --surface:   #12121a;
+      --border:    #2a2a3a;
+      --accent:    #7c3aed;
+      --accent2:   #06b6d4;
+      --success:   #22c55e;
+      --warn:      #f59e0b;
+      --danger:    #ef4444;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --font-mono: "Fira Mono", "Cascadia Code", monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    header h1 { font-size: 1.1rem; letter-spacing: 0.05em; }
+    header h1 span { color: var(--accent); }
+    .status-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--muted);
+      transition: background 0.3s;
+    }
+    .status-dot.connected   { background: var(--success); box-shadow: 0 0 6px var(--success); }
+    .status-dot.error       { background: var(--danger);  box-shadow: 0 0 6px var(--danger); }
+    #client-id-display { color: var(--muted); font-size: 0.75rem; margin-left: auto; }
+
+    /* ── Main layout ─────────────────────────────────────────── */
+    main {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: auto 1fr;
+      gap: 1rem;
+      padding: 1rem 1.5rem;
+      overflow: hidden;
+    }
+
+    /* ── Panels ──────────────────────────────────────────────── */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .panel-header .label { color: var(--accent2); }
+
+    /* Input panel spans full width */
+    .input-panel { grid-column: 1 / -1; }
+
+    /* ── Voice / text input ──────────────────────────────────── */
+    #input-area {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.75rem;
+    }
+    #transcript-input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 0.875rem;
+      padding: 0.5rem 0.75rem;
+      resize: none;
+      outline: none;
+    }
+    #transcript-input:focus { border-color: var(--accent); }
+    .btn {
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      border: none;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn:disabled { opacity: 0.4; cursor: default; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-mic {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 1.2rem;
+      padding: 0.4rem 0.75rem;
+    }
+    .btn-mic.active { background: var(--danger); border-color: var(--danger); }
+
+    /* ── Feed / log ──────────────────────────────────────────── */
+    .feed {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.5rem;
+      font-size: 0.78rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .feed-item {
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      border-left: 3px solid var(--border);
+    }
+    .feed-item.high     { border-left-color: var(--success); }
+    .feed-item.moderate { border-left-color: var(--warn); }
+    .feed-item.vetoed   { border-left-color: var(--danger); opacity: 0.7; }
+    .feed-item .meta {
+      color: var(--muted);
+      font-size: 0.68rem;
+      margin-bottom: 0.2rem;
+    }
+    .feed-item .transcript { color: var(--accent2); }
+    .feed-item .gnosis     { color: var(--text); }
+
+    /* ── Metrics panel ───────────────────────────────────────── */
+    #metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      padding: 0.75rem;
+    }
+    .metric-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.5rem 0.75rem;
+    }
+    .metric-label { color: var(--muted); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; }
+    .metric-value { font-size: 1.4rem; margin-top: 0.1rem; }
+    .metric-value.good { color: var(--success); }
+    .metric-value.warn { color: var(--warn); }
+    .metric-value.bad  { color: var(--danger); }
+
+    /* ── Phase arc ───────────────────────────────────────────── */
+    #phase-canvas { display: block; margin: 0 auto; }
+
+    /* ── Footer ──────────────────────────────────────────────── */
+    footer {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 0.4rem 1.5rem;
+      font-size: 0.65rem;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    footer a { color: var(--accent); }
+
+    /* ── Scrollbar ───────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--surface); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    @media (max-width: 700px) {
+      main { grid-template-columns: 1fr; }
+      .input-panel { grid-column: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="status-dot" id="conn-dot"></div>
+  <h1>ABRAXIS <span>Phase H</span> — Voice-to-Gnosis Observer</h1>
+  <span id="client-id-display">disconnected</span>
+</header>
+
+<main>
+  <!-- Input panel -->
+  <div class="panel input-panel">
+    <div class="panel-header">
+      <span class="label">⌨</span> Voice / Text Input
+      <span id="ws-url-display" style="margin-left:auto; font-size:0.65rem"></span>
+    </div>
+    <div id="input-area">
+      <textarea id="transcript-input" rows="2"
+                placeholder="Type a transcript or use the mic button…"></textarea>
+      <button class="btn btn-mic" id="mic-btn" title="Toggle microphone (requires Chrome/Edge with Web Speech API)">🎙</button>
+      <button class="btn btn-primary" id="send-btn" disabled>Send</button>
+    </div>
+    <div style="padding: 0 0.75rem 0.5rem; display:flex; gap:0.5rem; align-items:center">
+      <label style="font-size:0.7rem; color:var(--muted)">WS host:</label>
+      <input id="ws-host" value="localhost" style="background:var(--bg); border:1px solid var(--border);
+             color:var(--text); font-family:var(--font-mono); font-size:0.75rem;
+             padding:0.2rem 0.4rem; border-radius:3px; width:120px" />
+      <input id="ws-port" value="8765" type="number" style="background:var(--bg); border:1px solid var(--border);
+             color:var(--text); font-family:var(--font-mono); font-size:0.75rem;
+             padding:0.2rem 0.4rem; border-radius:3px; width:70px" />
+      <button class="btn btn-primary" id="connect-btn" style="padding:0.3rem 0.75rem; font-size:0.75rem">Connect</button>
+      <button class="btn" id="disconnect-btn" style="padding:0.3rem 0.75rem; font-size:0.75rem;
+              background:var(--surface); border:1px solid var(--border)" disabled>Disconnect</button>
+      <span id="mic-support-note" style="font-size:0.65rem; color:var(--muted); margin-left:0.5rem"></span>
+    </div>
+  </div>
+
+  <!-- Gnosis feed -->
+  <div class="panel">
+    <div class="panel-header"><span class="label">🧬</span> Gnosis Feed</div>
+    <div class="feed" id="gnosis-feed"></div>
+  </div>
+
+  <!-- Metrics + phase arc -->
+  <div class="panel">
+    <div class="panel-header"><span class="label">📡</span> Live Metrics</div>
+    <div id="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-label">Packets sent</div>
+        <div class="metric-value" id="m-sent">0</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Admitted</div>
+        <div class="metric-value good" id="m-admitted">0</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Vetoed</div>
+        <div class="metric-value bad" id="m-vetoed">0</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Avg coherence</div>
+        <div class="metric-value warn" id="m-coherence">—</div>
+      </div>
+    </div>
+    <div style="padding:0.5rem; text-align:center; flex:1;">
+      <canvas id="phase-canvas" width="180" height="180"></canvas>
+      <div style="font-size:0.65rem; color:var(--muted); margin-top:0.3rem">Phasonic Clock (PLL · 0.0997 Hz)</div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <span>MIT License · Ethical Use Covenant · <a href="https://github.com/AIOSPANDORA/Ouroboros">AIOSPANDORA/Ouroboros</a></span>
+  <span id="ts-display"></span>
+</footer>
+
+<script>
+/* ──────────────────────────────────────────────────────────────────────────
+   Phase H Observer Dashboard — client-side script
+   ────────────────────────────────────────────────────────────────────────── */
+
+// --- State ---
+let ws = null;
+let clientId = null;
+let metrics = { sent: 0, admitted: 0, vetoed: 0, coherenceSum: 0, coherenceCount: 0 };
+let phaseAngle = 0; // radians, updated by phasonic clock simulation
+
+const FREQ_HZ   = 0.0997;  // Chuckle Constant
+const TWO_PI    = 2 * Math.PI;
+let   lastTick  = performance.now();
+
+// --- DOM refs ---
+const dot         = document.getElementById('conn-dot');
+const clientDisp  = document.getElementById('client-id-display');
+const sendBtn     = document.getElementById('send-btn');
+const connectBtn  = document.getElementById('connect-btn');
+const disconnBtn  = document.getElementById('disconnect-btn');
+const feed        = document.getElementById('gnosis-feed');
+const hostInput   = document.getElementById('ws-host');
+const portInput   = document.getElementById('ws-port');
+const txInput     = document.getElementById('transcript-input');
+const micBtn      = document.getElementById('mic-btn');
+const canvas      = document.getElementById('phase-canvas');
+const ctx         = canvas.getContext('2d');
+
+// --- Metrics update ---
+function updateMetrics() {
+  document.getElementById('m-sent').textContent      = metrics.sent;
+  document.getElementById('m-admitted').textContent  = metrics.admitted;
+  document.getElementById('m-vetoed').textContent    = metrics.vetoed;
+  const avg = metrics.coherenceCount
+    ? (metrics.coherenceSum / metrics.coherenceCount).toFixed(3) : '—';
+  const el = document.getElementById('m-coherence');
+  el.textContent = avg;
+  el.className = 'metric-value ' + (avg === '—' ? 'warn'
+    : avg >= 0.75 ? 'good' : avg >= 0.5 ? 'warn' : 'bad');
+}
+
+// --- Phasonic clock animation ---
+function drawPhase(now) {
+  const dt = (now - lastTick) / 1000;
+  lastTick = now;
+  phaseAngle = (phaseAngle + TWO_PI * FREQ_HZ * dt) % TWO_PI;
+
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2, r = W / 2 - 12;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Background ring
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, TWO_PI);
+  ctx.strokeStyle = '#2a2a3a';
+  ctx.lineWidth = 6;
+  ctx.stroke();
+
+  // Admission sector (phase < π/4 or > 7π/4)
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, -Math.PI / 4 - Math.PI / 2, Math.PI / 4 - Math.PI / 2);
+  ctx.strokeStyle = 'rgba(34,197,94,0.35)';
+  ctx.lineWidth = 6;
+  ctx.stroke();
+
+  // Phase marker
+  const px = cx + r * Math.cos(phaseAngle - Math.PI / 2);
+  const py = cy + r * Math.sin(phaseAngle - Math.PI / 2);
+
+  ctx.beginPath();
+  ctx.arc(px, py, 7, 0, TWO_PI);
+  const admitted = phaseAngle < Math.PI / 4 || phaseAngle > 7 * Math.PI / 4;
+  ctx.fillStyle = admitted ? '#22c55e' : '#7c3aed';
+  ctx.fill();
+
+  // Phase text
+  ctx.fillStyle = '#64748b';
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(`φ = ${phaseAngle.toFixed(3)} rad`, cx, cy + 5);
+
+  document.getElementById('ts-display').textContent = new Date().toISOString();
+  requestAnimationFrame(drawPhase);
+}
+requestAnimationFrame(drawPhase);
+
+// --- WebSocket connection ---
+function connect() {
+  const host = hostInput.value.trim() || 'localhost';
+  const port = parseInt(portInput.value, 10) || 8765;
+  const url  = `ws://${host}:${port}`;
+
+  document.getElementById('ws-url-display').textContent = url;
+
+  ws = new WebSocket(url);
+
+  ws.onopen = () => {
+    dot.className = 'status-dot connected';
+  };
+
+  ws.onmessage = (evt) => {
+    try {
+      const msg = JSON.parse(evt.data);
+      if (msg.event === 'connected') {
+        clientId = msg.client_id;
+        clientDisp.textContent = `client: ${clientId}`;
+        sendBtn.disabled = false;
+        connectBtn.disabled = true;
+        disconnBtn.disabled = false;
+        return;
+      }
+      if (msg.gnosis) renderGnosisItem(msg);
+    } catch (_) {}
+  };
+
+  ws.onerror = () => {
+    dot.className = 'status-dot error';
+  };
+
+  ws.onclose = () => {
+    dot.className = 'status-dot';
+    clientDisp.textContent = 'disconnected';
+    sendBtn.disabled = true;
+    connectBtn.disabled = false;
+    disconnBtn.disabled = true;
+    clientId = null;
+  };
+}
+
+function disconnect() {
+  if (ws) ws.close();
+}
+
+// --- Render a gnosis feed item ---
+function renderGnosisItem(msg) {
+  // Determine severity class
+  let cls = 'feed-item';
+  if (msg.gnosis.includes(':vetoed')) cls += ' vetoed';
+  else if (msg.gnosis.includes(':high')) cls += ' high';
+  else cls += ' moderate';
+
+  // Update metrics
+  metrics.sent++;
+  if (msg.phase_admitted && msg.coherence >= 0.5) {
+    metrics.admitted++;
+  } else {
+    metrics.vetoed++;
+  }
+  if (msg.coherence != null) {
+    metrics.coherenceSum   += msg.coherence;
+    metrics.coherenceCount += 1;
+  }
+  updateMetrics();
+
+  // Build DOM element
+  const item = document.createElement('div');
+  item.className = cls;
+  const ts = msg.timestamp ? new Date(msg.timestamp * 1000).toISOString().slice(11, 23) : '';
+  item.innerHTML = `
+    <div class="meta">${ts}  client=${msg.client_id}  coherence=${
+      (msg.coherence ?? 0).toFixed(3)}  admitted=${msg.phase_admitted}</div>
+    <div class="transcript">▶ ${escapeHtml(msg.transcript || '')}</div>
+    <div class="gnosis">${escapeHtml(msg.gnosis || '')}</div>`;
+
+  feed.appendChild(item);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// --- Send transcript ---
+function sendTranscript() {
+  const text = txInput.value.trim();
+  if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({ transcript: text }));
+  txInput.value = '';
+}
+
+// --- Web Speech API (microphone) ---
+let recognition = null;
+let micActive   = false;
+
+function toggleMic() {
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    alert('Web Speech API not supported in this browser.');
+    return;
+  }
+  if (micActive) {
+    recognition && recognition.stop();
+    micActive = false;
+    micBtn.classList.remove('active');
+    return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.continuous      = true;
+  recognition.interimResults  = false;
+  recognition.lang            = 'en-US';
+  recognition.onresult = (e) => {
+    const transcript = e.results[e.results.length - 1][0].transcript.trim();
+    if (transcript && ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ transcript }));
+    }
+  };
+  recognition.onerror = () => {
+    micActive = false;
+    micBtn.classList.remove('active');
+  };
+  recognition.onend = () => {
+    if (micActive) recognition.start(); // keep going
+  };
+  recognition.start();
+  micActive = true;
+  micBtn.classList.add('active');
+}
+
+// --- Event listeners ---
+connectBtn.addEventListener('click', connect);
+disconnBtn.addEventListener('click', disconnect);
+sendBtn.addEventListener('click', sendTranscript);
+micBtn.addEventListener('click', toggleMic);
+txInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendTranscript(); }
+});
+
+// Show mic support status on load
+(function checkMicSupport() {
+  const note = document.getElementById('mic-support-note');
+  if (!note) return;
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    note.textContent = '🎙 Web Speech API supported';
+  } else {
+    note.textContent = '⚠ Mic requires Chrome/Edge';
+    note.style.color = 'var(--warn)';
+    micBtn.disabled = true;
+    micBtn.title = 'Web Speech API not available in this browser';
+  }
+}());
+</script>
+</body>
+</html>
