@@ -21,13 +21,18 @@ from .components import (
     Loyalty, Corruption, DecayMode, LoyaltyModifier,
     PHI, OMEGA_H,
     QuantumResonance, QuantumCircuit, QuantumGate, NoiseChannel,
-    MemoryLattice, MemoryBlock, MemoryAlignment
+    MemoryLattice, MemoryBlock, MemoryAlignment,
+    PalindromeState
 )
 
 # Systems
 from .systems import (
     ConsciousnessSystem,
-    BalanceSystem
+    BalanceSystem,
+    PalindromeDescentSystem,
+    CoherenceAccumulatorSystem,
+    VetoEvent, SimulatedKillswitch, VetoSystem,
+    TernaryRegister, TernaryRegisterSystem, mu_mobius,
 )
 
 __all__ = [
@@ -43,7 +48,12 @@ __all__ = [
     'PHI', 'OMEGA_H',
     'QuantumResonance', 'QuantumCircuit', 'QuantumGate', 'NoiseChannel',
     'MemoryLattice', 'MemoryBlock', 'MemoryAlignment',
+    'PalindromeState',
     # Systems
     'ConsciousnessSystem',
     'BalanceSystem',
+    'PalindromeDescentSystem',
+    'CoherenceAccumulatorSystem',
+    'VetoEvent', 'SimulatedKillswitch', 'VetoSystem',
+    'TernaryRegister', 'TernaryRegisterSystem', 'mu_mobius',
 ]
