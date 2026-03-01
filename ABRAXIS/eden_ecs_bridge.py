@@ -17,6 +17,8 @@ Responsibilities
 - Offer ``create_abraxis_world()`` which bootstraps an EDEN-ECS ``World``
   with the components required by ABRAXIS (``AbraxisNode``, ``PhasonicClock``,
   ``GovernanceState``).
+- Expose Tiamat Convergence methods: ``manifest()``, ``pulse()``,
+  ``get_status()``, ``get_entity_state()``.
 """
 
 from __future__ import annotations
@@ -25,7 +27,7 @@ import logging
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +57,29 @@ except (ImportError, ModuleNotFoundError):
 
     class Component:  # type: ignore[no-redef]
         """Minimal stub when EDEN-ECS is not installed."""
+
+
+# ---------------------------------------------------------------------------
+# Tiamat Convergence — optional imports
+# ---------------------------------------------------------------------------
+
+try:
+    import importlib as _il
+    _ecs = _il.import_module("EDEN-ECS")
+    _comp = _il.import_module("EDEN-ECS.components")
+    _sys_mod = _il.import_module("EDEN-ECS.systems")
+    _const = _il.import_module("EDEN-ECS.core.constants")
+
+    _METACUBEComponent = _comp.METACUBEComponent
+    _MemoryLattice = _comp.MemoryLattice
+    _PalindromeState = _comp.PalindromeState
+    _PalindromeDescentSystem = _sys_mod.PalindromeDescentSystem
+    _CoherenceAccumulatorSystem = _sys_mod.CoherenceAccumulatorSystem
+    _VetoSystem = _sys_mod.VetoSystem
+    _TernaryRegisterSystem = _sys_mod.TernaryRegisterSystem
+    _TIAMAT_AVAILABLE = True
+except Exception:  # pylint: disable=broad-except
+    _TIAMAT_AVAILABLE = False
 
 
 class AbraxisNodeComponent(Component):
@@ -143,6 +168,8 @@ class EdenEcsBridge:
         self._phasonic_clocks: Dict[str, PhasonicClockComponent] = {}
         self._governance_states: Dict[str, GovernanceStateComponent] = {}
         self._eden_available = _EDEN_ECS_AVAILABLE
+        self._tiamat_entities: Dict[str, Any] = {}  # entity_id → entity
+        self._tiamat_systems: Dict[str, Any] = {}
         self._init_world()
 
     def _init_world(self) -> None:
@@ -153,8 +180,26 @@ class EdenEcsBridge:
             from core.world import World  # type: ignore[import]
             self._world = World()
             logger.info("EDEN-ECS World initialised for ABRAXIS bridge.")
+            if _TIAMAT_AVAILABLE:
+                self._init_tiamat_systems()
         except Exception as exc:  # pylint: disable=broad-except
             logger.warning("Could not initialise EDEN-ECS World: %s", exc)
+
+    def _init_tiamat_systems(self) -> None:
+        """Attach Tiamat Convergence systems to the world."""
+        try:
+            systems = {
+                'veto': _VetoSystem(),
+                'coherence': _CoherenceAccumulatorSystem(),
+                'palindrome': _PalindromeDescentSystem(),
+                'ternary': _TernaryRegisterSystem(),
+            }
+            for sys_obj in systems.values():
+                self._world.add_system(sys_obj)
+            self._tiamat_systems = systems
+            logger.info("Tiamat Convergence systems attached to ABRAXIS world.")
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning("Could not attach Tiamat systems: %s", exc)
 
     # ------------------------------------------------------------------
     # Node registration
@@ -242,6 +287,151 @@ class EdenEcsBridge:
             },
         }
 
+    # ------------------------------------------------------------------
+    # Tiamat Convergence — manifest / pulse / get_status / get_entity_state
+    # ------------------------------------------------------------------
+
+    def manifest(self, word: str = "", frequency: float = 528.0) -> Optional[str]:
+        """
+        Spawn a Tiamat Convergence entity with PalindromeState + METACUBEComponent
+        + MemoryLattice.
+
+        Returns the entity ID, or ``None`` if unavailable.
+        """
+        if not _TIAMAT_AVAILABLE or self._world is None:
+            logger.debug("manifest() — Tiamat not available.")
+            return None
+        try:
+            from core.entity import EntityType  # type: ignore[import]
+            entity = self._world.create_entity(EntityType.SYSTEM, "tiamat_manifest")
+            ps = _PalindromeState(word=word or "ABRAXISASIXARBA")
+            mc = _METACUBEComponent()
+            mc.quantum_frequency = frequency
+            ml = _MemoryLattice()
+            self._world.add_component(entity, ps)
+            self._world.add_component(entity, mc)
+            self._world.add_component(entity, ml)
+            self._tiamat_entities[entity.id] = entity
+            logger.debug("manifest() → entity %s (word=%s freq=%.1f)", entity.id, ps.word, frequency)
+            return entity.id
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning("manifest() failed: %s", exc)
+            return None
+
+    def pulse(
+        self,
+        frequency: float = 417.0,
+        duration_ns: int = 0,
+        cycles: int = 1,
+    ) -> None:
+        """
+        Send ``cycles`` ticks through the EDEN-ECS world at the given frequency.
+
+        Parameters
+        ----------
+        frequency:
+            Pulse frequency in Hz (used to compute delta_time).
+        duration_ns:
+            Optional pause in nanoseconds between cycles.
+        cycles:
+            Number of world ticks to execute.
+        """
+        if self._world is None:
+            logger.debug("pulse() — world not available.")
+            return
+        delta_time = 1.0 / frequency if frequency > 0 else 1.0 / 417.0
+        for _ in range(cycles):
+            self._world.tick(delta_time=delta_time)
+            if duration_ns > 0:
+                time.sleep(duration_ns / 1e9)
+
+    def get_status(self) -> Dict[str, Any]:
+        """
+        Return entity counts, system stats, and key constants.
+        """
+        entity_count = (
+            len(self._world.entity_manager.entities) if self._world else 0
+        )
+        sys_stats: Dict[str, Any] = {}
+        for name, sys_obj in self._tiamat_systems.items():
+            sys_stats[name] = getattr(sys_obj, 'tiamat_stats',
+                                       getattr(sys_obj, 'entity_stats', {}))
+
+        constants: Dict[str, Any] = {}
+        if _TIAMAT_AVAILABLE:
+            try:
+                constants = {
+                    'PHI': _const.PHI,
+                    'ALPHA': _const.ALPHA,
+                    'THETA': _const.THETA,
+                    'LAMBDA': _const.LAMBDA,
+                    'DELTA': _const.DELTA,
+                    'VETO_THRESHOLD': _const.VETO_THRESHOLD,
+                    'PULSE_FREQUENCY_HZ': _const.PULSE_FREQUENCY_HZ,
+                    'PALINDROME_ROOT': _const.PALINDROME_ROOT,
+                }
+            except Exception:  # pylint: disable=broad-except
+                pass
+
+        return {
+            'eden_available': self._eden_available,
+            'tiamat_available': _TIAMAT_AVAILABLE,
+            'entity_count': entity_count,
+            'tiamat_entity_count': len(self._tiamat_entities),
+            'system_stats': sys_stats,
+            'constants': constants,
+        }
+
+    def get_entity_state(self, entity_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Return detailed state for a Tiamat entity.
+
+        Includes palindrome, metacube, coherence, and ternary data.
+        """
+        if self._world is None:
+            return None
+        entity = self._world.entity_manager.entities.get(entity_id)
+        if entity is None:
+            return None
+
+        result: Dict[str, Any] = {'entity_id': entity_id}
+
+        if _TIAMAT_AVAILABLE:
+            ps = entity.get_component(_PalindromeState)
+            if ps:
+                result['palindrome'] = {
+                    'word': ps.word,
+                    'layer': ps.layer,
+                    'vitality': ps.vitality,
+                    'vitality_divergence': ps.vitality_divergence,
+                    'symmetry_verified': ps.symmetry_verified,
+                    'center': ps.center_letter(),
+                    'descent_history': list(ps.descent_history),
+                }
+
+            mc = entity.get_component(_METACUBEComponent)
+            if mc:
+                result['metacube'] = {
+                    'quantum_frequency': mc.quantum_frequency,
+                    'quantum_coherence': mc.quantum_coherence,
+                    'coherence': mc.coherence(),
+                }
+
+            coherence_sys = self._tiamat_systems.get('coherence')
+            if coherence_sys:
+                result['chi'] = coherence_sys.get_chi(entity_id)
+
+            ternary_sys = self._tiamat_systems.get('ternary')
+            if ternary_sys:
+                reg = ternary_sys.get_register(entity_id)
+                result['ternary'] = {
+                    'state': reg.state,
+                    'direction': reg.direction,
+                    'ternary_value': reg.ternary_value,
+                }
+
+        return result
+
 
 # ---------------------------------------------------------------------------
 # Mycelial bridge adapter
@@ -310,3 +500,59 @@ def create_abraxis_world(node_ids: list[str] | None = None) -> EdenEcsBridge:
     for nid in (node_ids or ["primary"]):
         bridge.register_node(nid)
     return bridge
+
+
+# ---------------------------------------------------------------------------
+# CLI entry point
+# ---------------------------------------------------------------------------
+
+
+def main() -> None:
+    import argparse
+    import json
+
+    parser = argparse.ArgumentParser(
+        description="ABRAXIS EDEN-ECS Bridge — Tiamat Convergence testing CLI"
+    )
+    subparsers = parser.add_subparsers(dest="command")
+
+    manifest_p = subparsers.add_parser("manifest", help="Spawn a Tiamat entity")
+    manifest_p.add_argument("--word", default="", help="Palindrome word (default: PALINDROME_ROOT)")
+    manifest_p.add_argument("--frequency", type=float, default=528.0, help="Quantum frequency (Hz)")
+
+    pulse_p = subparsers.add_parser("pulse", help="Send pulses through the world")
+    pulse_p.add_argument("--frequency", type=float, default=417.0, help="Pulse frequency (Hz)")
+    pulse_p.add_argument("--cycles", type=int, default=1, help="Number of ticks")
+
+    subparsers.add_parser("status", help="Print world/system status")
+
+    entity_p = subparsers.add_parser("entity", help="Print state of a specific entity")
+    entity_p.add_argument("entity_id", help="Entity ID")
+
+    parser.add_argument("--log-level", default="INFO")
+    args = parser.parse_args()
+
+    logging.basicConfig(
+        level=args.log_level.upper(),
+        format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
+    )
+
+    bridge = EdenEcsBridge()
+
+    if args.command == "manifest":
+        eid = bridge.manifest(word=args.word, frequency=args.frequency)
+        print(json.dumps({"entity_id": eid}))
+    elif args.command == "pulse":
+        bridge.pulse(frequency=args.frequency, cycles=args.cycles)
+        print(json.dumps({"pulses_sent": args.cycles}))
+    elif args.command == "status":
+        print(json.dumps(bridge.get_status(), indent=2, default=str))
+    elif args.command == "entity":
+        state = bridge.get_entity_state(args.entity_id)
+        print(json.dumps(state, indent=2, default=str))
+    else:
+        parser.print_help()
+
+
+if __name__ == "__main__":
+    main()
