@@ -1,0 +1,49 @@
+[package]
+name = "ouroboros-cathedral"
+version = "0.1.0"
+authors = ["AIOSPANDORA Development Team"]
+edition = "2021"
+description = "ABRAXIS / Cathedral-OS entry point for AIOSPANDORA/Ouroboros"
+license = "MIT"
+repository = "https://github.com/AIOSPANDORA/Ouroboros"
+readme = "README.md"
+
+[[bin]]
+name = "ouroboros-cathedral"
+path = "src/main.rs"
+
+[dependencies]
+# Core async runtime
+tokio = { version = "1", features = ["full"] }
+# WebSocket support for Phase H dashboard
+tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
+# Futures utilities (stream/sink combinators)
+futures-util = "0.3"
+# JSON serialisation
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# CLI argument parsing
+clap = { version = "4", features = ["derive"] }
+# UUID generation
+uuid = { version = "1", features = ["v4"] }
+# Error handling
+anyhow = "1"
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+# Workspace members — add new crates here as the project grows.
+[workspace]
+members = [
+    ".",
+    "ELPIS/METACUBE/forge_standalone",
+]

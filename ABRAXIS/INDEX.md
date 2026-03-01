@@ -24,6 +24,16 @@ This manifest links every known ABRAXIS artefact to the relevant section of
 | `ELPIS/METACUBE/forge_standalone/src/consensus.rs` | Rust source | Phase 2 |
 | `ABRAXIS/CANONICAL_PROGRESSION.md` | **This canonical doc** | All phases |
 | `geodesic_mycelium_agent/` | Python agent scaffold | All phases (runtime) |
+| `ABRAXIS/phase_h/websocket_dashboard.py` | **Phase H implementation** | Phase H |
+| `ABRAXIS/phase_i/autonomous_nodes.py` | **Phase I implementation** | Phase I |
+| `ABRAXIS/eden_ecs_bridge.py` | EDEN-ECS integration bridge | Phase H, Phase I |
+| `src/main.rs` | Rust entry point (Cathedral-OS binary) | Phase H, Phase I |
+| `Cargo.toml` | Rust workspace manifest | Phase H, Phase I |
+| `docs/observer-dashboard.html` | Phase H browser dashboard | Phase H |
+| `.github/workflows/abraxis-ci.yml` | CI configuration | Phase H, Phase I |
+| `ABRAXIS/Dockerfile` | Multi-stage Docker image | Phase H, Phase I |
+| `ABRAXIS/k8s/deployment.yaml` | Kubernetes manifests | Phase H, Phase I |
+| `ABRAXIS/packaging/build_deb.sh` | .deb build script | Phase H, Phase I |
 
 ---
 
