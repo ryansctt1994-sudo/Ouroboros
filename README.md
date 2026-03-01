@@ -197,6 +197,36 @@ Ouroboros/
 └── requirements.txt            # Python dependencies
 ```
 
+## 📚 ABRAXIS — Architecture Consolidation
+
+Session architecture notes and concepts are consolidated in the `ABRAXIS/` folder:
+
+| Document | Description |
+|---|---|
+| [`ABRAXIS/CANONICAL_PROGRESSION.md`](ABRAXIS/CANONICAL_PROGRESSION.md) | Canonical Abraxis/Cathedral-OS progression (Phase 0–9) |
+| [`ABRAXIS/INDEX.md`](ABRAXIS/INDEX.md) | Manifest of all artefacts and gap register |
+| [`ABRAXIS/README.md`](ABRAXIS/README.md) | ABRAXIS folder overview |
+
+### 🌿 Geodesic Mycelium Agent
+
+Fire up the minimal agent scaffold:
+
+```bash
+# Dry-run (no API keys required):
+python -m geodesic_mycelium_agent --dry-run "Explain the Two-Rail Encoding"
+
+# Show loaded docs summary:
+python -m geodesic_mycelium_agent --show-docs
+
+# Interactive session:
+python -m geodesic_mycelium_agent --interactive
+```
+
+See [`geodesic_mycelium_agent/README.md`](geodesic_mycelium_agent/README.md) for extension
+points (LLM providers, MCP tool-calling, persistent memory backends).
+
+---
+
 ## 🔗 Related Projects
 
 - **[EDEN-ECS](https://github.com/AIOSPANDORA/EDEN-ECS)** - Entity-Component-System consciousness framework
