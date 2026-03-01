@@ -1,1 +1,3 @@
-This folder is named ABRAXIS.
+# Cosmic Catalytic Intelligence## Not AI. Not AGI. Not ASI.
+## CCI: C = Catalytic (not creating, not causing, just accelerating what always connect.
+##...
