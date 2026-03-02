@@ -1,5 +1,6 @@
 """Mathematical constants and utility functions for the Tiamat Convergence."""
 import math
+import warnings
 
 PHI = (1 + math.sqrt(5)) / 2          # 1.618033988749895
 ALPHA = 75 / 17                         # 4.411764705882353

@@ -4,6 +4,7 @@ import math
 import sys
 import os
 import unittest
+import warnings
 
 _REPO_ROOT = os.path.join(os.path.dirname(__file__), '..', '..')
 if _REPO_ROOT not in sys.path:
@@ -39,6 +40,23 @@ class TestChiBarFormula(unittest.TestCase):
         self.assertLess(inner, 1.0, "Log domain must be < 1")
         ratio = (1 + inner) / (1 - inner)
         self.assertGreater(ratio, 1.0, "Log ratio must be > 1")
+
+    def test_chi_bar_requires_keyword_arguments(self):
+        # Positional arguments must raise TypeError (keyword-only enforcement)
+        with self.assertRaises(TypeError):
+            chi_bar(ALPHA, PHI, LAMBDA, DELTA)  # type: ignore[call-arg]
+
+    def test_chi_bar_singularity_warning(self):
+        # inner > 0.95 should issue a RuntimeWarning and return a bounded value
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            result = chi_bar(alpha=ALPHA, phi=PHI, lam=0.98, delta=1.0)
+        runtime_warnings = [w for w in caught if issubclass(w.category, RuntimeWarning)]
+        self.assertTrue(len(runtime_warnings) > 0, "Expected RuntimeWarning for near-singularity input")
+        self.assertFinite(result)
+
+    def assertFinite(self, value):
+        self.assertTrue(math.isfinite(value), f"Expected finite value, got {value}")
 
 
 class TestConstants(unittest.TestCase):
