@@ -109,3 +109,9 @@ vectors.json
 *.log
 simulation_history.json
 simulation_output_*
+
+# Steam build artifacts and redistributable binaries
+steamcmd_output/
+Package/
+dist/
+steam/redist/**/*.exe

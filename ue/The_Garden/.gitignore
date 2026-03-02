@@ -1,0 +1,28 @@
+# Unreal Engine — The Garden
+Binaries/
+Build/
+DerivedDataCache/
+Intermediate/
+Saved/
+.vs/
+.idea/
+*.sln
+*.suo
+*.user
+*.VC.db
+
+# Steam local dev file — never ship in depot
+steam_appid.txt
+
+# Compiled outputs
+*.exe
+*.dll
+*.lib
+*.pdb
+*.so
+*.dylib
+*.a
+
+# Plugin build artefacts (rebuilt from source)
+Plugins/*/Binaries/
+Plugins/*/Intermediate/

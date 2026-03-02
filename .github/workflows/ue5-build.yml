@@ -1,0 +1,381 @@
+# ============================================================================
+# AIOS: Ouroboros — UE5 Build & Package
+# ============================================================================
+# Builds Win64 and Linux Shipping configurations using Unreal Engine 5.3.
+#
+# Prerequisites (self-hosted runner labelled "ue5"):
+#   • Unreal Engine 5.3 installed at UE_ROOT (see env below, or set as a
+#     runner environment variable / repository variable).
+#   • A Windows runner for Win64; a Linux runner for Linux.
+#
+# GitHub-hosted runners do NOT have UE5 pre-installed.  You must either:
+#   a) Register a self-hosted runner with UE5 installed, OR
+#   b) Use a cloud build service such as BuildJet or AWS GameLift Fleet.
+#
+# Triggers:
+#   • Push / PR to main for continuous validation.
+#   • Manual dispatch for on-demand packaging.
+# ============================================================================
+
+name: UE5 Build & Package — The Garden
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ue/The_Garden/**'
+      - 'scripts/build/**'
+      - 'scripts/package.sh'
+      - '.github/workflows/ue5-build.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'ue/The_Garden/**'
+  workflow_dispatch:
+    inputs:
+      configuration:
+        description: 'Build configuration'
+        required: true
+        default: 'Shipping'
+        type: choice
+        options: [Development, DebugGame, Shipping]
+      version:
+        description: 'Semantic version (e.g. 0.1.0)'
+        required: false
+        default: ''
+
+env:
+  # Set UE_ROOT as a repository variable (Settings → Variables).
+  # Win example : C:\Program Files\Epic Games\UE_5.4
+  # Linux example: /opt/UnrealEngine/5.4
+  # Mac example  : /Users/Shared/Epic Games/UE_5.4
+  UE_ROOT:      ${{ vars.UE_ROOT }}
+  PROJECT:      ${{ github.workspace }}/ue/The_Garden/The_Garden.uproject
+  BUILD_CONFIG: ${{ github.event.inputs.configuration || 'Shipping' }}
+  VERSION:      ${{ github.event.inputs.version || '' }}
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Build metadata (shared)
+  # --------------------------------------------------------------------------
+  metadata:
+    name: Build metadata
+    runs-on: ubuntu-latest
+    outputs:
+      build_string: ${{ steps.meta.outputs.build_string }}
+      version:      ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate headers + BuildInfo.json
+        id: meta
+        run: |
+          export BUILD_CONFIG="${{ env.BUILD_CONFIG }}"
+          bash scripts/build/generate-build-metadata.sh "${{ env.VERSION }}"
+          VER=$(grep 'THEGARDEN_BUILD_VERSION ' \
+            ue/The_Garden/Source/TheGarden/TheGardenBuildVersion.h \
+            | sed 's/.*"\(.*\)"/\1/')
+          SHA=$(git rev-parse --short HEAD)
+          echo "version=${VER}"           >> "$GITHUB_OUTPUT"
+          echo "build_string=${VER}+${SHA}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-metadata
+          path: |
+            ue/The_Garden/Source/TheGarden/TheGardenBuildVersion.h
+            ue/The_Garden/Content/BuildInfo/BuildInfo.json
+            ue/Symbiont/Source/Symbiont/AIOSBuildVersion.h
+          retention-days: 30
+
+  # --------------------------------------------------------------------------
+  # Win64
+  # --------------------------------------------------------------------------
+  build-win64:
+    name: Win64 ${{ needs.metadata.outputs.build_string }}
+    needs: metadata
+    runs-on: [self-hosted, Windows, ue5]
+    steps:
+      - uses: actions/checkout@v4
+        with: { lfs: true }
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-metadata
+          path: .
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/DDC
+          key: ue5-ddc-win64-${{ hashFiles('ue/The_Garden/**/*.uasset','ue/The_Garden/**/*.cpp') }}
+          restore-keys: ue5-ddc-win64-
+
+      - name: Package Win64 Shipping
+        shell: pwsh
+        run: |
+          $UAT = "$env:UE_ROOT\Engine\Build\BatchFiles\RunUAT.bat"
+          & $UAT BuildCookRun -project="$env:PROJECT" -noP4 `
+            -platform=Win64 -clientconfig=$env:BUILD_CONFIG `
+            -cook -allmaps -build -stage -pak -archive `
+            -archivedirectory="${{ github.workspace }}/dist/Win64" `
+            -compressed -prereqs -nodebuginfo
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Smoke test
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem dist/Win64 -Recurse -Filter "The_Garden.exe" |
+                 Select-Object -First 1 -ExpandProperty FullName
+          if (!$exe) { Write-Error "Exe not found"; exit 1 }
+          $p = Start-Process $exe -PassThru -NoNewWindow `
+               -ArgumentList "-nullrhi -nosound -unattended -ExecCmds=`"Quit`""
+          $p | Wait-Process -Timeout 60
+          if ($p.ExitCode -ne 0) { Write-Error "Smoke failed ($($p.ExitCode))"; exit 1 }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TheGarden-Win64-${{ env.BUILD_CONFIG }}-${{ needs.metadata.outputs.build_string }}
+          path: dist/Win64/
+          retention-days: 14
+
+  # --------------------------------------------------------------------------
+  # Linux / Steam Deck
+  # --------------------------------------------------------------------------
+  build-linux:
+    name: Linux ${{ needs.metadata.outputs.build_string }}
+    needs: metadata
+    runs-on: [self-hosted, Linux, ue5]
+    steps:
+      - uses: actions/checkout@v4
+        with: { lfs: true }
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-metadata
+          path: .
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/DDC
+          key: ue5-ddc-linux-${{ hashFiles('ue/The_Garden/**/*.uasset','ue/The_Garden/**/*.cpp') }}
+          restore-keys: ue5-ddc-linux-
+
+      - name: Package Linux Shipping
+        run: |
+          bash "$UE_ROOT/Engine/Build/BatchFiles/RunUAT.sh" BuildCookRun \
+            -project="$PROJECT" -noP4 \
+            -platform=Linux -clientconfig="$BUILD_CONFIG" \
+            -cook -allmaps -build -stage -pak -archive \
+            -archivedirectory="${{ github.workspace }}/dist/Linux" \
+            -compressed -nodebuginfo
+
+      - name: Smoke test
+        run: |
+          EXE=$(find dist/Linux -name 'The_Garden' -type f | head -1)
+          [ -z "$EXE" ] && echo "Binary not found" && exit 1
+          timeout 60 "$EXE" -nullrhi -nosound -unattended -ExecCmds="Quit"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TheGarden-Linux-${{ env.BUILD_CONFIG }}-${{ needs.metadata.outputs.build_string }}
+          path: dist/Linux/
+          retention-days: 14
+
+  # --------------------------------------------------------------------------
+  # macOS (universal2: arm64 + x86_64)
+  # --------------------------------------------------------------------------
+  build-macos:
+    name: macOS ${{ needs.metadata.outputs.build_string }}
+    needs: metadata
+    runs-on: [self-hosted, macOS, ue5]
+    steps:
+      - uses: actions/checkout@v4
+        with: { lfs: true }
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-metadata
+          path: .
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/DDC
+          key: ue5-ddc-mac-${{ hashFiles('ue/The_Garden/**/*.uasset','ue/The_Garden/**/*.cpp') }}
+          restore-keys: ue5-ddc-mac-
+
+      - name: Package macOS Shipping
+        run: |
+          bash "$UE_ROOT/Engine/Build/BatchFiles/RunUAT.sh" BuildCookRun \
+            -project="$PROJECT" -noP4 \
+            -platform=Mac -clientconfig="$BUILD_CONFIG" \
+            -cook -allmaps -build -stage -pak -archive \
+            -archivedirectory="${{ github.workspace }}/dist/Mac" \
+            -compressed -nodebuginfo
+
+      - name: Smoke test
+        run: |
+          APP=$(find dist/Mac -name "The_Garden.app" -type d | head -1)
+          [ -z "$APP" ] && echo "App bundle not found" && exit 1
+          timeout 60 "$APP/Contents/MacOS/The_Garden" \
+            -nullrhi -nosound -unattended -ExecCmds="Quit"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TheGarden-macOS-${{ env.BUILD_CONFIG }}-${{ needs.metadata.outputs.build_string }}
+          path: dist/Mac/
+          retention-days: 14
+
+env:
+  UE_ROOT:      ${{ vars.UE_ROOT || 'C:\Program Files\Epic Games\UE_5.3' }}
+  PROJECT_PATH: ${{ github.workspace }}/ue/Symbiont/Symbiont.uproject
+  OUTPUT_WIN64: ${{ github.workspace }}/Package/Windows
+  OUTPUT_LINUX: ${{ github.workspace }}/Package/Linux
+  BUILD_CONFIG: ${{ github.event.inputs.configuration || 'Shipping' }}
+  VERSION:      ${{ github.event.inputs.version || '' }}
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Generate build metadata header (shared between platform jobs)
+  # --------------------------------------------------------------------------
+  metadata:
+    name: Generate build metadata
+    runs-on: ubuntu-latest
+    outputs:
+      build_string: ${{ steps.meta.outputs.build_string }}
+      version:      ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # need tags for version detection
+
+      - name: Generate AIOSBuildVersion.h
+        id: meta
+        run: |
+          export BUILD_CONFIG="${{ env.BUILD_CONFIG }}"
+          bash scripts/build/generate-build-metadata.sh "${{ env.VERSION }}"
+          VERSION=$(grep 'AIOS_BUILD_VERSION ' \
+            ue/Symbiont/Source/Symbiont/AIOSBuildVersion.h \
+            | sed 's/.*"\(.*\)"/\1/')
+          COMMIT=$(git rev-parse --short HEAD)
+          echo "version=${VERSION}"       >> "$GITHUB_OUTPUT"
+          echo "build_string=${VERSION}+${COMMIT}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-metadata
+          path: ue/Symbiont/Source/Symbiont/AIOSBuildVersion.h
+          retention-days: 30
+
+  # --------------------------------------------------------------------------
+  # Win64 Shipping build
+  # --------------------------------------------------------------------------
+  build-win64:
+    name: Win64 ${{ needs.metadata.outputs.build_string }}
+    needs: metadata
+    runs-on: [self-hosted, Windows, ue5]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Download build metadata
+        uses: actions/download-artifact@v4
+        with:
+          name: build-metadata
+          path: ue/Symbiont/Source/Symbiont/
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/UE_DDC
+          key: ue5-ddc-win64-${{ hashFiles('ue/Symbiont/**/*.uasset','ue/Symbiont/**/*.cpp') }}
+          restore-keys: ue5-ddc-win64-
+
+      - name: Package Win64 Shipping
+        shell: pwsh
+        run: |
+          $UAT = Join-Path $env:UE_ROOT "Engine\Build\BatchFiles\RunUAT.bat"
+          & $UAT BuildCookRun `
+            -project="$env:PROJECT_PATH" `
+            -noP4 -platform=Win64 `
+            -clientconfig=$env:BUILD_CONFIG `
+            -cook -allmaps -build -stage -pak -archive `
+            -archivedirectory="$env:OUTPUT_WIN64" `
+            -compressed -prereqs -nodebuginfo
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Smoke test (null-RHI boot)
+        shell: pwsh
+        run: |
+          $Exe = Get-ChildItem "$env:OUTPUT_WIN64" -Recurse -Filter "Symbiont.exe" |
+                 Select-Object -First 1 -ExpandProperty FullName
+          if (-not $Exe) { Write-Error "Packaged exe not found"; exit 1 }
+          $proc = Start-Process $Exe -ArgumentList `
+            "-nullrhi -nosound -unattended -ExecCmds=`"Automation RunTests AIOS.Smoke;Quit`"" `
+            -PassThru -NoNewWindow
+          $proc | Wait-Process -Timeout 120
+          if ($proc.ExitCode -ne 0) {
+            Write-Error "Smoke test failed (exit $($proc.ExitCode))"
+            exit 1
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AIOS-Win64-${{ env.BUILD_CONFIG }}-${{ needs.metadata.outputs.build_string }}
+          path: Package/Windows/
+          retention-days: 14
+
+  # --------------------------------------------------------------------------
+  # Linux / Steam Deck build
+  # --------------------------------------------------------------------------
+  build-linux:
+    name: Linux ${{ needs.metadata.outputs.build_string }}
+    needs: metadata
+    runs-on: [self-hosted, Linux, ue5]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Download build metadata
+        uses: actions/download-artifact@v4
+        with:
+          name: build-metadata
+          path: ue/Symbiont/Source/Symbiont/
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/UE_DDC
+          key: ue5-ddc-linux-${{ hashFiles('ue/Symbiont/**/*.uasset','ue/Symbiont/**/*.cpp') }}
+          restore-keys: ue5-ddc-linux-
+
+      - name: Package Linux Shipping
+        run: |
+          UAT="${UE_ROOT}/Engine/Build/BatchFiles/RunUAT.sh"
+          "$UAT" BuildCookRun \
+            -project="$PROJECT_PATH" \
+            -noP4 -platform=Linux \
+            -clientconfig="$BUILD_CONFIG" \
+            -cook -allmaps -build -stage -pak -archive \
+            -archivedirectory="$OUTPUT_LINUX" \
+            -compressed -nodebuginfo
+
+      - name: Smoke test (null-RHI boot)
+        run: |
+          EXE=$(find Package/Linux -name 'Symbiont' -type f | head -1)
+          [ -z "$EXE" ] && echo "Packaged binary not found" && exit 1
+          timeout 120 "$EXE" \
+            -nullrhi -nosound -unattended \
+            -ExecCmds="Automation RunTests AIOS.Smoke;Quit"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AIOS-Linux-${{ env.BUILD_CONFIG }}-${{ needs.metadata.outputs.build_string }}
+          path: Package/Linux/
+          retention-days: 14

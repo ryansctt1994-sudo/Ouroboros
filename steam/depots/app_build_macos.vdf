@@ -1,0 +1,30 @@
+"AppBuild"
+{
+	// !! Replace 480 with your real Steam AppID before shipping. !!
+	"AppID"       "480"
+	"Desc"        "The Garden — macOS Shipping build"
+	"BuildOutput" "../../steamcmd_output/mac"
+
+	"Depots"
+	{
+		// Depot 483 — macOS content
+		// Replace 483 with your real macOS depot ID from the Steamworks partner portal.
+		"483"
+		{
+			"DepotBuildConfig"
+			{
+				"DepotID"     "483"
+				"ContentRoot" "../../dist/Mac/Mac/The_Garden.app"
+				"FileMapping"
+				{
+					"LocalPath" "*"
+					"DepotPath" "The_Garden.app"
+					"Recursive" "1"
+				}
+				// Exclude symbols and editor artefacts
+				"FileExclusion" "*.dSYM"
+				"FileExclusion" "Engine/Content/Editor*"
+			}
+		}
+	}
+}
