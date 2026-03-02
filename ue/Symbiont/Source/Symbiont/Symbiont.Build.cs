@@ -18,6 +18,7 @@ public class Symbiont : ModuleRules
 			"EnhancedInput",
 			"OnlineSubsystem",
 			"OnlineSubsystemUtils",
+			"RHI",                 // AIOSGameUserSettings — GRHIAdapterName
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]
@@ -25,6 +26,8 @@ public class Symbiont : ModuleRules
 			"SymbiontCore",
 			"Slate",
 			"SlateCore",
+			"SaveGameSystem",      // UGameplayStatics::SaveGameToSlot
+			"AutomationController",// Smoke test
 		});
 
 		DynamicallyLoadedModuleNames.AddRange(new string[]
