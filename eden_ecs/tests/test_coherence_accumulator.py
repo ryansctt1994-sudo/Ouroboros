@@ -4,6 +4,7 @@ import math
 import sys
 import os
 import unittest
+import warnings
 
 _REPO_ROOT = os.path.join(os.path.dirname(__file__), '..', '..')
 if _REPO_ROOT not in sys.path:
@@ -21,24 +22,41 @@ DELTA = _constants.DELTA
 
 class TestChiBarFormula(unittest.TestCase):
     def test_chi_bar_approximate_value(self):
-        result = chi_bar(ALPHA, PHI, LAMBDA, DELTA)
+        result = chi_bar(alpha=ALPHA, phi=PHI, lam=LAMBDA, delta=DELTA)
         # Expected ≈ 0.813–0.815
         self.assertAlmostEqual(result, 0.813, delta=0.005)
 
     def test_chi_bar_positive(self):
-        result = chi_bar(ALPHA, PHI, LAMBDA, DELTA)
+        result = chi_bar(alpha=ALPHA, phi=PHI, lam=LAMBDA, delta=DELTA)
         self.assertGreater(result, 0.0)
 
     def test_chi_bar_domain_error(self):
         # |λ|δ >= 1 should raise ValueError
         with self.assertRaises(ValueError):
-            chi_bar(ALPHA, PHI, 10.0, 0.5)
+            chi_bar(alpha=ALPHA, phi=PHI, lam=10.0, delta=0.5)
 
     def test_chi_bar_log_term_validity(self):
         inner = abs(LAMBDA) * DELTA
         self.assertLess(inner, 1.0, "Log domain must be < 1")
         ratio = (1 + inner) / (1 - inner)
         self.assertGreater(ratio, 1.0, "Log ratio must be > 1")
+
+    def test_chi_bar_requires_keyword_arguments(self):
+        # Positional arguments must raise TypeError (keyword-only enforcement)
+        with self.assertRaises(TypeError):
+            chi_bar(ALPHA, PHI, LAMBDA, DELTA)  # type: ignore[call-arg]
+
+    def test_chi_bar_singularity_warning(self):
+        # inner > 0.95 should issue a RuntimeWarning and return a bounded value
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            result = chi_bar(alpha=ALPHA, phi=PHI, lam=0.98, delta=1.0)
+        runtime_warnings = [w for w in caught if issubclass(w.category, RuntimeWarning)]
+        self.assertTrue(len(runtime_warnings) > 0, "Expected RuntimeWarning for near-singularity input")
+        self.assertFinite(result)
+
+    def assertFinite(self, value):
+        self.assertTrue(math.isfinite(value), f"Expected finite value, got {value}")
 
 
 class TestConstants(unittest.TestCase):
