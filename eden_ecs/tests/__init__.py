@@ -1,1 +1,1 @@
-"""EDEN-ECS Tests package."""
+"""eden_ecs Tests package."""
