@@ -5,6 +5,7 @@ on:
     branches: [main, develop]
     paths:
       - 'ABRAXIS/**'
+      - 'eden_ecs/**'
       - 'src/main.rs'
       - 'Cargo.toml'
       - '.github/workflows/abraxis-ci.yml'
@@ -12,6 +13,7 @@ on:
     branches: [main, develop]
     paths:
       - 'ABRAXIS/**'
+      - 'eden_ecs/**'
       - 'src/main.rs'
       - 'Cargo.toml'
   workflow_dispatch:
@@ -43,9 +45,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-asyncio
-          # Install websockets for Phase H tests
-          pip install websockets || true
+          pip install -r requirements.txt
 
       - name: Run ABRAXIS unit tests
         run: pytest ABRAXIS/tests/ -v --tb=short
