@@ -9,8 +9,8 @@ with the EDEN ECS system for self-improving agent code.
 import sys
 import os
 
-# Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add archive/v1-core to path
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'archive', 'v1-core'))
 
 from agent_interface.recursive_crucible import RecursiveCrucible
 from core.gpu_vector_enhancement import ECSVectorBridge

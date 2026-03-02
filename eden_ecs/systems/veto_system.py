@@ -9,6 +9,13 @@ from ..core.constants import VETO_LATENCY_NS
 
 logger = logging.getLogger(__name__)
 
+try:
+    from hardware.simulated_killswitch import SimulatedKillSwitch as _HardwareKillSwitch
+    _HARDWARE_AVAILABLE = True
+except ImportError:
+    _HardwareKillSwitch = None
+    _HARDWARE_AVAILABLE = False
+
 
 @dataclass
 class VetoEvent:
@@ -24,12 +31,14 @@ class VetoEvent:
 
 class SimulatedKillswitch:
     """
-    Simulates a hardware killswitch that terminates divergent entities.
+    ECS-oriented killswitch that delegates to hardware.SimulatedKillSwitch
+    when available, tracking veto events with entity_id and reason.
 
     Tracks the veto log, survivor count, and killed count.
     """
 
     def __init__(self) -> None:
+        self._hw = _HardwareKillSwitch(latency_ns=VETO_LATENCY_NS) if _HARDWARE_AVAILABLE else None
         self.veto_log: List[Dict] = []
         self.survivors: int = 0
         self.killed: int = 0

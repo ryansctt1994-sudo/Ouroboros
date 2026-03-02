@@ -29,14 +29,16 @@ class SimulatedKillSwitch:
     Provides the same interface as hardware kill-switch for testing.
     """
     
-    def __init__(self, key: bytes = None):
+    def __init__(self, key: bytes = None, latency_ns: int = 449):
         """
         Initialize simulated kill-switch.
         
         Args:
             key: 32-byte HMAC key (generated if not provided)
+            latency_ns: Simulated hardware latency in nanoseconds (default: 449)
         """
         self.key = key or secrets.token_bytes(32)
+        self.latency_ns = latency_ns
         self.state = KillSwitchState.INIT
         self.nonce: Optional[bytes] = None
         self.trigger_count = 0

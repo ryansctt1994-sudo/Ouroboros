@@ -9,7 +9,7 @@ if PARENT_DIR not in sys.path:
     sys.path.insert(0, PARENT_DIR)
 
 import importlib
-eden_ecs = importlib.import_module('EDEN-ECS')
+eden_ecs = importlib.import_module('eden_ecs')
 MemoryLattice = eden_ecs.MemoryLattice
 MemoryAlignment = eden_ecs.MemoryAlignment
 

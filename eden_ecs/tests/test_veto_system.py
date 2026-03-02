@@ -9,8 +9,8 @@ _REPO_ROOT = os.path.join(os.path.dirname(__file__), '..', '..')
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-_veto_mod = importlib.import_module('EDEN-ECS.systems.veto_system')
-_ecs_mod = importlib.import_module('EDEN-ECS')
+_veto_mod = importlib.import_module('eden_ecs.systems.veto_system')
+_ecs_mod = importlib.import_module('eden_ecs')
 
 VetoEvent = _veto_mod.VetoEvent
 SimulatedKillswitch = _veto_mod.SimulatedKillswitch
