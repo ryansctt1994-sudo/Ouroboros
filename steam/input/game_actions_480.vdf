@@ -1,0 +1,191 @@
+"controller_mappings"
+{
+	// AIOS: Ouroboros — Steam Input Action Manifest
+	// Reference this file from your game:
+	//   SteamInput()->SetInputActionManifestFilePath(...)
+	// or place it at:
+	//   <AppInstallDir>/game_actions_<AppID>.vdf
+	//
+	// !! Replace 480 in the filename with your real AppID before shipping. !!
+	// Rename this file to:  game_actions_480.vdf  (dev)
+	//                       game_actions_<REAL_ID>.vdf  (shipping)
+
+	"version"	"1"
+
+	"actions"
+	{
+		"InGame"
+		{
+			"title"	"#Set_InGame"
+			"StickPadGyro"
+			{
+				"Move"
+				{
+					"title"		"#Action_Move"
+					"input_mode"	"joystick_move"
+				}
+				"Camera"
+				{
+					"title"		"#Action_Camera"
+					"input_mode"	"absolute_mouse"
+				}
+			}
+			"AnalogTrigger"
+			{
+			}
+			"Button"
+			{
+				"InvokeRitual"
+				{
+					"title"		"#Action_InvokeRitual"
+				}
+				"OpenConstitution"
+				{
+					"title"		"#Action_OpenConstitution"
+				}
+				"Pause"
+				{
+					"title"		"#Action_Pause"
+				}
+				"Interact"
+				{
+					"title"		"#Action_Interact"
+				}
+				"CancelBack"
+				{
+					"title"		"#Action_CancelBack"
+				}
+				"ToggleHUD"
+				{
+					"title"		"#Action_ToggleHUD"
+				}
+			}
+		}
+
+		"MenuControls"
+		{
+			"title"	"#Set_MenuControls"
+			"StickPadGyro"
+			{
+				"MenuNavigate"
+				{
+					"title"		"#Action_MenuNavigate"
+					"input_mode"	"joystick_move"
+				}
+			}
+			"Button"
+			{
+				"MenuSelect"
+				{
+					"title"		"#Action_MenuSelect"
+				}
+				"MenuBack"
+				{
+					"title"		"#Action_MenuBack"
+				}
+				"MenuTab"
+				{
+					"title"		"#Action_MenuTab"
+				}
+			}
+		}
+	}
+
+	"localization"
+	{
+		"english"
+		{
+			"Set_InGame"		"In-Game"
+			"Set_MenuControls"	"Menus"
+			"Action_Move"		"Move"
+			"Action_Camera"		"Look / Camera"
+			"Action_InvokeRitual"	"Invoke Ritual"
+			"Action_OpenConstitution" "Open Constitution"
+			"Action_Pause"		"Pause"
+			"Action_Interact"	"Interact"
+			"Action_CancelBack"	"Cancel / Back"
+			"Action_ToggleHUD"	"Toggle HUD"
+			"Action_MenuNavigate"	"Navigate"
+			"Action_MenuSelect"	"Select"
+			"Action_MenuBack"	"Back"
+			"Action_MenuTab"	"Next Tab"
+		}
+	}
+
+	// Default layouts — one per controller type.
+	// Add more as needed (PS5, Switch Pro, Steam Deck, etc.)
+	"Default Xbox360 Controller Binding"
+	{
+		"controller_type"	"controller_xbox360"
+		"legacy_steam_controller_action_set_layer"	""
+		"ActionSet InGame"
+		{
+			"Button A"			"InvokeRitual"
+			"Button B"			"CancelBack"
+			"Button X"			"Interact"
+			"Button Y"			"ToggleHUD"
+			"Button Start"			"Pause"
+			"Button Back"			"OpenConstitution"
+			"Left Joystick"			"Move"
+			"Right Joystick"		"Camera"
+		}
+		"ActionSet MenuControls"
+		{
+			"Button A"			"MenuSelect"
+			"Button B"			"MenuBack"
+			"Button Y"			"MenuTab"
+			"Left Joystick"			"MenuNavigate"
+			"D-Pad"				"MenuNavigate"
+		}
+	}
+
+	"Default PS4 Controller Binding"
+	{
+		"controller_type"	"controller_ps4"
+		"ActionSet InGame"
+		{
+			"Button Cross"			"InvokeRitual"
+			"Button Circle"			"CancelBack"
+			"Button Square"			"Interact"
+			"Button Triangle"		"ToggleHUD"
+			"Button Options"		"Pause"
+			"Button Share"			"OpenConstitution"
+			"Left Joystick"			"Move"
+			"Right Joystick"		"Camera"
+		}
+		"ActionSet MenuControls"
+		{
+			"Button Cross"			"MenuSelect"
+			"Button Circle"			"MenuBack"
+			"Button Triangle"		"MenuTab"
+			"Left Joystick"			"MenuNavigate"
+			"D-Pad"				"MenuNavigate"
+		}
+	}
+
+	"Default Steam Deck Binding"
+	{
+		"controller_type"	"controller_steamdeck"
+		"ActionSet InGame"
+		{
+			"Button A"			"InvokeRitual"
+			"Button B"			"CancelBack"
+			"Button X"			"Interact"
+			"Button Y"			"ToggleHUD"
+			"Button Start"			"Pause"
+			"Button Select"			"OpenConstitution"
+			"Left Joystick"			"Move"
+			"Right Joystick"		"Camera"
+			"Right Trackpad"		"Camera"
+		}
+		"ActionSet MenuControls"
+		{
+			"Button A"			"MenuSelect"
+			"Button B"			"MenuBack"
+			"Button Y"			"MenuTab"
+			"Left Joystick"			"MenuNavigate"
+			"D-Pad"				"MenuNavigate"
+			"Left Trackpad"			"MenuNavigate"
+		}
+	}
+}
