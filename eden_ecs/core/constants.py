@@ -17,9 +17,9 @@ CYCLE_LENGTH = 17                       # 17-state ternary cycle
 FLIP_STATE = 7                          # NOT gate activation state
 
 
-def chi_bar(alpha: float, phi: float, lam: float, delta: float) -> float:
+def chi_bar(*, alpha: float, phi: float, lam: float, delta: float) -> float:
     """
-    Coherence accumulator: χ̄ = α·φ·(1-1/17)·log₂((1+|λ|δ)/(1-|λ|δ))
+    Coherence accumulator: χ̄ = α·φ·(1-1/CYCLE_LENGTH)·log₂((1+|λ|δ)/(1-|λ|δ))
 
     Parameters
     ----------
@@ -33,11 +33,20 @@ def chi_bar(alpha: float, phi: float, lam: float, delta: float) -> float:
     float
         The coherence accumulator value χ̄.
     """
+    import warnings
     inner = abs(lam) * delta
     if inner >= 1.0:
         raise ValueError("Domain error: |λ|δ must be < 1")
+    if inner > 0.95:
+        warnings.warn(
+            f"chi_bar: |λ|δ={inner:.4f} is near the logarithmic singularity; "
+            "clipping to 0.95 to prevent numerical explosion.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        inner = 0.95
     log_term = math.log2((1 + inner) / (1 - inner))
-    return alpha * phi * (1 - 1 / 17) * log_term
+    return alpha * phi * (1 - 1 / CYCLE_LENGTH) * log_term
 
 
 def manacher_radii(s: str):
