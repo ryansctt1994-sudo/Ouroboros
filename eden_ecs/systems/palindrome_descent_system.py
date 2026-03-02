@@ -1,8 +1,11 @@
 """Palindrome Descent System — drives entities through Sammonicus lifecycle."""
+import time as _time
+
 from ..core.system import System
 from ..components.palindrome import PalindromeState
 from ..components.memory import MemoryLattice
 from ..core.constants import VETO_THRESHOLD
+from ..systems.veto_system import VetoEvent
 
 
 class PalindromeDescentSystem(System):
@@ -38,9 +41,6 @@ class PalindromeDescentSystem(System):
         if self._tick_count % self.descend_rate != 0:
             return
 
-        if not hasattr(world, 'veto_events'):
-            world.veto_events = []
-
         entities = world.query(PalindromeState, MemoryLattice)
         for entity in entities:
             ps = entity.get_component(PalindromeState)
@@ -58,22 +58,17 @@ class PalindromeDescentSystem(System):
                 ps.check_symmetry()
 
                 if ps.vitality_divergence > VETO_THRESHOLD:
-                    # Emit veto event
-                    try:
-                        from ..systems.veto_system import VetoEvent
-                        import time as _time
-                        event = VetoEvent(
-                            entity_id=entity.id,
-                            divergence=ps.vitality_divergence,
-                            layer=ps.layer,
-                            word=ps.word,
-                            center=ps.center_letter(),
-                            vitality=ps.vitality,
-                            timestamp=_time.time(),
-                        )
-                        world.veto_events.append(event)
-                    except ImportError:
-                        pass
+                    # Emit veto event onto the event bus
+                    event = VetoEvent(
+                        entity_id=entity.id,
+                        divergence=ps.vitality_divergence,
+                        layer=ps.layer,
+                        word=ps.word,
+                        center=ps.center_letter(),
+                        vitality=ps.vitality,
+                        timestamp=_time.time(),
+                    )
+                    world.emit(event)
                     self.tiamat_stats['entities_vetoed'] += 1
                 else:
                     # Symmetry passes — descend to Monad

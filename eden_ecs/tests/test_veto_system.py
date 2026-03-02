@@ -23,7 +23,6 @@ EntityType = _ecs_mod.EntityType
 def _make_world_with_entity():
     world = World()
     entity = world.create_entity(EntityType.SYSTEM, "test_entity")
-    world.veto_events = []
     return world, entity
 
 
@@ -89,6 +88,7 @@ class TestVetoSystem(unittest.TestCase):
     def test_processes_veto_events(self):
         world, entity = _make_world_with_entity()
         vs = VetoSystem()
+        vs.attach_to_world(world)
         world.add_system(vs)
 
         event = VetoEvent(
@@ -99,7 +99,7 @@ class TestVetoSystem(unittest.TestCase):
             center="A",
             vitality=0.4,
         )
-        world.veto_events.append(event)
+        world.emit(event)
 
         vs.process(world, 0.016)
 
@@ -108,6 +108,7 @@ class TestVetoSystem(unittest.TestCase):
     def test_entity_removed_from_world(self):
         world, entity = _make_world_with_entity()
         vs = VetoSystem()
+        vs.attach_to_world(world)
 
         eid = entity.id
         self.assertIn(eid, world.entity_manager.entities)
@@ -120,7 +121,7 @@ class TestVetoSystem(unittest.TestCase):
             center="A",
             vitality=0.4,
         )
-        world.veto_events.append(event)
+        world.emit(event)
         vs.process(world, 0.016)
 
         self.assertNotIn(eid, world.entity_manager.entities)
@@ -129,6 +130,7 @@ class TestVetoSystem(unittest.TestCase):
     def test_killswitch_triggered(self):
         world, entity = _make_world_with_entity()
         vs = VetoSystem()
+        vs.attach_to_world(world)
 
         event = VetoEvent(
             entity_id=entity.id,
@@ -138,7 +140,7 @@ class TestVetoSystem(unittest.TestCase):
             center="A",
             vitality=0.3,
         )
-        world.veto_events.append(event)
+        world.emit(event)
         vs.process(world, 0.016)
 
         self.assertEqual(vs.killswitch.killed, 1)
@@ -146,6 +148,7 @@ class TestVetoSystem(unittest.TestCase):
     def test_latency_simulation(self):
         world, entity = _make_world_with_entity()
         vs = VetoSystem()
+        vs.attach_to_world(world)
 
         event = VetoEvent(
             entity_id=entity.id,
@@ -155,7 +158,7 @@ class TestVetoSystem(unittest.TestCase):
             center="A",
             vitality=0.4,
         )
-        world.veto_events.append(event)
+        world.emit(event)
 
         start = time.perf_counter()
         vs.process(world, 0.016)
@@ -167,7 +170,7 @@ class TestVetoSystem(unittest.TestCase):
     def test_no_events_no_action(self):
         world, entity = _make_world_with_entity()
         vs = VetoSystem()
-        world.veto_events = []
+        vs.attach_to_world(world)
         vs.process(world, 0.016)
         self.assertEqual(vs.tiamat_stats['total_vetoes'], 0)
 
