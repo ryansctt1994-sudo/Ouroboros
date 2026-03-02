@@ -1,0 +1,115 @@
+{
+  "version": "1.0.0",
+  "description": "Seed library of common ARC-AGI-2 abstraction patterns for bootstrapping the evolutionary ensemble.",
+  "patterns": [
+    {
+      "id": "identity",
+      "name": "Identity",
+      "description": "Return the input grid unchanged.",
+      "dsl_ops": [
+        {"op": "identity", "args": {}}
+      ],
+      "tags": ["baseline", "no-op"]
+    },
+    {
+      "id": "mirror_horizontal",
+      "name": "Mirror (Horizontal)",
+      "description": "Reflect the grid left-to-right (horizontal mirror).",
+      "dsl_ops": [
+        {"op": "flip_grid", "args": {"axis": 1}}
+      ],
+      "tags": ["symmetry", "mirror"]
+    },
+    {
+      "id": "mirror_vertical",
+      "name": "Mirror (Vertical)",
+      "description": "Reflect the grid top-to-bottom (vertical mirror).",
+      "dsl_ops": [
+        {"op": "flip_grid", "args": {"axis": 0}}
+      ],
+      "tags": ["symmetry", "mirror"]
+    },
+    {
+      "id": "symmetry_horizontal",
+      "name": "Symmetry Fill (Horizontal)",
+      "description": "Mirror the left half of the grid onto the right half.",
+      "dsl_ops": [
+        {"op": "apply_symmetry", "args": {"kind": "horizontal"}}
+      ],
+      "tags": ["symmetry", "fill"]
+    },
+    {
+      "id": "symmetry_vertical",
+      "name": "Symmetry Fill (Vertical)",
+      "description": "Mirror the top half of the grid onto the bottom half.",
+      "dsl_ops": [
+        {"op": "apply_symmetry", "args": {"kind": "vertical"}}
+      ],
+      "tags": ["symmetry", "fill"]
+    },
+    {
+      "id": "rotate_90",
+      "name": "Rotate 90° CCW",
+      "description": "Rotate the grid 90 degrees counter-clockwise.",
+      "dsl_ops": [
+        {"op": "rotate_grid", "args": {"k": 1}}
+      ],
+      "tags": ["rotation"]
+    },
+    {
+      "id": "rotate_180",
+      "name": "Rotate 180°",
+      "description": "Rotate the grid 180 degrees.",
+      "dsl_ops": [
+        {"op": "rotate_grid", "args": {"k": 2}}
+      ],
+      "tags": ["rotation"]
+    },
+    {
+      "id": "rotate_270",
+      "name": "Rotate 270° CCW",
+      "description": "Rotate the grid 270 degrees counter-clockwise (90° CW).",
+      "dsl_ops": [
+        {"op": "rotate_grid", "args": {"k": 3}}
+      ],
+      "tags": ["rotation"]
+    },
+    {
+      "id": "recolor_1_to_2",
+      "name": "Recolor 1→2",
+      "description": "Replace all cells of colour 1 with colour 2.",
+      "dsl_ops": [
+        {"op": "recolor", "args": {"color_map": {"1": 2}}}
+      ],
+      "tags": ["recolor"]
+    },
+    {
+      "id": "fill_background",
+      "name": "Flood-fill from origin",
+      "description": "Flood-fill the background (colour 0) starting at (0,0) with colour 1.",
+      "dsl_ops": [
+        {"op": "fill_region", "args": {"row": 0, "col": 0, "fill_color": 1, "target_color": 0}}
+      ],
+      "tags": ["fill"]
+    },
+    {
+      "id": "diagonal_transpose",
+      "name": "Diagonal Transpose",
+      "description": "Reflect the grid across the main diagonal (matrix transpose).",
+      "dsl_ops": [
+        {"op": "apply_symmetry", "args": {"kind": "diagonal"}}
+      ],
+      "tags": ["symmetry", "transpose"]
+    },
+    {
+      "id": "rotate_then_mirror",
+      "name": "Rotate 90° then Mirror",
+      "description": "Rotate 90° CCW followed by a horizontal mirror.",
+      "dsl_ops": [
+        {"op": "rotate_grid", "args": {"k": 1}},
+        {"op": "flip_grid", "args": {"axis": 1}}
+      ],
+      "tags": ["rotation", "mirror", "composite"]
+    }
+  ]
+}
