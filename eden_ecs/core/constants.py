@@ -34,12 +34,14 @@ def chi_bar(*, alpha: float, phi: float, lam: float, delta: float) -> float:
     float
         The coherence accumulator value χ̄.
     """
+    import warnings
     inner = abs(lam) * delta
     if inner >= 1.0:
         raise ValueError("Domain error: |λ|δ must be < 1")
     if inner > 0.95:
         warnings.warn(
-            f"chi_bar: |λ|δ={inner:.6f} exceeds 0.95; clamping to 0.95 to avoid singularity.",
+            f"chi_bar: |λ|δ={inner:.4f} is near the logarithmic singularity; "
+            "clipping to 0.95 to prevent numerical explosion.",
             RuntimeWarning,
             stacklevel=2,
         )

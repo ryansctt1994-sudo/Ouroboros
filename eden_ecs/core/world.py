@@ -19,6 +19,8 @@ class World:
         self.time = 0.0
         self.metrics = {'ticks': 0, 'entities_created': 0}
         self._event_handlers = defaultdict(list)
+        self._pending_deletions: List[str] = []
+        self._in_process: bool = False
         
         # v2.0.0: Hybrid timestep system
         self.timestep_manager = TimestepManager(
@@ -44,22 +46,29 @@ class World:
         In v2.0.0, this uses the hybrid timestep system when delta_time is None.
         For backwards compatibility, passing delta_time explicitly bypasses the timestep manager.
         """
-        if delta_time is not None:
-            # Legacy mode: direct tick
-            self.scheduler.tick(self, delta_time)
-            self.time += delta_time
-            self.metrics['ticks'] += 1
-        else:
-            # v2.0.0 mode: use timestep manager
-            physics_deltas, alpha = self.timestep_manager.update()
-            
-            for dt in physics_deltas:
-                self.scheduler.tick(self, dt)
-                self.time += dt
+        self._in_process = True
+        try:
+            if delta_time is not None:
+                # Legacy mode: direct tick
+                self.scheduler.tick(self, delta_time)
+                self.time += delta_time
                 self.metrics['ticks'] += 1
-            
-            # Store interpolation alpha for rendering
-            self.metrics['interpolation_alpha'] = alpha
+            else:
+                # v2.0.0 mode: use timestep manager
+                physics_deltas, alpha = self.timestep_manager.update()
+                
+                for dt in physics_deltas:
+                    self.scheduler.tick(self, dt)
+                    self.time += dt
+                    self.metrics['ticks'] += 1
+                
+                # Store interpolation alpha for rendering
+                self.metrics['interpolation_alpha'] = alpha
+        finally:
+            self._in_process = False
+            for entity_id in self._pending_deletions:
+                self.entity_manager.remove(entity_id)
+            self._pending_deletions.clear()
     
     def get_timestep_diagnostics(self) -> TimestepDiagnostics:
         """Get timestep performance diagnostics (v2.0.0)"""
@@ -80,6 +89,12 @@ class World:
         return entity_id in self.entity_manager.entities
 
     def remove_entity(self, entity_id: str) -> bool:
+        if not self.has_entity(entity_id):
+            return False
+        if self._in_process:
+            if entity_id not in self._pending_deletions:
+                self._pending_deletions.append(entity_id)
+            return True
         return self.entity_manager.remove(entity_id)
 
     def query_components(self, component_types: List[Type[Component]]) -> List[tuple]:
