@@ -23,6 +23,9 @@
 
 name: Steam Upload
 
+permissions:
+  contents: read
+
 on:
   workflow_run:
     workflows: ["UE5 Build & Package"]

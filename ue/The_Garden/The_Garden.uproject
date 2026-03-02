@@ -1,0 +1,38 @@
+{
+	"FileVersion": 3,
+	"Category": "",
+	"Description": "The Garden \u2014 entity simulation experience powered by Ouroboros/ECS.",
+	"Modules": [
+		{
+			"Name": "The_Garden",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine",
+				"CoreUObject",
+				"OnlineSubsystem",
+				"OnlineSubsystemSteam",
+				"OnlineSubsystemUtils"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "OnlineSubsystem",
+			"Enabled": true
+		},
+		{
+			"Name": "OnlineSubsystemSteam",
+			"Enabled": true
+		},
+		{
+			"Name": "OnlineSubsystemUtils",
+			"Enabled": true
+		}
+	],
+	"TargetPlatforms": [
+		"Linux",
+		"Mac",
+		"Windows"
+	]
+}
