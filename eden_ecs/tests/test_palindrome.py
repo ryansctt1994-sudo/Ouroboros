@@ -9,8 +9,8 @@ _REPO_ROOT = os.path.join(os.path.dirname(__file__), '..', '..')
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-_palindrome_mod = importlib.import_module('EDEN-ECS.components.palindrome')
-_constants_mod = importlib.import_module('EDEN-ECS.core.constants')
+_palindrome_mod = importlib.import_module('eden_ecs.components.palindrome')
+_constants_mod = importlib.import_module('eden_ecs.core.constants')
 
 PalindromeState = _palindrome_mod.PalindromeState
 manacher_radii = _constants_mod.manacher_radii

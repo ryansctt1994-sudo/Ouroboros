@@ -54,7 +54,7 @@ COPY --from=rust-builder /build/target/release/ouroboros-cathedral /usr/local/bi
 
 # Copy ABRAXIS Python package and related modules
 COPY ABRAXIS/            ./ABRAXIS/
-COPY EDEN-ECS/           ./EDEN-ECS/
+COPY eden_ecs/           ./eden_ecs/
 COPY python-bridge/      ./python-bridge/
 COPY src/                ./src/
 COPY docs/observer-dashboard.html ./docs/observer-dashboard.html

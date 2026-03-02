@@ -8,7 +8,7 @@ _REPO_ROOT = os.path.join(os.path.dirname(__file__), '..', '..')
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-_ternary_mod = importlib.import_module('EDEN-ECS.systems.ternary_register_system')
+_ternary_mod = importlib.import_module('eden_ecs.systems.ternary_register_system')
 
 TernaryRegister = _ternary_mod.TernaryRegister
 TernaryRegisterSystem = _ternary_mod.TernaryRegisterSystem
@@ -119,7 +119,7 @@ class TestMuMobius(unittest.TestCase):
 
 class TestTernaryRegisterSystem(unittest.TestCase):
     def _make_world(self):
-        _ecs = importlib.import_module('EDEN-ECS')
+        _ecs = importlib.import_module('eden_ecs')
         world = _ecs.World()
         return world
 

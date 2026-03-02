@@ -32,16 +32,16 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Path setup — make EDEN-ECS importable if running from the repo root
+# Path setup — make eden_ecs importable if running from the repo root
 # ---------------------------------------------------------------------------
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
-for _candidate in [
-    _REPO_ROOT / "EDEN-ECS",
-    _REPO_ROOT / "python-bridge",
-]:
-    if _candidate.exists() and str(_candidate) not in sys.path:
-        sys.path.insert(0, str(_candidate))
+# Insert repo root first so eden_ecs/ takes priority over python-bridge/eden_ecs/
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+_pb = _REPO_ROOT / "python-bridge"
+if _pb.exists() and str(_pb) not in sys.path:
+    sys.path.append(str(_pb))
 
 
 # ---------------------------------------------------------------------------
@@ -49,7 +49,7 @@ for _candidate in [
 # ---------------------------------------------------------------------------
 
 try:
-    from core.component import Component  # type: ignore[import]
+    from eden_ecs.core.component import Component  # type: ignore[import]
     _EDEN_ECS_AVAILABLE = True
 except (ImportError, ModuleNotFoundError):
     # Provide a minimal stub so ABRAXIS works without EDEN-ECS installed
@@ -65,10 +65,10 @@ except (ImportError, ModuleNotFoundError):
 
 try:
     import importlib as _il
-    _ecs = _il.import_module("EDEN-ECS")
-    _comp = _il.import_module("EDEN-ECS.components")
-    _sys_mod = _il.import_module("EDEN-ECS.systems")
-    _const = _il.import_module("EDEN-ECS.core.constants")
+    _ecs = _il.import_module("eden_ecs")
+    _comp = _il.import_module("eden_ecs.components")
+    _sys_mod = _il.import_module("eden_ecs.systems")
+    _const = _il.import_module("eden_ecs.core.constants")
 
     _METACUBEComponent = _comp.METACUBEComponent
     _MemoryLattice = _comp.MemoryLattice
@@ -177,7 +177,7 @@ class EdenEcsBridge:
             logger.debug("EDEN-ECS not available — running in standalone mode.")
             return
         try:
-            from core.world import World  # type: ignore[import]
+            from eden_ecs.core.world import World  # type: ignore[import]
             self._world = World()
             logger.info("EDEN-ECS World initialised for ABRAXIS bridge.")
             if _TIAMAT_AVAILABLE:
@@ -302,7 +302,7 @@ class EdenEcsBridge:
             logger.debug("manifest() — Tiamat not available.")
             return None
         try:
-            from core.entity import EntityType  # type: ignore[import]
+            from eden_ecs.core.entity import EntityType  # type: ignore[import]
             entity = self._world.create_entity(EntityType.SYSTEM, "tiamat_manifest")
             ps = _PalindromeState(word=word or "ABRAXISASIXARBA")
             mc = _METACUBEComponent()

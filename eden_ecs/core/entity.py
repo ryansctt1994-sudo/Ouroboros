@@ -44,5 +44,11 @@ class EntityManager:
     
     def count(self) -> int:
         return len(self.entities)
+    
+    def remove(self, entity_id: str) -> bool:
+        if entity_id in self.entities:
+            del self.entities[entity_id]
+            return True
+        return False
 
 EntityId = str

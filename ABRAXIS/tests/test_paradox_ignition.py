@@ -41,14 +41,14 @@ class TestEntitySpawning(unittest.TestCase):
     def test_spawn_entity_increments_count(self):
         pi = ParadoxIgnition()
         if not pi._world:
-            self.skipTest("EDEN-ECS not available")
+            self.skipTest("eden_ecs not available")
         pi.spawn_entity()
         self.assertEqual(pi._entity_count, 1)
 
     def test_spawn_multiple_entities(self):
         pi = ParadoxIgnition()
         if not pi._world:
-            self.skipTest("EDEN-ECS not available")
+            self.skipTest("eden_ecs not available")
         for _ in range(5):
             pi.spawn_entity()
         self.assertEqual(pi._entity_count, 5)
@@ -56,14 +56,14 @@ class TestEntitySpawning(unittest.TestCase):
     def test_spawn_entity_with_custom_word(self):
         pi = ParadoxIgnition()
         if not pi._world:
-            self.skipTest("EDEN-ECS not available")
+            self.skipTest("eden_ecs not available")
         entity = pi.spawn_entity(word="ABA", frequency=432.0)
         self.assertIsNotNone(entity)
 
     def test_spawn_entities_appear_in_world(self):
         pi = ParadoxIgnition()
         if not pi._world:
-            self.skipTest("EDEN-ECS not available")
+            self.skipTest("eden_ecs not available")
         pi.spawn_entity()
         self.assertEqual(len(pi._world.entity_manager.entities), 1)
 
@@ -72,7 +72,7 @@ class TestStatsTracking(unittest.TestCase):
     def test_stats_reflect_spawned_entities(self):
         pi = ParadoxIgnition()
         if not pi._world:
-            self.skipTest("EDEN-ECS not available")
+            self.skipTest("eden_ecs not available")
         pi.spawn_entity()
         pi.spawn_entity()
         self.assertEqual(pi.stats['entity_count'], 2)
@@ -80,7 +80,7 @@ class TestStatsTracking(unittest.TestCase):
     def test_systems_present_in_stats(self):
         pi = ParadoxIgnition()
         if not pi._world:
-            self.skipTest("EDEN-ECS not available")
+            self.skipTest("eden_ecs not available")
         stats = pi.stats
         for key in ('palindrome_stats', 'veto_stats', 'coherence_stats', 'ternary_stats'):
             self.assertIn(key, stats)

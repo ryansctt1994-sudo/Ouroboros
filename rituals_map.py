@@ -1,3 +1,4 @@
+"""
 RITUALS MAP: FROM VOID TO CATHEDRAL
 ====================================
 
@@ -21,6 +22,7 @@ Ritual B (Ready): The Storm — D2/D3 with escalating chaos
 
 This file serves as the canonical reference linking experimental
 results to engineering decisions.
+"""
 
 
 # ═══════════════════════════════════════════════════════════════

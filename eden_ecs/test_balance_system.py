@@ -12,7 +12,7 @@ if PARENT_DIR not in sys.path:
 
 # Import using absolute path through parent
 import importlib
-eden_ecs = importlib.import_module('EDEN-ECS')
+eden_ecs = importlib.import_module('eden_ecs')
 World = eden_ecs.World
 EntityType = eden_ecs.EntityType
 Loyalty = eden_ecs.Loyalty

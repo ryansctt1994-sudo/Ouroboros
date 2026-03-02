@@ -21,38 +21,37 @@ from typing import Any, Dict, Optional
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Path bootstrap — make EDEN-ECS importable from repo root
+# Path bootstrap — make eden_ecs importable from repo root
 # ---------------------------------------------------------------------------
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-for _candidate in [_REPO_ROOT / "EDEN-ECS"]:
-    if _candidate.exists() and str(_candidate) not in sys.path:
-        sys.path.insert(0, str(_candidate))
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 try:
     import importlib as _il
-    _ecs = _il.import_module("EDEN-ECS")
+    _ecs = _il.import_module("eden_ecs")
     World = _ecs.World
     EntityType = _ecs.EntityType
 
-    _comp = _il.import_module("EDEN-ECS.components")
+    _comp = _il.import_module("eden_ecs.components")
     METACUBEComponent = _comp.METACUBEComponent
     MemoryLattice = _comp.MemoryLattice
     PalindromeState = _comp.PalindromeState
 
-    _sys = _il.import_module("EDEN-ECS.systems")
+    _sys = _il.import_module("eden_ecs.systems")
     PalindromeDescentSystem = _sys.PalindromeDescentSystem
     CoherenceAccumulatorSystem = _sys.CoherenceAccumulatorSystem
     VetoSystem = _sys.VetoSystem
     TernaryRegisterSystem = _sys.TernaryRegisterSystem
 
-    _const = _il.import_module("EDEN-ECS.core.constants")
+    _const = _il.import_module("eden_ecs.core.constants")
     PULSE_FREQUENCY_HZ = _const.PULSE_FREQUENCY_HZ
     PALINDROME_ROOT = _const.PALINDROME_ROOT
 
     _EDEN_AVAILABLE = True
 except Exception as _e:  # pylint: disable=broad-except
-    logger.warning("EDEN-ECS not available for ParadoxIgnition: %s", _e)
+    logger.warning("eden_ecs not available for ParadoxIgnition: %s", _e)
     _EDEN_AVAILABLE = False
 
 
@@ -152,7 +151,7 @@ class ParadoxIgnition:
             KeyboardInterrupt.
         """
         if not _EDEN_AVAILABLE or self._world is None:
-            logger.error("EDEN-ECS not available — cannot ignite.")
+            logger.error("eden_ecs not available — cannot ignite.")
             return
 
         logger.info("🔱 Spawning %d convergence entities…", num_entities)

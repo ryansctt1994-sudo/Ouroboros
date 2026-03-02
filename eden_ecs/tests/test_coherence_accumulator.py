@@ -9,7 +9,7 @@ _REPO_ROOT = os.path.join(os.path.dirname(__file__), '..', '..')
 if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
-_constants = importlib.import_module('EDEN-ECS.core.constants')
+_constants = importlib.import_module('eden_ecs.core.constants')
 
 chi_bar = _constants.chi_bar
 PHI = _constants.PHI

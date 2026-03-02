@@ -1,4 +1,5 @@
 """World container"""
+from collections import defaultdict
 from typing import List, Type, Optional
 from .entity import Entity, EntityManager, EntityType
 from .component import Component
@@ -17,6 +18,7 @@ class World:
         self.scheduler = SystemScheduler()
         self.time = 0.0
         self.metrics = {'ticks': 0, 'entities_created': 0}
+        self._event_handlers = defaultdict(list)
         
         # v2.0.0: Hybrid timestep system
         self.timestep_manager = TimestepManager(
@@ -66,3 +68,24 @@ class World:
     def query(self, *component_types: Type[Component]) -> List[Entity]:
         return [e for e in self.entity_manager.entities.values() 
                 if all(e.has_component(ct) for ct in component_types)]
+
+    def emit(self, event) -> None:
+        for handler in self._event_handlers[type(event)]:
+            handler(event)
+
+    def on(self, event_type, handler) -> None:
+        self._event_handlers[event_type].append(handler)
+
+    def has_entity(self, entity_id: str) -> bool:
+        return entity_id in self.entity_manager.entities
+
+    def remove_entity(self, entity_id: str) -> bool:
+        return self.entity_manager.remove(entity_id)
+
+    def query_components(self, component_types: List[Type[Component]]) -> List[tuple]:
+        result = []
+        for entity in self.entity_manager.entities.values():
+            if all(entity.has_component(ct) for ct in component_types):
+                comps = tuple(entity.get_component(ct) for ct in component_types)
+                result.append((entity.id, comps))
+        return result

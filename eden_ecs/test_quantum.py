@@ -8,7 +8,7 @@ if PARENT_DIR not in sys.path:
     sys.path.insert(0, PARENT_DIR)
 
 import importlib
-eden_ecs = importlib.import_module('EDEN-ECS')
+eden_ecs = importlib.import_module('eden_ecs')
 QuantumCircuit = eden_ecs.QuantumCircuit
 QuantumResonance = eden_ecs.QuantumResonance
 NoiseChannel = eden_ecs.NoiseChannel
