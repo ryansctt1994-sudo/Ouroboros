@@ -1,0 +1,26 @@
+"AppBuild"
+{
+    // Replace 480 with your real Steam AppID before shipping.
+    // 480 = Spacewar (Valve development test title).
+    "AppID" "480"
+
+    "Desc" "AIOS: Ouroboros — Windows build"
+
+    "BuildOutput" "steamcmd_output/windows"
+
+    "Depots"
+    {
+        // Depot 481 — Windows content
+        // Replace with your real depot ID.
+        "481"
+        {
+            "FileMapping"
+            {
+                "LocalPath" "dist/AIOS-Ouroboros-*-windows-x86_64.exe"
+                "DepotPath" "."
+                "recursive"  "0"
+            }
+            "FileExclusion" "*.pdb"
+        }
+    }
+}

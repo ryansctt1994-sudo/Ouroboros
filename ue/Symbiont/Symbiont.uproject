@@ -2,7 +2,7 @@
 	"FileVersion": 3,
 	"EngineAssociation": "5.3",
 	"Category": "",
-	"Description": "Symbiont - AR/XR integration subproject for Ouroboros",
+	"Description": "AIOS — AI Operating System, powered by Ouroboros. Constitutional Symbiont game for UE5 + Steam.",
 	"Modules": [
 		{
 			"Name": "Symbiont",
@@ -14,10 +14,19 @@
 		{
 			"Name": "SymbiontCore",
 			"Enabled": true
+		},
+		{
+			"Name": "OnlineSubsystemSteam",
+			"Enabled": true
+		},
+		{
+			"Name": "OnlineSubsystem",
+			"Enabled": true
 		}
 	],
 	"TargetPlatforms": [
 		"IOS",
+		"Linux",
 		"Mac",
 		"Windows"
 	]

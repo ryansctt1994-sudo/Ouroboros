@@ -1,0 +1,26 @@
+"AppBuild"
+{
+    // Replace 480 with your real Steam AppID before shipping.
+    // 480 = Spacewar (Valve development test title).
+    "AppID" "480"
+
+    "Desc" "AIOS: Ouroboros — macOS build"
+
+    "BuildOutput" "steamcmd_output/macos"
+
+    "Depots"
+    {
+        // Depot 482 — macOS content
+        // Replace with your real depot ID.
+        "482"
+        {
+            "FileMapping"
+            {
+                "LocalPath" "dist/AIOS-Ouroboros.app"
+                "DepotPath" "."
+                "recursive"  "1"
+            }
+            "FileExclusion" "*.dSYM"
+        }
+    }
+}
