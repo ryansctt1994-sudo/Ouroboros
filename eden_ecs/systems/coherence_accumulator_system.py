@@ -50,7 +50,7 @@ class CoherenceAccumulatorSystem(System):
             ps = entity.get_component(PalindromeState)
             mc = entity.get_component(METACUBEComponent)
 
-            base_chi = chi_bar(ALPHA, PHI, LAMBDA, DELTA)
+            base_chi = chi_bar(alpha=ALPHA, phi=PHI, lam=LAMBDA, delta=DELTA)
 
             # Palindrome vitality modulation
             vitality_mod = ps.vitality

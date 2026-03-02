@@ -21,18 +21,18 @@ DELTA = _constants.DELTA
 
 class TestChiBarFormula(unittest.TestCase):
     def test_chi_bar_approximate_value(self):
-        result = chi_bar(ALPHA, PHI, LAMBDA, DELTA)
+        result = chi_bar(alpha=ALPHA, phi=PHI, lam=LAMBDA, delta=DELTA)
         # Expected ≈ 0.813–0.815
         self.assertAlmostEqual(result, 0.813, delta=0.005)
 
     def test_chi_bar_positive(self):
-        result = chi_bar(ALPHA, PHI, LAMBDA, DELTA)
+        result = chi_bar(alpha=ALPHA, phi=PHI, lam=LAMBDA, delta=DELTA)
         self.assertGreater(result, 0.0)
 
     def test_chi_bar_domain_error(self):
         # |λ|δ >= 1 should raise ValueError
         with self.assertRaises(ValueError):
-            chi_bar(ALPHA, PHI, 10.0, 0.5)
+            chi_bar(alpha=ALPHA, phi=PHI, lam=10.0, delta=0.5)
 
     def test_chi_bar_log_term_validity(self):
         inner = abs(LAMBDA) * DELTA

@@ -78,6 +78,11 @@ struct Cli {
     /// Tick interval in milliseconds (Phase I)
     #[arg(long, default_value_t = 1000)]
     tick_ms: u64,
+
+    /// Allowed WebSocket origins for CSWH mitigation (e.g. http://localhost:8765).
+    /// If empty, all origins are permitted.
+    #[arg(long, value_delimiter = ',')]
+    allowed_origins: Vec<String>,
 }
 
 #[derive(Clone, Debug, ValueEnum)]
@@ -302,9 +307,11 @@ impl HubState {
 }
 
 /// Run the Phase H WebSocket dashboard.
-async fn run_dashboard(host: &str, port: u16, governance_threshold: f64) -> anyhow::Result<()> {
+async fn run_dashboard(host: &str, port: u16, governance_threshold: f64, allowed_origins: Vec<String>) -> anyhow::Result<()> {
     use tokio::net::TcpListener;
-    use tokio_tungstenite::{accept_async, tungstenite::Message};
+    use tokio_tungstenite::{accept_hdr_async, tungstenite::Message};
+    use tokio_tungstenite::tungstenite::handshake::server::{Request, Response, ErrorResponse};
+    use tokio_tungstenite::tungstenite::http::StatusCode;
     use futures_util::{SinkExt, StreamExt};
 
     let addr = format!("{host}:{port}");
@@ -314,6 +321,7 @@ async fn run_dashboard(host: &str, port: u16, governance_threshold: f64) -> anyh
     let state = Arc::new(Mutex::new(HubState::new(governance_threshold)));
     let (tx, _) = broadcast::channel::<String>(64);
     let tx = Arc::new(tx);
+    let allowed_origins = Arc::new(allowed_origins);
 
     loop {
         let (stream, peer) = listener.accept().await?;
@@ -323,9 +331,30 @@ async fn run_dashboard(host: &str, port: u16, governance_threshold: f64) -> anyh
         let tx = Arc::clone(&tx);
         let mut rx = tx.subscribe();
         let client_id = Uuid::new_v4().to_string()[..8].to_string();
+        let allowed_origins = Arc::clone(&allowed_origins);
 
         tokio::spawn(async move {
-            let ws_stream = match accept_async(stream).await {
+            let ws_stream = match accept_hdr_async(stream, |req: &Request, res: Response| {
+                if !allowed_origins.is_empty() {
+                    let origin = req
+                        .headers()
+                        .get("origin")
+                        .and_then(|v| v.to_str().ok())
+                        .unwrap_or("");
+                    if origin.is_empty() || !allowed_origins.iter().any(|o| o == origin) {
+                        warn!(
+                            "WebSocket connection from {} rejected: origin '{}' not in allowed list",
+                            peer, origin
+                        );
+                        let mut err = ErrorResponse::new(Some("Origin not allowed".to_string()));
+                        *err.status_mut() = StatusCode::FORBIDDEN;
+                        return Err(err);
+                    }
+                }
+                Ok(res)
+            })
+            .await
+            {
                 Ok(ws) => ws,
                 Err(e) => {
                     warn!("WebSocket handshake failed for {peer}: {e}");
@@ -468,7 +497,7 @@ async fn main() {
 
     match &cli.mode {
         Mode::Dashboard => {
-            if let Err(e) = run_dashboard(&cli.host, cli.port, cli.governance_threshold).await {
+            if let Err(e) = run_dashboard(&cli.host, cli.port, cli.governance_threshold, cli.allowed_origins.clone()).await {
                 error!("Dashboard error: {e}");
                 std::process::exit(1);
             }
