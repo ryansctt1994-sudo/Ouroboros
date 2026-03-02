@@ -24,7 +24,7 @@ setup(
     ],
     extras_require={
         "eden": [
-            "eden-ecs @ git+https://github.com/AIOSPANDORA/EDEN-ECS.git",
+            # eden_ecs is now included in-tree — no external dependency needed
         ],
         "ml": [
             # ML requirements if needed

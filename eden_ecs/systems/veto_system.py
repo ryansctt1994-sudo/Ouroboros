@@ -59,7 +59,7 @@ class SimulatedKillswitch:
 
 class VetoSystem(System):
     """
-    Listens for VetoEvents on ``world.veto_events``, simulates the 449 ns
+    Listens for VetoEvents via the world event bus, simulates the 449 ns
     hardware guillotine latency, triggers the killswitch, and removes the
     offending entity from the world.
     """
@@ -71,6 +71,14 @@ class VetoSystem(System):
             'total_vetoes': 0,
             'entities_removed': 0,
         }
+        self._pending: List[VetoEvent] = []
+
+    def _on_veto(self, event: VetoEvent) -> None:
+        self._pending.append(event)
+
+    def attach_to_world(self, world) -> None:
+        """Subscribe to VetoEvents on the world event bus."""
+        world.on(VetoEvent, self._on_veto)
 
     def name(self) -> str:
         return "🗡️ Veto / Hardware Guillotine"
@@ -79,12 +87,11 @@ class VetoSystem(System):
         return 100  # Run first
 
     def process(self, world, delta_time: float) -> None:
-        events: List[VetoEvent] = getattr(world, 'veto_events', [])
-        if not events:
+        if not self._pending:
             return
 
-        pending = list(events)
-        events.clear()
+        pending = list(self._pending)
+        self._pending.clear()
 
         for event in pending:
             # Simulate 449 ns hardware latency
@@ -102,9 +109,9 @@ class VetoSystem(System):
             self.killswitch.trigger(event.entity_id, reason)
             self.tiamat_stats['total_vetoes'] += 1
 
-            # Remove entity from world
-            if event.entity_id in world.entity_manager.entities:
-                del world.entity_manager.entities[event.entity_id]
+            # Remove entity from world using the proper API
+            if world.has_entity(event.entity_id):
+                world.remove_entity(event.entity_id)
                 self.tiamat_stats['entities_removed'] += 1
                 logger.info(
                     "💀 Entity %s excised from the World.", event.entity_id

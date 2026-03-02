@@ -50,6 +50,7 @@ if _pb.exists() and str(_pb) not in sys.path:
 
 try:
     from eden_ecs.core.component import Component  # type: ignore[import]
+    from eden_ecs.core.entity import EntityType  # type: ignore[import]
     _EDEN_ECS_AVAILABLE = True
 except (ImportError, ModuleNotFoundError):
     # Provide a minimal stub so ABRAXIS works without EDEN-ECS installed
@@ -196,6 +197,7 @@ class EdenEcsBridge:
             }
             for sys_obj in systems.values():
                 self._world.add_system(sys_obj)
+            systems['veto'].attach_to_world(self._world)
             self._tiamat_systems = systems
             logger.info("Tiamat Convergence systems attached to ABRAXIS world.")
         except Exception as exc:  # pylint: disable=broad-except
@@ -221,7 +223,7 @@ class EdenEcsBridge:
 
         if self._world is not None:
             try:
-                entity = self._world.create_entity()
+                entity = self._world.create_entity(EntityType.SYSTEM, f"abraxis_{node_id}")
                 self._world.add_component(entity, comp)
                 self._world.add_component(entity, clock)
                 self._world.add_component(entity, gov)
