@@ -1,0 +1,51 @@
+"AppBuild"
+{
+	// !! Replace 480 with your real Steam AppID before shipping. !!
+	// 480 = Spacewar (Valve development test title).
+	"AppID"       "480"
+	"Desc"        "AIOS: Ouroboros — Win64 Shipping build"
+	"BuildOutput" "../../steamcmd_output/win64"
+
+	"Depots"
+	{
+		// Depot 481 — Win64 game content
+		// Replace 481 with your real depot ID from the Steamworks partner portal.
+		"481"
+		{
+			"DepotBuildConfig"
+			{
+				"DepotID"   "481"
+				"ContentRoot" "../../Package/Windows"
+				"FileMapping"
+				{
+					"LocalPath" "*"
+					"DepotPath" "."
+					"Recursive" "1"
+				}
+				// Exclude debug symbols and editor leftovers from the depot
+				"FileExclusion" "*.pdb"
+				"FileExclusion" "*.exp"
+				"FileExclusion" "*.lib"
+				"FileExclusion" "Engine/Content/Editor*"
+			}
+		}
+
+		// Depot 484 — VC++ redistributable install script
+		// Ensure users have the MSVC 2022 runtime without a separate installer.
+		// See: https://partner.steamgames.com/doc/sdk/uploading/distributing_crashhandler
+		"484"
+		{
+			"DepotBuildConfig"
+			{
+				"DepotID"    "484"
+				"ContentRoot" "../../steam/redist/win64"
+				"FileMapping"
+				{
+					"LocalPath" "*"
+					"DepotPath" "."
+					"Recursive" "1"
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,29 @@
+"AppBuild"
+{
+	// !! Replace 480 with your real Steam AppID before shipping. !!
+	"AppID"       "480"
+	"Desc"        "AIOS: Ouroboros — Linux (Steam Deck) Shipping build"
+	"BuildOutput" "../../steamcmd_output/linux"
+
+	"Depots"
+	{
+		// Depot 482 — Linux / Steam Deck game content
+		// Replace 482 with your real depot ID from the Steamworks partner portal.
+		"482"
+		{
+			"DepotBuildConfig"
+			{
+				"DepotID"   "482"
+				"ContentRoot" "../../Package/Linux"
+				"FileMapping"
+				{
+					"LocalPath" "*"
+					"DepotPath" "."
+					"Recursive" "1"
+				}
+				"FileExclusion" "*.debug"
+				"FileExclusion" "Engine/Content/Editor*"
+			}
+		}
+	}
+}

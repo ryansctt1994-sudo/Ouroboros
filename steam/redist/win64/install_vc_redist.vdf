@@ -1,0 +1,30 @@
+; Steam Install Script — Visual C++ 2022 Redistributable
+; Place this file in steam/redist/win64/
+;
+; Steam will run this install script when the user first installs or verifies
+; the game.  It handles VC++ runtime installation transparently.
+;
+; Reference: https://partner.steamgames.com/doc/sdk/uploading/distributing_crashhandler
+;
+; To use:
+;   1. Download vcredist_x64.exe from Microsoft:
+;      https://aka.ms/vs/17/release/vc_redist.x64.exe
+;   2. Place it in this directory alongside this .vdf file.
+;   3. Both files will be included in depot 484 (see app_build_win64.vdf).
+
+"InstallScript"
+{
+	"Run Process"
+	{
+		"vcredist_x64"
+		{
+			"Process 1"
+			{
+				"HasRunKey"  "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\X64"
+				"Executable" "vcredist_x64.exe"
+				"Arguments"  "/install /quiet /norestart"
+				"NoCleanUp"  "1"
+			}
+		}
+	}
+}

@@ -1,0 +1,167 @@
+# ============================================================================
+# AIOS: Ouroboros — Steam Depot Upload
+# ============================================================================
+# Uploads packaged Win64 and Linux builds to Steam using steamcmd.
+#
+# This workflow runs AFTER ue5-build.yml completes on the main branch, or
+# can be triggered manually for a specific run.
+#
+# Required repository secrets (Settings → Secrets → Actions):
+#   STEAM_USERNAME     — Steam account with "Edit App Metadata" + "Publish"
+#                        on your AppID.  Use a dedicated build account.
+#   STEAM_PASSWORD     — Password for the above account.
+#   STEAM_TOTP_SECRET  — Base-32 TOTP secret from Steam Guard Mobile
+#                        Authenticator (export via steam-totp or similar).
+#
+# Required repository variables (Settings → Variables):
+#   STEAM_APP_ID       — Your real Steam AppID (480 for dev/Spacewar testing).
+#   STEAM_DEPOT_WIN64  — Your Win64 depot ID (e.g. 481).
+#   STEAM_DEPOT_LINUX  — Your Linux depot ID (e.g. 482).
+#
+# !! Never commit Steam credentials.  Use secrets only. !!
+# ============================================================================
+
+name: Steam Upload
+
+on:
+  workflow_run:
+    workflows: ["UE5 Build & Package"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      win64_run_id:
+        description: 'Run ID of UE5 Build workflow to use for Win64 artifact'
+        required: true
+      linux_run_id:
+        description: 'Run ID of UE5 Build workflow to use for Linux artifact'
+        required: true
+      branch:
+        description: 'Steam branch to push to (e.g. default, beta)'
+        required: true
+        default: 'beta'
+
+jobs:
+  upload-steam:
+    name: Upload to Steam
+    # Only upload when the triggering build succeeded (or manual dispatch).
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+
+    env:
+      STEAM_APP_ID:      ${{ vars.STEAM_APP_ID      || '480' }}
+      STEAM_DEPOT_WIN64: ${{ vars.STEAM_DEPOT_WIN64 || '481' }}
+      STEAM_DEPOT_LINUX: ${{ vars.STEAM_DEPOT_LINUX || '482' }}
+      STEAM_BRANCH:      ${{ github.event.inputs.branch || 'beta' }}
+
+    steps:
+      - name: Checkout repository (for VDF scripts)
+        uses: actions/checkout@v4
+
+      # ------------------------------------------------------------------
+      # Download packaged artifacts produced by ue5-build.yml
+      # ------------------------------------------------------------------
+      - name: Download Win64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: AIOS-Win64-Shipping-${{ github.sha }}
+          path: Package/Windows
+        continue-on-error: true   # Allow manual dispatch without matching sha
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: AIOS-Linux-Shipping-${{ github.sha }}
+          path: Package/Linux
+        continue-on-error: true
+
+      # ------------------------------------------------------------------
+      # Download VC++ Redistributable for Win64 depot
+      # ------------------------------------------------------------------
+      - name: Download VC++ 2022 Redistributable (Win64)
+        run: |
+          mkdir -p steam/redist/win64
+          curl -L "https://aka.ms/vs/17/release/vc_redist.x64.exe" \
+               -o steam/redist/win64/vcredist_x64.exe
+
+      # ------------------------------------------------------------------
+      # Patch VDF files with real AppID and depot IDs
+      # ------------------------------------------------------------------
+      - name: Patch VDF depot configs
+        run: |
+          sed -i \
+            -e "s/\"AppID\"[[:space:]]*\"480\"/\"AppID\" \"${STEAM_APP_ID}\"/g" \
+            -e "s/\"DepotID\"[[:space:]]*\"481\"/\"DepotID\" \"${STEAM_DEPOT_WIN64}\"/g" \
+            steam/depots/app_build_win64.vdf
+
+          sed -i \
+            -e "s/\"AppID\"[[:space:]]*\"480\"/\"AppID\" \"${STEAM_APP_ID}\"/g" \
+            -e "s/\"DepotID\"[[:space:]]*\"482\"/\"DepotID\" \"${STEAM_DEPOT_LINUX}\"/g" \
+            steam/depots/app_build_linux.vdf
+
+      # ------------------------------------------------------------------
+      # Install steamcmd
+      # ------------------------------------------------------------------
+      - name: Install steamcmd
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y lib32gcc-s1
+          mkdir -p /tmp/steamcmd
+          curl -L "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" \
+               | tar -xz -C /tmp/steamcmd
+          echo "/tmp/steamcmd" >> "$GITHUB_PATH"
+
+      # ------------------------------------------------------------------
+      # Generate TOTP code for Steam Guard
+      # ------------------------------------------------------------------
+      - name: Generate Steam Guard TOTP
+        id: totp
+        run: |
+          pip install pyotp --quiet
+          CODE=$(python -c "import pyotp, sys; print(pyotp.TOTP(sys.argv[1]).now())" \
+                "${{ secrets.STEAM_TOTP_SECRET }}")
+          echo "code=${CODE}" >> "$GITHUB_OUTPUT"
+
+      # ------------------------------------------------------------------
+      # Upload Win64 depot
+      # ------------------------------------------------------------------
+      - name: Upload Win64 depot to Steam
+        run: |
+          steamcmd \
+            +login "${{ secrets.STEAM_USERNAME }}" \
+                   "${{ secrets.STEAM_PASSWORD }}" \
+                   "${{ steps.totp.outputs.code }}" \
+            +run_app_build "$(pwd)/steam/depots/app_build_win64.vdf" \
+            +quit
+
+      # ------------------------------------------------------------------
+      # Upload Linux depot
+      # ------------------------------------------------------------------
+      - name: Upload Linux depot to Steam
+        run: |
+          CODE=$(python -c "import pyotp, sys; print(pyotp.TOTP(sys.argv[1]).now())" \
+                "${{ secrets.STEAM_TOTP_SECRET }}")
+          steamcmd \
+            +login "${{ secrets.STEAM_USERNAME }}" \
+                   "${{ secrets.STEAM_PASSWORD }}" \
+                   "${CODE}" \
+            +run_app_build "$(pwd)/steam/depots/app_build_linux.vdf" \
+            +quit
+
+      # ------------------------------------------------------------------
+      # Set live branch
+      # ------------------------------------------------------------------
+      - name: Set Steam branch live
+        run: |
+          CODE=$(python -c "import pyotp, sys; print(pyotp.TOTP(sys.argv[1]).now())" \
+                "${{ secrets.STEAM_TOTP_SECRET }}")
+          steamcmd \
+            +login "${{ secrets.STEAM_USERNAME }}" \
+                   "${{ secrets.STEAM_PASSWORD }}" \
+                   "${CODE}" \
+            +app_set_build_live "${STEAM_APP_ID}" "${STEAM_BRANCH}" "" \
+            +quit
+        # Only set live for the default branch, not beta uploads
+        if: env.STEAM_BRANCH == 'default'
