@@ -67,6 +67,9 @@ def _orthogonalise(
 ) -> np.ndarray:
     """Orthogonalise matrix G via Chebyshev-accelerated Newton-Schulz.
 
+    For small matrices (min dimension < 4), Newton-Schulz iterations are
+    bypassed and a stable spectral normalisation is returned instead.
+
     Args:
         G:         Input matrix of shape (m, n).
         num_steps: Number of NS iterations (default 5 is sufficient for fp32).
@@ -79,6 +82,14 @@ def _orthogonalise(
         raise ValueError(f"_orthogonalise expects a 2-D matrix, got shape {G.shape}")
 
     m, n = G.shape
+
+    # Small-matrix guard: skip NS iterations for tiny matrices
+    if min(m, n) < 4:
+        spec_norm = np.linalg.norm(G, ord=2)
+        if spec_norm < eps:
+            return G
+        return G / (spec_norm + eps)
+
     # Transpose so that m >= n (tall matrix)
     transposed = m < n
     if transposed:
@@ -112,11 +123,16 @@ class MuonCANS:
     all parameter shapes are handled uniformly.
 
     Args:
-        params:      List of parameter arrays (numpy arrays, modified in place).
-        lr:          Learning rate.
-        momentum:    Momentum coefficient (default 0.95).
-        ns_steps:    Newton-Schulz iterations per step (default 5).
-        weight_decay: L2 regularisation coefficient (default 0.0).
+        params:            List of parameter arrays (numpy arrays, modified in place).
+        lr:                Learning rate.
+        momentum:          Momentum coefficient (default 0.95).
+        ns_steps:          Newton-Schulz iterations per step (default 5).
+        weight_decay:      L2 regularisation coefficient (default 0.0).
+        scalar_decay_mult: Extra L2 anchoring multiplier for 1-D parameters
+                           (default 10.0, must be >= 1.0).  The effective weight
+                           decay applied to 1-D params is
+                           ``scalar_decay_mult * weight_decay``.
+        eps:               Numerical stabilisation constant (default 1e-7).
     """
 
     def __init__(
@@ -126,17 +142,23 @@ class MuonCANS:
         momentum: float = 0.95,
         ns_steps: int = 5,
         weight_decay: float = 0.0,
+        scalar_decay_mult: float = 10.0,
+        eps: float = 1e-7,
     ) -> None:
         if lr <= 0:
             raise ValueError(f"lr must be positive, got {lr}")
         if not (0.0 <= momentum < 1.0):
             raise ValueError(f"momentum must be in [0, 1), got {momentum}")
+        if scalar_decay_mult < 1.0:
+            raise ValueError(f"scalar_decay_mult must be >= 1.0, got {scalar_decay_mult}")
 
         self.params = params
         self.lr = lr
         self.momentum = momentum
         self.ns_steps = ns_steps
         self.weight_decay = weight_decay
+        self.scalar_decay_mult = scalar_decay_mult
+        self.eps = eps
 
         # Momentum buffers (initialised lazily on first step)
         self._buffers: List[Optional[np.ndarray]] = [None] * len(params)
@@ -145,6 +167,20 @@ class MuonCANS:
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
+
+    def _orthogonalise(self, G: np.ndarray) -> np.ndarray:
+        """Orthogonalise a matrix using the module-level implementation.
+
+        Convenience instance method so callers can use ``opt._orthogonalise(G)``
+        without importing the module-level helper directly.
+
+        Args:
+            G: Input matrix of shape (m, n).
+
+        Returns:
+            Orthogonalised matrix of the same shape.
+        """
+        return _orthogonalise(G, num_steps=self.ns_steps, eps=self.eps)
 
     def step(self, grads: List[np.ndarray]) -> None:
         """Apply one optimisation step.
@@ -172,6 +208,9 @@ class MuonCANS:
             # Weight-decay as gradient regularisation
             if self.weight_decay != 0.0:
                 g += self.weight_decay * param
+                # Extra L2 anchoring for 1-D parameters (biases, layer-norm scales)
+                if param.ndim == 1 and self.scalar_decay_mult != 1.0:
+                    g += (self.scalar_decay_mult - 1.0) * self.weight_decay * param
 
             # Momentum update
             if self._buffers[i] is None:
@@ -186,7 +225,7 @@ class MuonCANS:
             if effective_grad.ndim >= 2:
                 orig_shape = effective_grad.shape
                 mat = effective_grad.reshape(orig_shape[0], -1)
-                update = _orthogonalise(mat, num_steps=self.ns_steps)
+                update = _orthogonalise(mat, num_steps=self.ns_steps, eps=self.eps)
                 update = update.reshape(orig_shape)
             else:
                 # Scalar or 1-D: normalise by RMS for stable scale
@@ -198,6 +237,17 @@ class MuonCANS:
     def zero_grad(self) -> None:
         """No-op: gradient storage is managed externally by the caller."""
 
+    def reset_momentum(self) -> None:
+        """Zero all initialised momentum buffers in-place.
+
+        Buffers that have not yet been initialised (``None``) are left as-is.
+        This is useful for resetting optimiser state between tasks without
+        reallocating memory (the "ghost-breaker" pattern).
+        """
+        for buf in self._buffers:
+            if buf is not None:
+                buf.fill(0.0)
+
     def state_dict(self) -> Dict:
         """Return serialisable optimiser state."""
         return {
@@ -206,6 +256,8 @@ class MuonCANS:
             "momentum": self.momentum,
             "ns_steps": self.ns_steps,
             "weight_decay": self.weight_decay,
+            "scalar_decay_mult": self.scalar_decay_mult,
+            "eps": self.eps,
             "buffers": [b.tolist() if b is not None else None for b in self._buffers],
         }
 
@@ -216,6 +268,8 @@ class MuonCANS:
         self.momentum = state["momentum"]
         self.ns_steps = state["ns_steps"]
         self.weight_decay = state["weight_decay"]
+        self.scalar_decay_mult = state.get("scalar_decay_mult", 10.0)
+        self.eps = state.get("eps", 1e-7)
         self._buffers = [
             np.array(b) if b is not None else None for b in state["buffers"]
         ]
