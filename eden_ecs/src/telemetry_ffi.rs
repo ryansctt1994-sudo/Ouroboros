@@ -46,17 +46,26 @@ static WRITE_EPOCH: AtomicU64 = AtomicU64::new(0);
 /// All buffers are heap-allocated at construction time and live for the full
 /// process lifetime.  The C-compatible accessors below hand raw pointers to
 /// Python without transferring ownership.
+///
+/// # Implementation note — `Vec` vs `Box<[T; N]>`
+///
+/// The large array sizes (`MAX_ENTITIES` = 100 000 × 8 B = 800 KB each,
+/// `MAX_EDGES` = 800 000 × 8 B = 6.4 MB) make it impossible to use
+/// `Box::new([0.0_f64; N])`: Rust constructs the array **on the stack** before
+/// boxing it, overflowing the default 8 MB thread stack.  `Vec` allocates
+/// directly on the heap and is used here instead.  All slice operations
+/// (`[..n]`, `.iter()`, `.as_ptr()`) are identical for `Vec<f64>`.
 pub struct ECSStateBuffer {
     /// Per-entity prediction errors — length `MAX_ENTITIES`, active slice
     /// is `[0 .. entity_count]`.
-    prediction_errors: Box<[f64; MAX_ENTITIES]>,
+    prediction_errors: Vec<f64>,
 
     /// Per-entity activation magnitudes — length `MAX_ENTITIES`.
-    activations: Box<[f64; MAX_ENTITIES]>,
+    activations: Vec<f64>,
 
     /// Edge connectivity weights — length `MAX_EDGES`, active slice is
     /// `[0 .. edge_count]`.
-    connectivity_weights: Box<[f64; MAX_EDGES]>,
+    connectivity_weights: Vec<f64>,
 
     /// Number of active entities written during the last flush.
     entity_count: AtomicU32,
@@ -74,9 +83,9 @@ impl ECSStateBuffer {
     /// Allocate a new buffer.  All values are initialised to `0.0`.
     pub fn new() -> Self {
         Self {
-            prediction_errors: Box::new([0.0_f64; MAX_ENTITIES]),
-            activations: Box::new([0.0_f64; MAX_ENTITIES]),
-            connectivity_weights: Box::new([0.0_f64; MAX_EDGES]),
+            prediction_errors: vec![0.0_f64; MAX_ENTITIES],
+            activations: vec![0.0_f64; MAX_ENTITIES],
+            connectivity_weights: vec![0.0_f64; MAX_EDGES],
             entity_count: AtomicU32::new(0),
             edge_count: AtomicU32::new(0),
         }

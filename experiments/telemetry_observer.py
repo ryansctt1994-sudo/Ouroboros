@@ -77,8 +77,9 @@ try:
     _HAS_TB = True
 except ImportError:
     try:
-        from tensorboard.summary.writer.record_writer import RecordWriter  # type: ignore[import]
-        from torch.utils.tensorboard import SummaryWriter as _SummaryWriter  # type: ignore[import]
+        # PyTorch unavailable — use the pure-Python tensorboard package.
+        from tensorboard.summary.writer.event_file_writer import EventFileWriter as _efw  # noqa: F401
+        from tensorboard import SummaryWriter as _SummaryWriter  # type: ignore[import]
         _HAS_TB = True
     except ImportError:
         _HAS_TB = False
