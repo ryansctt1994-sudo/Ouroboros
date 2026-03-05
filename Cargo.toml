@@ -46,4 +46,5 @@ strip = true
 members = [
     ".",
     "ELPIS/METACUBE/forge_standalone",
+    "eden_ecs",
 ]
