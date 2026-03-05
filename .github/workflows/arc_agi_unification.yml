@@ -1,0 +1,74 @@
+name: Cathedral-OS ARC-AGI Unification
+
+on:
+  push:
+    branches: [ "main", "ARC-AGI-3-Horizon" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  mycelium-resonance:
+    name: Phase Space Evaluation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Clone the Great Archive
+        uses: actions/checkout@v4
+
+      - name: 🦀 Set up Rust Substrate (eden_ecs)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: 💾 The Memory of the Forge (Rust Cache)
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "eden_ecs -> target"
+
+      - name: 🛠️ Feed the Naked OS (Linux Dependencies)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ pkg-config libx11-dev libasound2-dev libudev-dev
+
+      - name: 🐍 Set up Python Epistemic Layer
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: 🧪 Inject Nutrients (Dependencies)
+        run: |
+          python -m pip install --upgrade pip
+          # Including the crucial xgboost antidote to prevent CodexReactor starvation
+          pip install pytest pytest-asyncio numpy scikit-learn xgboost torch tensorboard
+
+      - name: 👁️ The Pre-Flight Augur (Diagnostic Matrix)
+        id: diagnostics
+        run: |
+          echo "Evaluating Cathedral-OS Phase Space..."
+          python -c "
+          import sys
+          try:
+              import xgboost
+              print('XGBoost Resonance: [ACTIVE]')
+          except ImportError:
+              print('XGBoost Resonance: [OFFLINE] - Critical Starvation.')
+              sys.exit(1)
+          "
+
+      - name: ⚙️ Verify Rust Substrate (Deterministic Kernel)
+        run: |
+          cd eden_ecs
+          cargo fmt -- --check
+          cargo clippy
+          cargo test --release
+
+      - name: 🧠 Verify Python Mycelium (Epistemic Overlay)
+        env:
+          PYTHONPATH: .
+        run: |
+          # This executes the test_codex_reactor.py and all ternary gates
+          pytest tests/ -v --maxfail=5 --asyncio-mode=auto
