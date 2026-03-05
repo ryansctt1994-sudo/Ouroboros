@@ -67,6 +67,9 @@ def _orthogonalise(
 ) -> np.ndarray:
     """Orthogonalise matrix G via Chebyshev-accelerated Newton-Schulz.
 
+    For small matrices (min dimension < 4), Newton-Schulz iterations are
+    bypassed and a stable spectral normalisation is returned instead.
+
     Args:
         G:         Input matrix of shape (m, n).
         num_steps: Number of NS iterations (default 5 is sufficient for fp32).
@@ -79,6 +82,12 @@ def _orthogonalise(
         raise ValueError(f"_orthogonalise expects a 2-D matrix, got shape {G.shape}")
 
     m, n = G.shape
+
+    # Small-matrix guard: skip NS iterations for tiny matrices
+    if min(m, n) < 4:
+        spec_norm = np.linalg.norm(G, ord=2)
+        return G / (spec_norm + eps)
+
     # Transpose so that m >= n (tall matrix)
     transposed = m < n
     if transposed:
@@ -112,11 +121,15 @@ class MuonCANS:
     all parameter shapes are handled uniformly.
 
     Args:
-        params:      List of parameter arrays (numpy arrays, modified in place).
-        lr:          Learning rate.
-        momentum:    Momentum coefficient (default 0.95).
-        ns_steps:    Newton-Schulz iterations per step (default 5).
-        weight_decay: L2 regularisation coefficient (default 0.0).
+        params:            List of parameter arrays (numpy arrays, modified in place).
+        lr:                Learning rate.
+        momentum:          Momentum coefficient (default 0.95).
+        ns_steps:          Newton-Schulz iterations per step (default 5).
+        weight_decay:      L2 regularisation coefficient (default 0.0).
+        scalar_decay_mult: Extra L2 anchoring multiplier for 1-D parameters
+                           (default 10.0, must be >= 1.0).  The effective weight
+                           decay applied to 1-D params is
+                           ``scalar_decay_mult * weight_decay``.
     """
 
     def __init__(
@@ -126,17 +139,21 @@ class MuonCANS:
         momentum: float = 0.95,
         ns_steps: int = 5,
         weight_decay: float = 0.0,
+        scalar_decay_mult: float = 10.0,
     ) -> None:
         if lr <= 0:
             raise ValueError(f"lr must be positive, got {lr}")
         if not (0.0 <= momentum < 1.0):
             raise ValueError(f"momentum must be in [0, 1), got {momentum}")
+        if scalar_decay_mult < 1.0:
+            raise ValueError(f"scalar_decay_mult must be >= 1.0, got {scalar_decay_mult}")
 
         self.params = params
         self.lr = lr
         self.momentum = momentum
         self.ns_steps = ns_steps
         self.weight_decay = weight_decay
+        self.scalar_decay_mult = scalar_decay_mult
 
         # Momentum buffers (initialised lazily on first step)
         self._buffers: List[Optional[np.ndarray]] = [None] * len(params)
@@ -172,6 +189,9 @@ class MuonCANS:
             # Weight-decay as gradient regularisation
             if self.weight_decay != 0.0:
                 g += self.weight_decay * param
+                # Extra L2 anchoring for 1-D parameters (biases, layer-norm scales)
+                if param.ndim == 1 and self.scalar_decay_mult != 1.0:
+                    g += (self.scalar_decay_mult - 1.0) * self.weight_decay * param
 
             # Momentum update
             if self._buffers[i] is None:
@@ -197,6 +217,17 @@ class MuonCANS:
 
     def zero_grad(self) -> None:
         """No-op: gradient storage is managed externally by the caller."""
+
+    def reset_momentum(self) -> None:
+        """Zero all initialised momentum buffers in-place.
+
+        Buffers that have not yet been initialised (``None``) are left as-is.
+        This is useful for resetting optimiser state between tasks without
+        reallocating memory (the "ghost-breaker" pattern).
+        """
+        for buf in self._buffers:
+            if buf is not None:
+                buf[:] = 0.0
 
     def state_dict(self) -> Dict:
         """Return serialisable optimiser state."""

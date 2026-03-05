@@ -140,6 +140,64 @@ class TestMuonCANS:
         opt.step(grads)
         assert not np.allclose(params[0], 0.0)
 
+    def test_reset_momentum_zeros_buffers(self):
+        """reset_momentum() should zero all initialised buffers in-place."""
+        params = [np.ones((4, 4)), np.ones(4)]
+        opt = MuonCANS(params, lr=0.01)
+        grads = [np.ones((4, 4)), np.ones(4)]
+        opt.step(grads)
+        # Buffers should now be initialised
+        for buf in opt._buffers:
+            assert buf is not None
+        opt.reset_momentum()
+        for buf in opt._buffers:
+            assert buf is not None
+            assert np.all(buf == 0.0)
+
+    def test_scalar_decay_mult_affects_1d_more_than_2d(self):
+        """scalar_decay_mult should increase 1-D update magnitude without affecting 2-D."""
+        rng = np.random.default_rng(42)
+        param_2d = rng.standard_normal((4, 4))
+        param_1d = rng.standard_normal(4)
+
+        # Baseline: scalar_decay_mult=1.0 (no extra anchoring)
+        p2d_base = param_2d.copy()
+        p1d_base = param_1d.copy()
+        opt_base = MuonCANS(
+            [p2d_base, p1d_base], lr=0.01, weight_decay=0.1, scalar_decay_mult=1.0
+        )
+        opt_base.step([np.zeros((4, 4)), np.zeros(4)])
+        delta_1d_base = np.linalg.norm(p1d_base - param_1d)
+        delta_2d_base = np.linalg.norm(p2d_base - param_2d)
+
+        # Increased: scalar_decay_mult=5.0
+        p2d_mult = param_2d.copy()
+        p1d_mult = param_1d.copy()
+        opt_mult = MuonCANS(
+            [p2d_mult, p1d_mult], lr=0.01, weight_decay=0.1, scalar_decay_mult=5.0
+        )
+        opt_mult.step([np.zeros((4, 4)), np.zeros(4)])
+        delta_1d_mult = np.linalg.norm(p1d_mult - param_1d)
+        delta_2d_mult = np.linalg.norm(p2d_mult - param_2d)
+
+        # 1-D update should be larger with higher scalar_decay_mult
+        assert delta_1d_mult > delta_1d_base
+        # 2-D update should be unaffected by scalar_decay_mult
+        assert np.isclose(delta_2d_base, delta_2d_mult)
+
+    def test_small_matrix_guard_preserves_shape_and_does_not_crash(self):
+        """_orthogonalise should handle small matrices without crashing."""
+        for shape in [(1, 8), (8, 1), (2, 2), (3, 10), (10, 3)]:
+            G = np.random.default_rng(0).standard_normal(shape)
+            Q = _orthogonalise(G)
+            assert Q.shape == shape, f"Shape mismatch for input {shape}: got {Q.shape}"
+
+        # Near-zero small matrix should also be stable
+        G_zero = np.zeros((2, 2))
+        Q_zero = _orthogonalise(G_zero)
+        assert Q_zero.shape == (2, 2)
+        assert not np.any(np.isnan(Q_zero))
+
 
 # ---------------------------------------------------------------------------
 # utils.metrics
