@@ -192,11 +192,17 @@ class TestMuonCANS:
             Q = _orthogonalise(G)
             assert Q.shape == shape, f"Shape mismatch for input {shape}: got {Q.shape}"
 
-        # Near-zero small matrix should also be stable
+        # Near-zero small matrix should be stable (module-level function)
         G_zero = np.zeros((2, 2))
         Q_zero = _orthogonalise(G_zero)
         assert Q_zero.shape == (2, 2)
         assert not np.any(np.isnan(Q_zero))
+
+        # Instance method should also handle zero matrix and return it unchanged
+        opt = MuonCANS([np.ones((2, 2))], lr=0.01)
+        result = opt._orthogonalise(np.zeros((2, 2)))
+        assert result.shape == (2, 2)
+        assert np.all(result == 0.0)
 
 
 # ---------------------------------------------------------------------------
