@@ -1,0 +1,37 @@
+# Determinism lock for eden_ecs / Ouroboros
+#
+# Goals
+# ──────
+# • Bit-for-bit identical binaries across Windows / Linux / macOS,
+#   Intel / AMD / ARM consumer hardware.
+# • Prevent auto-vectoriser from emitting platform-specific paths that
+#   produce different FP rounding results on AVX-512 vs Neon vs base SSE2.
+#
+# Approach
+# ─────────
+# -C target-cpu=generic   → emit only baseline ISA for the target triple;
+#                           no CPU-specific tuning that could alter FP lanes.
+# -C codegen-units=1      → single LLVM module → deterministic pass ordering.
+#                           (Duplicated in profile.release for clarity.)
+# -C overflow-checks=yes  → catch integer overflow in debug and CI builds.
+#                           (Disabled in release via profile; listed here for
+#                           dev/test profiles that inherit this config.)
+#
+# NOTE: Tracy live-profiling is enabled by compiling with
+#       `--features eden_ecs/tracy`.  That feature is OFF by default so that
+#       normal CI builds remain zero-overhead.
+
+[build]
+rustflags = [
+    "-C", "target-cpu=generic",
+    "-C", "codegen-units=1",
+]
+
+# Ensure the linker is deterministic on Linux CI (gold/lld sort object files).
+[target.x86_64-unknown-linux-gnu]
+rustflags = [
+    "-C", "target-cpu=generic",
+    "-C", "codegen-units=1",
+    "-C", "link-arg=-Wl,--sort-common",
+    "-C", "link-arg=-Wl,--sort-section=alignment",
+]

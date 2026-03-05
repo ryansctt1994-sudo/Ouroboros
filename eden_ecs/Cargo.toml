@@ -3,7 +3,7 @@ name = "eden_ecs"
 version = "0.1.0"
 authors = ["AIOSPANDORA Development Team"]
 edition = "2021"
-description = "EDEN Entity-Component-System — zero-copy telemetry FFI bridge"
+description = "EDEN Entity-Component-System — biologically-inspired, RAM-bound mycelial ECS"
 license = "MIT"
 repository = "https://github.com/AIOSPANDORA/Ouroboros"
 
@@ -11,9 +11,23 @@ repository = "https://github.com/AIOSPANDORA/Ouroboros"
 name = "eden_ecs"
 crate-type = ["cdylib", "rlib"]
 
+[features]
+# Enable live Tracy profiling (zero-overhead when absent).
+tracy = ["dep:tracy-client"]
+
 [dependencies]
+# IEEE 754 binary16 (f16) for GPU diffusion / Niagara zero-copy buffers.
+half = "2"
+# Tracy live profiler client (optional — only linked when the `tracy` feature
+# is enabled so that normal builds have no overhead).
+tracy-client = { version = "0.17", optional = true }
 
 [dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "spatial_grid"
+harness = false
 
 [profile.release]
 opt-level = 3
