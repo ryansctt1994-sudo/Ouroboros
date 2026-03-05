@@ -36,7 +36,6 @@ except ImportError:
 def _py_scalar(x: Any) -> Any:
     """Normalize NumPy scalar values to native Python scalar types."""
     try:
-        if np is not None and isinstance(x, np.generic):
         if EXTENDED_FEATURES and isinstance(x, np.generic):
             return x.item()
     except Exception:
