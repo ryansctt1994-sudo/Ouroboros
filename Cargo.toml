@@ -14,7 +14,7 @@ path = "src/main.rs"
 
 [dependencies]
 # Core async runtime
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1", features = ["full", "time"] }
 # WebSocket support for Phase H dashboard
 tokio-tungstenite = { version = "0.21", features = ["native-tls"] }
 # Futures utilities (stream/sink combinators)
@@ -31,9 +31,15 @@ clap = { version = "4", features = ["derive"] }
 uuid = { version = "1", features = ["v4"] }
 # Error handling
 anyhow = "1"
+rand = { version = "0.10.0", features = ["std"] }
+aes-gcm = "0.10.3"
+base64 = "0.22.1"
 
 [dev-dependencies]
+quickcheck = "1.1.0"
+quickcheck_macros = "1.2.0"
 tokio-test = "0.4"
+wiremock = "0.6.5"
 
 [profile.release]
 opt-level = 3
