@@ -214,6 +214,136 @@ impl WeaverPolicy for ComposePolicy {
     }
 }
 
+// ── Hebbian / engram policies ─────────────────────────────────────────────────
+
+/// **Hebbium** — Hebbian-style weight potentiation.
+///
+/// Each edge weight is nudged towards 1.0 in proportion to the current flow
+/// rate, scaled by the learning rate `alpha`.  The multiplicative `(1-w)`
+/// term keeps weights bounded without an explicit clamp:
+///
+/// `w[i] = clamp(w[i] + alpha * flow[i] * (1 - w[i]), 0, 1)`
+pub struct Hebbium {
+    /// Learning rate (e.g. 0.05 – 0.2).
+    pub alpha: f32,
+}
+
+impl WeaverPolicy for Hebbium {
+    fn apply(&mut self, ctx: &mut PolicyContext<'_>) {
+        let w = &mut *ctx.edge_weights;
+        let f = ctx.flow_rates;
+        let len = w.len().min(f.len());
+        for i in 0..len {
+            w[i] = (w[i] + self.alpha * f[i] * (1.0 - w[i])).clamp(0.0, 1.0);
+        }
+    }
+
+    fn name(&self) -> &'static str {
+        "Hebbium"
+    }
+}
+
+/// **Engramum** — EMA-traced Hebbian potentiation.
+///
+/// Maintains an exponential moving average (engram trace) of the flow signal
+/// and uses it instead of the raw flow, making the update smoother and
+/// history-dependent:
+///
+/// `trace[i] = beta * trace[i] + (1 - beta) * flow[i]`
+/// `w[i]     = clamp(w[i] + alpha * trace[i] * (1 - w[i]), 0, 1)`
+///
+/// The trace is lazily resized to `min(|weights|, |flows|)` so mismatched
+/// slices never cause a panic.
+pub struct Engramum {
+    /// Hebbian learning rate (e.g. 0.05 – 0.2).
+    pub alpha: f32,
+    /// EMA decay factor (0 < β < 1; higher = longer memory).
+    pub beta: f32,
+    /// Per-edge EMA trace (initialised to zeros; resized automatically).
+    pub trace: Vec<f32>,
+}
+
+impl WeaverPolicy for Engramum {
+    fn apply(&mut self, ctx: &mut PolicyContext<'_>) {
+        let w = &mut *ctx.edge_weights;
+        let f = ctx.flow_rates;
+        let len = w.len().min(f.len());
+        // Resize trace to match the active slice length.
+        if self.trace.len() < len {
+            self.trace.resize(len, 0.0);
+        }
+        for i in 0..len {
+            self.trace[i] = self.beta * self.trace[i] + (1.0 - self.beta) * f[i];
+            w[i] = (w[i] + self.alpha * self.trace[i] * (1.0 - w[i])).clamp(0.0, 1.0);
+        }
+    }
+
+    fn name(&self) -> &'static str {
+        "Engramum"
+    }
+}
+
+// ── Policy factories ──────────────────────────────────────────────────────────
+
+/// Build the **Sakibium** composed policy used for baseline A/B experiments.
+///
+/// The returned policy applies `SelectiveReinforcement`, `RedundancyDecay`,
+/// and `FlowNormalisation` in sequence — matching the classic sakib-index
+/// optimisation strategy.
+///
+/// # Parameters
+/// * `flow_threshold` — reinforcement threshold forwarded to
+///   [`SelectiveReinforcement`] and used as `min_weight` for [`RedundancyDecay`].
+pub fn sakibium_policy(flow_threshold: f32) -> Box<dyn WeaverPolicy> {
+    Box::new(ComposePolicy::new(vec![
+        Box::new(SelectiveReinforcement {
+            alpha: 0.05,
+            threshold: flow_threshold,
+        }),
+        Box::new(RedundancyDecay {
+            decay_rate: 0.02,
+            min_weight: flow_threshold,
+        }),
+        Box::new(FlowNormalisation { target_mean: 0.5 }),
+    ]))
+}
+
+/// Build a culture-specific composed policy for A/B experiments.
+///
+/// | `culture`    | Policy                                              |
+/// |--------------|-----------------------------------------------------|
+/// | `"baseline"` | [`sakibium_policy`]                                 |
+/// | `"hebbium"`  | [`Hebbium`] → `FlowNormalisation`                  |
+/// | `"engramum"` | [`Engramum`] → `FlowNormalisation`                 |
+///
+/// Unrecognised culture strings fall back to `"baseline"`.
+///
+/// # Parameters
+/// * `culture`        — one of `"baseline"`, `"hebbium"`, `"engramum"`.
+/// * `flow_threshold` — forwarded to the baseline policy if applicable.
+/// * `num_edges`      — initial trace capacity for [`Engramum`].
+pub fn culture_policy(
+    culture: &str,
+    flow_threshold: f32,
+    num_edges: usize,
+) -> Box<dyn WeaverPolicy> {
+    match culture {
+        "hebbium" => Box::new(ComposePolicy::new(vec![
+            Box::new(Hebbium { alpha: 0.1 }),
+            Box::new(FlowNormalisation { target_mean: 0.5 }),
+        ])),
+        "engramum" => Box::new(ComposePolicy::new(vec![
+            Box::new(Engramum {
+                alpha: 0.1,
+                beta: 0.9,
+                trace: vec![0.0; num_edges],
+            }),
+            Box::new(FlowNormalisation { target_mean: 0.5 }),
+        ])),
+        _ => sakibium_policy(flow_threshold),
+    }
+}
+
 // ── WeaverSandbox ─────────────────────────────────────────────────────────────
 
 /// Executes a [`WeaverPolicy`] each simulation tick.
@@ -447,5 +577,164 @@ mod tests {
             threshold: 0.5,
         }));
         assert_eq!(sandbox.mean_ns(), 0);
+    }
+
+    // ── Hebbium ───────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_hebbium_increases_weight_with_flow() {
+        let mut w = vec![0.5_f32];
+        let f = [1.0_f32];
+        let mut policy = Hebbium { alpha: 0.1 };
+        let mut ctx = make_ctx(&mut w, &f);
+        policy.apply(&mut ctx);
+        // w[0] = 0.5 + 0.1 * 1.0 * (1.0 - 0.5) = 0.5 + 0.05 = 0.55
+        assert!((w[0] - 0.55).abs() < 1e-6, "expected 0.55, got {}", w[0]);
+    }
+
+    #[test]
+    fn test_hebbium_zero_flow_no_change() {
+        let mut w = vec![0.4_f32];
+        let f = [0.0_f32];
+        let mut policy = Hebbium { alpha: 0.2 };
+        let mut ctx = make_ctx(&mut w, &f);
+        policy.apply(&mut ctx);
+        assert!(
+            (w[0] - 0.4).abs() < 1e-6,
+            "zero flow should leave weight unchanged"
+        );
+    }
+
+    #[test]
+    fn test_hebbium_clamped_at_one() {
+        let mut w = vec![0.99_f32];
+        let f = [1.0_f32];
+        let mut policy = Hebbium { alpha: 1.0 };
+        let mut ctx = make_ctx(&mut w, &f);
+        policy.apply(&mut ctx);
+        assert!(w[0] <= 1.0, "weight must not exceed 1.0");
+    }
+
+    #[test]
+    fn test_hebbium_mismatched_lengths() {
+        let mut w = vec![0.5_f32, 0.5];
+        let f = [0.8_f32]; // only 1 flow value
+        let mut policy = Hebbium { alpha: 0.1 };
+        let mut ctx = make_ctx(&mut w, &f);
+        policy.apply(&mut ctx); // must not panic
+        assert!(w[0] > 0.5, "first edge should be updated");
+        assert!((w[1] - 0.5).abs() < 1e-6, "second edge should be untouched");
+    }
+
+    // ── Engramum ──────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_engramum_weight_increases_with_sustained_flow() {
+        let mut w = vec![0.5_f32];
+        let f = [1.0_f32];
+        let mut policy = Engramum {
+            alpha: 0.1,
+            beta: 0.9,
+            trace: vec![0.0],
+        };
+        let mut ctx = make_ctx(&mut w, &f);
+        // Run for a few ticks so the trace accumulates.
+        for _ in 0..10 {
+            policy.apply(&mut ctx);
+        }
+        assert!(w[0] > 0.5, "weight should grow with sustained high flow");
+    }
+
+    #[test]
+    fn test_engramum_trace_resizes() {
+        // trace starts empty — must resize automatically without panicking.
+        let mut w = vec![0.5_f32, 0.5];
+        let f = [0.8_f32, 0.9];
+        let mut policy = Engramum {
+            alpha: 0.1,
+            beta: 0.9,
+            trace: vec![],
+        };
+        let mut ctx = make_ctx(&mut w, &f);
+        policy.apply(&mut ctx); // must not panic
+        assert_eq!(policy.trace.len(), 2);
+    }
+
+    #[test]
+    fn test_engramum_zero_beta_equals_hebbium() {
+        // With beta=0 the trace == current flow, so Engramum collapses to Hebbium.
+        let mut w_e = vec![0.5_f32];
+        let mut w_h = vec![0.5_f32];
+        let f = [0.8_f32];
+        let mut engramum = Engramum {
+            alpha: 0.1,
+            beta: 0.0,
+            trace: vec![0.0],
+        };
+        let mut hebbium = Hebbium { alpha: 0.1 };
+        engramum.apply(&mut make_ctx(&mut w_e, &f));
+        hebbium.apply(&mut make_ctx(&mut w_h, &f));
+        assert!(
+            (w_e[0] - w_h[0]).abs() < 1e-6,
+            "Engramum(beta=0) should equal Hebbium; e={} h={}",
+            w_e[0],
+            w_h[0]
+        );
+    }
+
+    // ── Policy factories ──────────────────────────────────────────────────────
+
+    #[test]
+    fn test_sakibium_policy_runs_without_panic() {
+        let mut policy = sakibium_policy(0.5);
+        let mut w = vec![0.5_f32; 4];
+        let f = vec![0.8_f32, 0.2, 0.9, 0.1];
+        let mut ctx = make_ctx(&mut w, &f);
+        policy.apply(&mut ctx); // must not panic
+    }
+
+    #[test]
+    fn test_culture_policy_baseline() {
+        let mut policy = culture_policy("baseline", 0.5, 4);
+        let mut w = vec![0.5_f32; 4];
+        let f = vec![0.8_f32; 4];
+        let mut ctx = make_ctx(&mut w, &f);
+        policy.apply(&mut ctx);
+    }
+
+    #[test]
+    fn test_culture_policy_hebbium() {
+        let mut policy = culture_policy("hebbium", 0.5, 4);
+        let mut w = vec![0.5_f32; 4];
+        let f = vec![1.0_f32; 4];
+        let mut ctx = make_ctx(&mut w, &f);
+        policy.apply(&mut ctx);
+        // Hebbium with alpha=0.1: w = 0.5 + 0.1*1.0*0.5 = 0.55 → normalised
+        // Just verify no panic and weights stay in [0,1].
+        for &wi in &w {
+            assert!(wi >= 0.0 && wi <= 1.0, "weight out of range: {wi}");
+        }
+    }
+
+    #[test]
+    fn test_culture_policy_engramum() {
+        let mut policy = culture_policy("engramum", 0.5, 4);
+        let mut w = vec![0.5_f32; 4];
+        let f = vec![1.0_f32; 4];
+        let mut ctx = make_ctx(&mut w, &f);
+        policy.apply(&mut ctx);
+        for &wi in &w {
+            assert!(wi >= 0.0 && wi <= 1.0, "weight out of range: {wi}");
+        }
+    }
+
+    #[test]
+    fn test_culture_policy_unknown_falls_back_to_baseline() {
+        // Unknown culture strings must not panic.
+        let mut policy = culture_policy("unknown_culture", 0.5, 4);
+        let mut w = vec![0.5_f32; 4];
+        let f = vec![0.8_f32; 4];
+        let mut ctx = make_ctx(&mut w, &f);
+        policy.apply(&mut ctx);
     }
 }
