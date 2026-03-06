@@ -191,14 +191,15 @@ fn assert_finite(slice: &[f32], label: &str) {
 
 /// Compute (p50, p90, p99) from an unsorted slice by sorting a clone.
 ///
+/// NaN values are removed before sorting to avoid incorrect percentile results.
 /// Allocation is intentional: called at most twice per episode, not per tick.
 fn percentiles(values: &[f32]) -> (f32, f32, f32) {
-    let n = values.len();
+    let mut sorted: Vec<f32> = values.iter().cloned().filter(|v| v.is_finite()).collect();
+    let n = sorted.len();
     if n == 0 {
         return (0.0, 0.0, 0.0);
     }
-    let mut sorted = values.to_vec();
-    sorted.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    sorted.sort_unstable_by(|a, b| a.partial_cmp(b).expect("NaN filtered above"));
     let p50 = sorted[n / 2];
     let p90 = sorted[(n * 9) / 10];
     let p99 = sorted[(n * 99) / 100];

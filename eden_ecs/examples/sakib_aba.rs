@@ -164,7 +164,12 @@ fn percentiles(values: &[f32]) -> (f32, f32, f32) {
         return (0.0, 0.0, 0.0);
     }
     let mut sorted = values.to_vec();
-    sorted.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    sorted.retain(|v| v.is_finite()); // remove NaN/Inf before sorting
+    let n = sorted.len();
+    if n == 0 {
+        return (0.0, 0.0, 0.0);
+    }
+    sorted.sort_unstable_by(|a, b| a.partial_cmp(b).expect("NaN filtered above"));
     (sorted[n / 2], sorted[(n * 9) / 10], sorted[(n * 99) / 100])
 }
 
