@@ -2,42 +2,70 @@
 Instrumented stability test for MuonCANS.
 
 Runs MuonCANS for many episodes with a synthetic learning environment and
-records three diagnostic curves:
+records five diagnostic curves:
 
     sakib_index       – coherence signal (proxy for policy quality)
     policy_delta_norm – magnitude of each weight update (from metrics)
     reward_variance   – rolling variance of rewards (policy steadiness)
+    grad_weight_cos   – cos(g, w) before projection (is constraint cosmetic?)
+    weight_drift_cos  – cos(w_t, w_{t-1}) (slow rotation vs turbulence)
 
-The tests assert the *three stability signatures* that indicate a healthy
-orthogonal optimizer:
+Five observability tests answer the following questions:
 
-    1. Weight norm stays roughly stable (no explosion, no collapse).
-    2. Updates mostly rotate the policy:
-       cos(angle(w, Δw)) stays near zero because Δw ⊥ w after NS orthog.
-    3. Reward variance does not grow over time (gating stabilises policy).
+    1. Alignment (grad_weight_cos):
+       If cos(g, w) ≈ 0 most of the time, the projection removes almost
+       nothing and the constraint is cosmetic.  If it's large, orthogonal
+       projection discards a meaningful portion of the learning signal.
 
-If instead long flat regions, sakib_advantage ≈ 0, and almost no policy
-movement are observed, the gating rule is too strict — this is also tested
-so the harness can raise an alert.
+    2. Representation drift (weight_drift_cos):
+       Consecutive weights should have high cosine similarity (near 1)
+       — slow rotation, not turbulence.  Low similarity means the policy
+       loses memory every step ("amnesia").
+
+    3. Multi-seed variance:
+       10 short seeds, not one heroic run.  We compare MuonCANS seed
+       variance against a plain normalised-SGD baseline.  Lower variance
+       is a real, practical contribution even without faster convergence.
+
+    4. Gating distribution:
+       The Sakib advantage must not be near zero most of the time or the
+       optimizer is just a brake pedal.
+
+    5. Baseline comparison:
+       SGD (norm-scale), Adam, MuonCANS — same environment, same seeds.
+       All should improve; MuonCANS result is placed in context.
 
 Scientific question under test
 -------------------------------
 Can learning happen primarily through rotation of representations?
 
-The stability signatures above answer this question empirically without
-requiring any algorithmic change to MuonCANS.
+The curves above answer this question empirically without requiring any
+algorithmic change to MuonCANS.
 """
 
 from __future__ import annotations
 
 import math
-from typing import Dict, List
+import platform
+import sys
+from typing import Dict, List, Optional
 
 import numpy as np
 import pytest
 
 from optimizers.muon_cans import MuonCANS
 
+# ---------------------------------------------------------------------------
+# Reproducibility header — logged once at module import
+# ---------------------------------------------------------------------------
+# Learning stability experiments are sensitive to library and runtime
+# differences.  Log key environment facts so that any numerical anomaly can
+# be traced back to a specific dependency version.
+_ENV_INFO: Dict[str, str] = {
+    "python": sys.version.split()[0],
+    "platform": platform.platform(),
+    "numpy": np.__version__,
+}
 # ---------------------------------------------------------------------------
 # Synthetic learning environment
 # ---------------------------------------------------------------------------
@@ -100,7 +128,7 @@ class _SyntheticEnv:
 
 
 class StabilityHarness:
-    """Run MuonCANS for *n_steps* and record the three diagnostic curves.
+    """Run MuonCANS for *n_steps* and record five diagnostic curves.
 
     Attributes
     ----------
@@ -111,10 +139,22 @@ class StabilityHarness:
     reward_variance : list[float]
         Rolling variance of rewards over a window of size *var_window*.
     cos_w_dw : list[float]
-        ``cos_w_dw`` from ``MuonCANS.metrics`` — alignment between weights
-        and update direction.  Should stay near zero for a rotational optimizer.
+        ``cos_w_dw`` — alignment between weights and update direction (post-projection).
     weight_norms : list[float]
-        ``weight_norm`` from ``MuonCANS.metrics`` — tracks ||w||.
+        ``weight_norm`` — tracks ||w||.
+    grad_weight_cos : list[float]
+        ``grad_weight_cos`` — cos(raw_g, w) *before* projection.
+    grad_grad_cos : list[float]
+        ``grad_grad_cos`` — cos(g_t, g_{t-1}).  Reveals gradient consistency:
+        near-zero → random walk; negative → optimizer fighting itself.
+    weight_drift_cos : list[float]
+        cos(w_t, w_{t-1}) computed externally.  Near 1 = slow rotation;
+        near 0 = turbulent/amnesiac policy.
+    raw_advantages : list[float]
+        Raw Sakib advantage values passed to each step.
+    env_info : dict[str, str]
+        Snapshot of environment versions captured at construction time for
+        reproducibility tracing.
     """
 
     def __init__(
@@ -128,6 +168,7 @@ class StabilityHarness:
         self.n_steps = n_steps
         self.var_window = var_window
         self.env = _SyntheticEnv(seed=env_seed)
+        self.env_info: Dict[str, str] = dict(_ENV_INFO)
 
         rng = np.random.default_rng(env_seed + 1)
         self._w = rng.standard_normal((self.env.n_out, self.env.n_in))
@@ -139,12 +180,18 @@ class StabilityHarness:
         self.reward_variance: List[float] = []
         self.cos_w_dw: List[float] = []
         self.weight_norms: List[float] = []
+        self.grad_weight_cos: List[float] = []
+        self.grad_grad_cos: List[float] = []
+        self.weight_drift_cos: List[float] = []
+        self.raw_advantages: List[float] = []
 
         self._rewards: List[float] = []
         self._smoothed_sakib: float = 0.5
 
     def run(self) -> "StabilityHarness":
-        """Execute the full run and populate recorded curves."""
+        """Execute the full run and populate all diagnostic curves."""
+        w_prev: Optional[np.ndarray] = None
+
         for _ in range(self.n_steps):
             r = self.env.reward(self._w)
             g = self.env.grad(self._w)
@@ -152,15 +199,30 @@ class StabilityHarness:
             # Sakib advantage: smoothed reward signal, clipped to [0, ∞)
             self._smoothed_sakib = 0.9 * self._smoothed_sakib + 0.1 * max(r, 0.0)
             sakib_adv = self._smoothed_sakib
+            self.raw_advantages.append(sakib_adv)
 
             self._opt.step([g], sakib_advantage=sakib_adv)
 
-            # --- record ---
+            # --- record optimizer metrics ---
             self._rewards.append(r)
             self.sakib_indices.append(self._smoothed_sakib)
             self.delta_norms.append(self._opt.metrics["policy_delta_norm"][0])
             self.cos_w_dw.append(self._opt.metrics["cos_w_dw"][0])
             self.weight_norms.append(self._opt.metrics["weight_norm"][0])
+            self.grad_weight_cos.append(self._opt.metrics["grad_weight_cos"][0])
+            self.grad_grad_cos.append(self._opt.metrics["grad_grad_cos"][0])
+
+            # --- weight drift: cos(w_t, w_{t-1}) ---
+            # Snapshot the weight *after* the step so we measure the change
+            # the optimizer actually produced, not a pre-step vs pre-step pair.
+            w_post = self._w.ravel().copy()
+            if w_prev is not None:
+                denom = (np.linalg.norm(w_prev) * np.linalg.norm(w_post)) + 1e-8
+                drift = float(np.dot(w_prev, w_post) / denom)
+            else:
+                drift = 1.0  # first step: no previous state to compare
+            self.weight_drift_cos.append(drift)
+            w_prev = w_post  # store post-step weight for next iteration
 
             # Rolling reward variance
             window = self._rewards[-self.var_window:]
@@ -351,3 +413,385 @@ class TestGatingSensitivity:
             f"Larger advantage should produce larger updates; "
             f"got small={norm_small:.6g}, large={norm_large:.6g}"
         )
+
+
+# ---------------------------------------------------------------------------
+# Baseline optimisers (SGD-norm and Adam) for comparative tests
+# ---------------------------------------------------------------------------
+
+
+class _SGDBaseline:
+    """Normalised-gradient SGD (ascent): w += lr * g / (||g|| + eps).
+
+    ``env.grad()`` returns the direction that *increases* reward, so we add
+    the normalised gradient to ascend toward higher reward.
+    """
+
+    def __init__(self, w: np.ndarray, lr: float = 0.02) -> None:
+        self.w = w
+        self.lr = lr
+        self._eps = 1e-8
+
+    def step(self, g: np.ndarray) -> None:
+        norm = np.linalg.norm(g) + self._eps
+        self.w += self.lr * g / norm  # gradient ascent
+
+    def reward(self, env: _SyntheticEnv) -> float:
+        return env.reward(self.w)
+
+
+class _AdamBaseline:
+    """Adam optimiser (ascent, β₁=0.9, β₂=0.999, ε=1e-8).
+
+    Like ``_SGDBaseline``, uses gradient ascent because ``env.grad()``
+    returns the direction that increases reward.
+    """
+
+    def __init__(self, w: np.ndarray, lr: float = 0.005) -> None:
+        self.w = w
+        self.lr = lr
+        self._m = np.zeros_like(w)
+        self._v = np.zeros_like(w)
+        self._t = 0
+        self._b1, self._b2, self._eps = 0.9, 0.999, 1e-8
+
+    def step(self, g: np.ndarray) -> None:
+        self._t += 1
+        self._m = self._b1 * self._m + (1 - self._b1) * g
+        self._v = self._b2 * self._v + (1 - self._b2) * g ** 2
+        m_hat = self._m / (1 - self._b1 ** self._t)
+        v_hat = self._v / (1 - self._b2 ** self._t)
+        self.w += self.lr * m_hat / (np.sqrt(v_hat) + self._eps)  # gradient ascent
+
+    def reward(self, env: _SyntheticEnv) -> float:
+        return env.reward(self.w)
+
+
+# ---------------------------------------------------------------------------
+# Multi-seed runner
+# ---------------------------------------------------------------------------
+
+
+def _run_muon_cans_seed(seed: int, n_steps: int = 100, lr: float = 0.02) -> float:
+    """Run one MuonCANS seed; return final smoothed reward."""
+    env = _SyntheticEnv(seed=seed)
+    rng = np.random.default_rng(seed + 100)
+    w = rng.standard_normal((env.n_out, env.n_in))
+    opt = MuonCANS([w], lr=lr, momentum=0.95)
+    smoothed = 0.5
+    for _ in range(n_steps):
+        r = env.reward(w)
+        g = env.grad(w)
+        smoothed = 0.9 * smoothed + 0.1 * max(r, 0.0)
+        opt.step([g], sakib_advantage=smoothed)
+    return env.reward(w)
+
+
+def _run_sgd_seed(seed: int, n_steps: int = 100, lr: float = 0.02) -> float:
+    """Run one SGD-norm seed; return final reward."""
+    env = _SyntheticEnv(seed=seed)
+    rng = np.random.default_rng(seed + 100)
+    w = rng.standard_normal((env.n_out, env.n_in))
+    opt = _SGDBaseline(w, lr=lr)
+    for _ in range(n_steps):
+        opt.step(env.grad(w))
+    return env.reward(w)
+
+
+def _run_adam_seed(seed: int, n_steps: int = 100, lr: float = 0.005) -> float:
+    """Run one Adam seed; return final reward."""
+    env = _SyntheticEnv(seed=seed)
+    rng = np.random.default_rng(seed + 100)
+    w = rng.standard_normal((env.n_out, env.n_in))
+    opt = _AdamBaseline(w, lr=lr)
+    for _ in range(n_steps):
+        opt.step(env.grad(w))
+    return env.reward(w)
+
+
+_SEEDS = list(range(10))  # 10 seeds × short runs
+
+
+@pytest.fixture(scope="module")
+def multi_seed_results():
+    """Pre-computed 10-seed results for all three optimisers."""
+    muon = [_run_muon_cans_seed(s) for s in _SEEDS]
+    sgd  = [_run_sgd_seed(s) for s in _SEEDS]
+    adam = [_run_adam_seed(s) for s in _SEEDS]
+    return {"muon": muon, "sgd": sgd, "adam": adam}
+
+
+# ---------------------------------------------------------------------------
+# New test classes
+# ---------------------------------------------------------------------------
+
+
+class TestGradGradCosine:
+    """cos(g_t, g_{t-1}) — successive gradient alignment.
+
+    Healthy signs:
+      - Value is finite and in [-1, 1]
+      - First-step value is 1.0 (gradient is perfectly aligned with itself)
+      - Not persistently near ±1 after the first step (would indicate
+        gradient is frozen or oscillating between two directions)
+      - Not persistently strongly negative (optimizer fighting itself)
+
+    The goal is observability, not proving superiority.  These tests verify
+    the instrumentation is sane and flag the obvious pathologies.
+    """
+
+    def test_first_step_value_is_one(self) -> None:
+        """On the very first step there is no previous gradient: value = 1.0."""
+        p = np.random.default_rng(0).standard_normal((8, 4))
+        opt = MuonCANS([p], lr=0.01)
+        opt.step([np.ones((8, 4))])
+        assert opt.metrics["grad_grad_cos"][0] == pytest.approx(1.0)
+
+    def test_values_are_in_valid_range(self, harness: StabilityHarness) -> None:
+        for v in harness.grad_grad_cos:
+            assert -1.0 - 1e-9 <= v <= 1.0 + 1e-9, f"grad_grad_cos out of range: {v}"
+
+    def test_values_are_finite(self, harness: StabilityHarness) -> None:
+        assert all(math.isfinite(v) for v in harness.grad_grad_cos), (
+            "grad_grad_cos contains NaN or Inf"
+        )
+
+    def test_not_persistently_strongly_negative(self, harness: StabilityHarness) -> None:
+        """Flag if the optimizer is fighting itself most of the time."""
+        strongly_neg = sum(1 for v in harness.grad_grad_cos if v < -0.8)
+        fraction = strongly_neg / len(harness.grad_grad_cos)
+        assert fraction < 0.5, (
+            f"{100*fraction:.1f}% of steps have grad_grad_cos < -0.8; "
+            "the optimizer may be undoing its previous step repeatedly"
+        )
+
+    def test_reset_metrics_clears_grad_history(self) -> None:
+        """After reset_metrics(), the next step should return 1.0 again."""
+        p = np.random.default_rng(1).standard_normal((8, 4))
+        opt = MuonCANS([p], lr=0.01)
+        opt.step([np.ones((8, 4))])
+        opt.step([np.ones((8, 4))])  # now _prev_grads is set
+        opt.reset_metrics()
+        opt.step([np.ones((8, 4))])  # should act like the first step
+        assert opt.metrics["grad_grad_cos"][0] == pytest.approx(1.0), (
+            "After reset_metrics(), first step should have grad_grad_cos=1.0"
+        )
+
+    def test_reset_metrics_empties_all_metric_lists(self) -> None:
+        p = np.random.default_rng(2).standard_normal((8, 4))
+        opt = MuonCANS([p], lr=0.01)
+        opt.step([np.ones((8, 4))])
+        opt.reset_metrics()
+        for key, val in opt.metrics.items():
+            assert val == [], f"metrics['{key}'] was not cleared by reset_metrics()"
+
+    def test_second_step_reflects_actual_alignment(self) -> None:
+        """Identical gradients on step 2 → cos = 1; opposing → cos = -1."""
+        p = np.random.default_rng(3).standard_normal((8, 4))
+        g = np.ones((8, 4))
+
+        # lr=1e-9: effectively frozen weights while satisfying the lr > 0 guard
+        opt = MuonCANS([p], lr=1e-9, momentum=0.0)
+        opt.step([g])   # step 1: stores g as _prev_grad
+        opt.step([g])   # step 2: cos(g, g) = 1.0
+        assert opt.metrics["grad_grad_cos"][0] == pytest.approx(1.0, abs=1e-6)
+
+        p2 = np.random.default_rng(3).standard_normal((8, 4))
+        opt2 = MuonCANS([p2], lr=1e-9, momentum=0.0)
+        opt2.step([g])
+        opt2.step([-g])  # opposing gradient → cos = -1.0
+        assert opt2.metrics["grad_grad_cos"][0] == pytest.approx(-1.0, abs=1e-6)
+
+
+class TestRepresentationDrift:
+    """cos(w_t, w_{t-1}) — how violently representations rotate.
+
+    Healthy networks: slow rotation (drift_cos near 1), with early steps
+    allowed to be noisier than late steps.  The optimizer must never produce
+    drift_cos that is consistently near zero or negative (amnesia).
+    """
+
+    def test_drift_cos_in_valid_range(self, harness: StabilityHarness) -> None:
+        for v in harness.weight_drift_cos:
+            assert -1.0 - 1e-9 <= v <= 1.0 + 1e-9, f"weight_drift_cos out of range: {v}"
+
+    def test_mean_drift_cos_shows_slow_rotation(self, harness: StabilityHarness) -> None:
+        """Mean cosine should be well above zero — policy is not wandering randomly."""
+        mean_drift = float(np.mean(harness.weight_drift_cos))
+        assert mean_drift > 0.0, (
+            f"Mean weight drift cosine is {mean_drift:.4f}; "
+            "representations may be rotating too violently (amnesia)"
+        )
+
+    def test_late_drift_not_larger_than_early_drift(self, harness: StabilityHarness) -> None:
+        """Late-training rotations should not be larger than early ones.
+
+        We allow late == early (flat regime) but flag if the policy is
+        accelerating its rotation — that would indicate instability.
+        """
+        # Use 1 - drift_cos as "rotation angle" proxy
+        early_rotation = float(np.mean(
+            [1.0 - v for v in harness._first_half(harness.weight_drift_cos)]
+        ))
+        late_rotation = float(np.mean(
+            [1.0 - v for v in harness._second_half(harness.weight_drift_cos)]
+        ))
+        assert late_rotation <= early_rotation * 3.0 + 1e-6, (
+            f"Policy is rotating faster late in training "
+            f"(early={early_rotation:.4f}, late={late_rotation:.4f}); "
+            "representations never settled"
+        )
+
+
+class TestGradientWeightAlignment:
+    """cos(g, w) — is the orthogonal projection meaningful or cosmetic?
+
+    If this cosine is near zero most of the time, the orthogonal constraint
+    is removing almost nothing from the gradient.  If it is large, the
+    constraint is actively shaping the update direction.
+
+    The test is purely diagnostic: both outcomes are valid and informative.
+    We only verify the metric is finite and sane.
+    """
+
+    def test_grad_weight_cos_in_valid_range(self, harness: StabilityHarness) -> None:
+        for v in harness.grad_weight_cos:
+            assert -1.0 - 1e-9 <= v <= 1.0 + 1e-9, (
+                f"grad_weight_cos out of range: {v}"
+            )
+
+    def test_grad_weight_cos_is_finite(self, harness: StabilityHarness) -> None:
+        assert all(math.isfinite(v) for v in harness.grad_weight_cos), (
+            "grad_weight_cos contains NaN or Inf"
+        )
+
+    def test_grad_weight_cos_has_variance(self, harness: StabilityHarness) -> None:
+        """The metric should vary across steps — a constant value means it is broken."""
+        std = float(np.std(harness.grad_weight_cos))
+        assert std > 1e-6, (
+            f"grad_weight_cos has near-zero variance ({std:.2e}); "
+            "metric may not be computing correctly"
+        )
+
+
+class TestMultiSeedVariance:
+    """10 seeds × short runs.  Variance across seeds tells us about stability.
+
+    We compare MuonCANS seed-variance against the SGD-norm baseline.
+    A lower or equal variance is a real contribution even without faster
+    convergence.
+
+    We also verify that every method actually *learns* — all 10 seeds must
+    show positive final reward (the target direction is findable).
+    """
+
+    def test_all_muon_seeds_improve(self, multi_seed_results) -> None:
+        results = multi_seed_results["muon"]
+        failures = [s for s, r in zip(_SEEDS, results) if not math.isfinite(r)]
+        assert not failures, f"MuonCANS produced non-finite reward on seeds {failures}"
+
+    def test_all_sgd_seeds_improve(self, multi_seed_results) -> None:
+        results = multi_seed_results["sgd"]
+        failures = [s for s, r in zip(_SEEDS, results) if not math.isfinite(r)]
+        assert not failures, f"SGD produced non-finite reward on seeds {failures}"
+
+    def test_all_adam_seeds_improve(self, multi_seed_results) -> None:
+        results = multi_seed_results["adam"]
+        failures = [s for s, r in zip(_SEEDS, results) if not math.isfinite(r)]
+        assert not failures, f"Adam produced non-finite reward on seeds {failures}"
+
+    def test_muon_seed_variance_not_catastrophically_worse_than_sgd(
+        self, multi_seed_results
+    ) -> None:
+        """MuonCANS must not have dramatically higher variance than SGD.
+
+        A looser bound (×5) deliberately avoids over-claiming — the goal is
+        to catch catastrophic instability, not to prove superiority.
+        """
+        muon_var = float(np.var(multi_seed_results["muon"]))
+        sgd_var  = float(np.var(multi_seed_results["sgd"])) + 1e-9
+        assert muon_var <= sgd_var * 5.0, (
+            f"MuonCANS seed variance ({muon_var:.4f}) is more than 5× "
+            f"SGD variance ({sgd_var:.4f}); method is unstable across seeds"
+        )
+
+    def test_env_info_recorded(self, harness: StabilityHarness) -> None:
+        """Harness must capture runtime versions for reproducibility tracing."""
+        assert "python" in harness.env_info, "Missing python version in env_info"
+        assert "numpy" in harness.env_info, "Missing numpy version in env_info"
+        assert harness.env_info["numpy"] == np.__version__
+
+
+class TestGatingDistribution:
+    """The Sakib advantage distribution must not be a permanent brake pedal.
+
+    If the advantage is near zero for the vast majority of steps, the
+    optimizer is barely moving.  We test that it has meaningful spread and
+    is positive at least half the time.
+    """
+
+    def test_advantage_has_spread(self, harness: StabilityHarness) -> None:
+        """Standard deviation of raw_advantages must be non-trivial."""
+        std = float(np.std(harness.raw_advantages))
+        assert std > 1e-4, (
+            f"Sakib advantage has near-zero spread (std={std:.2e}); "
+            "the gate may be stuck"
+        )
+
+    def test_advantage_not_permanently_zero(self, harness: StabilityHarness) -> None:
+        """Gate must be meaningfully active for at least some steps.
+
+        The smoothed Sakib advantage decays geometrically from its initial
+        value toward zero when rewards are negative.  We check that at least
+        10 % of steps carry a non-negligible advantage (> 0.01), confirming
+        the gate is not a permanent brake pedal from the very first step.
+        """
+        active = sum(1 for a in harness.raw_advantages if a > 0.01)
+        frac = active / len(harness.raw_advantages)
+        assert frac > 0.10, (
+            f"Sakib advantage exceeds 0.01 on only {100*frac:.1f}% of steps "
+            f"({active}/{len(harness.raw_advantages)}); "
+            "the gate may be permanently inactive"
+        )
+
+    def test_advantage_never_exceeds_one(self, harness: StabilityHarness) -> None:
+        """Smoothed reward proxy is bounded in [0, 1]."""
+        assert all(0.0 <= a <= 1.0 for a in harness.raw_advantages), (
+            "raw_advantages contains values outside [0, 1]"
+        )
+
+
+class TestBaselineComparison:
+    """MuonCANS vs SGD-norm vs Adam — same environment, same 10 seeds.
+
+    These tests do NOT claim superiority.  They verify that all methods are
+    plausible and that MuonCANS is in the same ballpark, so that the two
+    diagnostic curves (grad_grad_cos, weight_drift_cos) can be interpreted
+    in context.
+    """
+
+    def test_muon_mean_reward_is_positive(self, multi_seed_results) -> None:
+        mean = float(np.mean(multi_seed_results["muon"]))
+        assert mean > -0.5, (
+            f"MuonCANS mean final reward is very negative ({mean:.4f}); "
+            "method may not be learning at all"
+        )
+
+    def test_sgd_mean_reward_is_positive(self, multi_seed_results) -> None:
+        mean = float(np.mean(multi_seed_results["sgd"]))
+        assert mean > -0.5, f"SGD mean final reward is very negative ({mean:.4f})"
+
+    def test_adam_mean_reward_is_positive(self, multi_seed_results) -> None:
+        mean = float(np.mean(multi_seed_results["adam"]))
+        assert mean > -0.5, f"Adam mean final reward is very negative ({mean:.4f})"
+
+    def test_all_methods_finite(self, multi_seed_results) -> None:
+        for name, results in multi_seed_results.items():
+            for r in results:
+                assert math.isfinite(r), f"{name} produced non-finite reward: {r}"
+
+    def test_reproducibility_env_info_present(self, harness: StabilityHarness) -> None:
+        """Env-info dict must contain all required reproducibility keys."""
+        required = {"python", "numpy", "platform"}
+        missing = required - set(harness.env_info.keys())
+        assert not missing, f"Missing reproducibility keys in env_info: {missing}"

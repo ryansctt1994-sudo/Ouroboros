@@ -1,8 +1,28 @@
-numpy>=1.21.0
+# ---------------------------------------------------------------------------
+# Reproducibility pinning for MuonCANS stability experiments
+#
+# Learning dynamics are chaotic: a different BLAS kernel or NumPy version
+# can push optimisation onto a completely different trajectory.  Pin these
+# two core packages so that changes in optimizer curves reflect algorithmic
+# differences, not environment drift.
+#
+# Only numpy (math) and pytest (test runner) need exact pinning for
+# numerical reproducibility.  Everything else can remain flexible.
+#
+# Verified environment (CI / development):
+#   Python  3.12.3
+#   NumPy   2.4.2
+#   pytest  9.0.2
+#
+# Record runtime metadata in telemetry once per run:
+#   import sys, numpy as np
+#   ENV_INFO = {"python": sys.version.split()[0], "numpy": np.__version__}
+# ---------------------------------------------------------------------------
+numpy==2.4.2
 scipy>=1.7.0
 networkx>=2.6.0
 matplotlib>=3.4.0
-pytest>=7.0.0
+pytest==9.0.2
 # UTe2 Hybrid System dependencies
 pyyaml>=6.0
 plotly>=5.0.0
@@ -16,3 +36,4 @@ pytest-cov>=4.0.0
 # git+https://github.com/AIOSPANDORA/EDEN-ECS.git
 rich>=13.0.0
 psutil>=5.8.0
+

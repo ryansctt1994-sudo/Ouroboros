@@ -214,8 +214,6 @@ class TestSakibAdvantageScaling:
         opt_low.step([g.copy()], sakib_advantage=0.1)
         opt_high.step([g.copy()], sakib_advantage=1.0)
 
-        delta_low = np.linalg.norm(p_low - opt_low.params[0])  # original - updated
-        # Use actual update magnitudes from metrics
         norm_low = opt_low.metrics["policy_delta_norm"][0]
         norm_high = opt_high.metrics["policy_delta_norm"][0]
 
