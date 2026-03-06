@@ -137,6 +137,56 @@ pub fn record_sakib_index(idx: f32) {
     plot_f64("sakib_index", idx as f64);
 }
 
+/// Emit the flow entropy to `"flow_entropy"`.
+#[inline(always)]
+pub fn record_flow_entropy(h: f32) {
+    plot_f64("flow_entropy", h as f64);
+}
+
+// ── Flow Entropy computation ──────────────────────────────────────────────────
+
+/// Compute the **Shannon entropy** of the flow distribution.
+///
+/// Defined as `H = −Σ p_i · log₂(p_i)` where `p_i = flow_i / Σ flow`.
+///
+/// | Value          | Interpretation                                      |
+/// |----------------|-----------------------------------------------------|
+/// | `≈ 0`          | Collapsed or fully concentrated flow (one edge)    |
+/// | `≈ log₂(N)`    | Uniform flow — no routing structure                |
+/// | Decreasing `H` | Routing specialisation is forming                  |
+///
+/// Returns `0.0` when the total flow is zero or the slice is empty.
+///
+/// # Example
+///
+/// ```
+/// use eden_ecs::tracy::flow_entropy;
+/// // All flow on one edge → entropy ≈ 0.
+/// let h_concentrated = flow_entropy(&[1.0, 0.0, 0.0, 0.0]);
+/// assert!(h_concentrated < 1e-6);
+///
+/// // Uniform flow → entropy = log₂(4) = 2.0.
+/// let h_uniform = flow_entropy(&[1.0, 1.0, 1.0, 1.0]);
+/// assert!((h_uniform - 2.0).abs() < 1e-5);
+/// ```
+pub fn flow_entropy(flows: &[f32]) -> f32 {
+    if flows.is_empty() {
+        return 0.0;
+    }
+    let total: f32 = flows.iter().copied().sum();
+    if total <= 0.0 {
+        return 0.0;
+    }
+    let mut h = 0.0_f32;
+    for &f in flows {
+        if f > 0.0 {
+            let p = f / total;
+            h -= p * p.log2();
+        }
+    }
+    h
+}
+
 // ── Sakib Index computation ───────────────────────────────────────────────────
 
 /// Compute the **Sakib Index** — a routing-quality scalar for mycelial graphs.
@@ -290,5 +340,55 @@ mod tests {
         let idx = sakib_index(&w, &f, 0.5);
         // Uses only first 2 edges: high_mean = (0.8+0.6)/2 = 0.7, total_mean = 0.7
         assert!((idx - 1.0).abs() < 1e-5, "expected ≈1.0, got {idx}");
+    }
+
+    // ── Flow Entropy ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_flow_entropy_empty() {
+        assert_eq!(flow_entropy(&[]), 0.0);
+    }
+
+    #[test]
+    fn test_flow_entropy_zero_total() {
+        assert_eq!(flow_entropy(&[0.0, 0.0, 0.0]), 0.0);
+    }
+
+    #[test]
+    fn test_flow_entropy_concentrated() {
+        // All flow on one edge → H ≈ 0.
+        let h = flow_entropy(&[1.0, 0.0, 0.0, 0.0]);
+        assert!(h < 1e-6, "concentrated flow should have entropy ≈ 0, got {h}");
+    }
+
+    #[test]
+    fn test_flow_entropy_uniform() {
+        // Uniform flow over 4 edges → H = log₂(4) = 2.0.
+        let h = flow_entropy(&[1.0, 1.0, 1.0, 1.0]);
+        assert!(
+            (h - 2.0).abs() < 1e-5,
+            "uniform 4-edge flow should have H=2.0, got {h}"
+        );
+    }
+
+    #[test]
+    fn test_flow_entropy_partial_concentration() {
+        // Two edges carry equal flow, two are zero → H = log₂(2) = 1.0.
+        let h = flow_entropy(&[0.5, 0.5, 0.0, 0.0]);
+        assert!(
+            (h - 1.0).abs() < 1e-5,
+            "two-edge equal flow should have H=1.0, got {h}"
+        );
+    }
+
+    #[test]
+    fn test_flow_entropy_decreases_with_concentration() {
+        let h_uniform = flow_entropy(&[1.0, 1.0, 1.0, 1.0]);
+        let h_mixed = flow_entropy(&[3.0, 1.0, 0.0, 0.0]);
+        let h_concentrated = flow_entropy(&[1.0, 0.0, 0.0, 0.0]);
+        assert!(
+            h_uniform > h_mixed && h_mixed > h_concentrated,
+            "entropy should decrease as flow concentrates"
+        );
     }
 }

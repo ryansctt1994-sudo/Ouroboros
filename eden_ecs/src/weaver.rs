@@ -306,6 +306,77 @@ impl WeaverPolicy for Engramum {
 
 // ── Policy factories ──────────────────────────────────────────────────────────
 
+/// **Engramum Competitive** — EMA-traced Hebbian potentiation with competitive
+/// (L1-normalised) traces.
+///
+/// After the EMA update the trace is normalised across all active edges so
+/// that traces represent *routing probabilities* rather than absolute
+/// magnitudes.  This prevents any single edge from monopolising potentiation
+/// and encourages the emergence of modular routing structure.
+///
+/// The three update steps that change the phase diagram:
+///
+/// ```text
+/// trace[i]  ← beta * trace[i] + (1 - beta) * flow[i]   // EMA accumulate
+/// trace[i] /= Σ trace + ε                               // competition
+/// w[i]      ← clamp(w[i] + alpha * trace[i] * (1 - w[i]), 0, 1)
+/// ```
+///
+/// Unlike plain [`Engramum`], the competition step produces winner-take-most
+/// routing channels and prevents the amplifier regime even without an external
+/// [`FlowNormalisation`] pass.
+pub struct EngramumCompetitive {
+    /// Hebbian learning rate (e.g. 0.05 – 0.2).
+    pub alpha: f32,
+    /// EMA decay factor (0 < beta < 1; higher = longer memory).
+    pub beta: f32,
+    /// Per-edge EMA trace (initialised to zeros; grown automatically).
+    pub trace: Vec<f32>,
+}
+
+impl EngramumCompetitive {
+    /// Create a new `EngramumCompetitive` with a pre-allocated trace.
+    pub fn new(alpha: f32, beta: f32, num_edges: usize) -> Self {
+        Self {
+            alpha,
+            beta,
+            trace: vec![0.0; num_edges],
+        }
+    }
+
+    fn ensure_len(&mut self, n: usize) {
+        if self.trace.len() < n {
+            self.trace.resize(n, 0.0);
+        }
+    }
+}
+
+impl WeaverPolicy for EngramumCompetitive {
+    fn apply(&mut self, ctx: &mut PolicyContext<'_>) {
+        let w = &mut *ctx.edge_weights;
+        let f = ctx.flow_rates;
+        let len = w.len().min(f.len());
+        self.ensure_len(len);
+
+        // Step 1 — EMA trace update.
+        for i in 0..len {
+            self.trace[i] = self.beta * self.trace[i] + (1.0 - self.beta) * f[i];
+        }
+
+        // Step 2 — L1-normalise: traces become routing probabilities (competition).
+        // Step 3 — Hebbian weight update using the competitive trace.
+        let total: f32 = self.trace[..len].iter().sum::<f32>() + 1e-8;
+        for i in 0..len {
+            let t = self.trace[i] / total;
+            w[i] = (w[i] + self.alpha * t * (1.0 - w[i])).clamp(0.0, 1.0);
+        }
+    }
+
+    fn name(&self) -> &'static str {
+        "EngramumCompetitive"
+    }
+}
+
 /// Build the **Sakibium** composed policy used for baseline A/B experiments.
 ///
 /// The returned policy applies `SelectiveReinforcement`, `RedundancyDecay`,
@@ -331,20 +402,22 @@ pub fn sakibium_policy(flow_threshold: f32) -> Box<dyn WeaverPolicy> {
 
 /// Build a culture-specific composed policy for A/B experiments.
 ///
-/// | `culture`    | Policy composition                                              |
-/// |--------------|-----------------------------------------------------------------|
-/// | `"baseline"` | [`sakibium_policy`]                                             |
-/// | `"hebbium"`  | [`Hebbium`] → [`RedundancyDecay`] → `FlowNormalisation`         |
-/// | `"engramum"` | [`Engramum`] → [`RedundancyDecay`] → `FlowNormalisation`        |
+/// | `culture`                 | Policy composition                                              |
+/// |---------------------------|-----------------------------------------------------------------|
+/// | `"baseline"`              | [`sakibium_policy`]                                             |
+/// | `"hebbium"`               | [`Hebbium`] → [`RedundancyDecay`] → [`FlowNormalisation`]       |
+/// | `"engramum"`              | [`Engramum`] → [`RedundancyDecay`] → [`FlowNormalisation`]      |
+/// | `"engramum_competitive"`  | [`EngramumCompetitive`] (competition replaces FlowNormalisation)|
 ///
 /// All non-baseline cultures include `RedundancyDecay` to prevent unbounded
-/// potentiation (amplifier regime) and `FlowNormalisation` for homeostasis.
-/// Unrecognised culture strings fall back to `"baseline"`.
+/// potentiation (amplifier regime).  Unrecognised culture strings fall back
+/// to `"baseline"`.
 ///
 /// # Parameters
-/// * `culture`        — one of `"baseline"`, `"hebbium"`, `"engramum"`.
+/// * `culture`        — one of `"baseline"`, `"hebbium"`, `"engramum"`,
+///                      `"engramum_competitive"`.
 /// * `flow_threshold` — forwarded to the baseline policy if applicable.
-/// * `num_edges`      — initial trace capacity for [`Engramum`].
+/// * `num_edges`      — initial trace capacity for engram policies.
 pub fn culture_policy(
     culture: &str,
     flow_threshold: f32,
@@ -366,6 +439,13 @@ pub fn culture_policy(
                 min_weight: 0.01,
             }),
             Box::new(FlowNormalisation { target_mean: 0.5 }),
+        ])),
+        "engramum_competitive" => Box::new(ComposePolicy::new(vec![
+            Box::new(EngramumCompetitive::new(0.1, 0.9, num_edges)),
+            Box::new(RedundancyDecay {
+                decay_rate: 0.01,
+                min_weight: 0.01,
+            }),
         ])),
         _ => sakibium_policy(flow_threshold),
     }
@@ -778,5 +858,61 @@ mod tests {
         let f = vec![0.8_f32; 4];
         let mut ctx = make_ctx(&mut w, &f);
         policy.apply(&mut ctx);
+    }
+
+    // ── EngramumCompetitive ───────────────────────────────────────────────────
+
+    #[test]
+    fn test_engramum_competitive_weights_stay_in_range() {
+        let mut w = vec![0.5_f32; 4];
+        let f = [1.0_f32, 0.8, 0.2, 0.0];
+        let mut policy = EngramumCompetitive::new(0.1, 0.9, 4);
+        let mut ctx = make_ctx(&mut w, &f);
+        for _ in 0..20 {
+            policy.apply(&mut ctx);
+        }
+        for &wi in &w {
+            assert!(wi >= 0.0 && wi <= 1.0, "weight out of range: {wi}");
+        }
+    }
+
+    #[test]
+    fn test_engramum_competitive_high_flow_edge_wins() {
+        // Edge 0 gets all the flow; after many ticks it should dominate.
+        let mut w = vec![0.5_f32; 4];
+        let f = [1.0_f32, 0.0, 0.0, 0.0];
+        let mut policy = EngramumCompetitive::new(0.2, 0.5, 4);
+        let mut ctx = make_ctx(&mut w, &f);
+        for _ in 0..30 {
+            policy.apply(&mut ctx);
+        }
+        assert!(
+            w[0] > w[1] && w[0] > w[2] && w[0] > w[3],
+            "edge 0 should dominate; weights={w:?}"
+        );
+    }
+
+    #[test]
+    fn test_engramum_competitive_trace_resizes() {
+        let mut w = vec![0.5_f32, 0.5];
+        let f = [0.8_f32, 0.2];
+        let mut policy = EngramumCompetitive::new(0.1, 0.9, 0);
+        let mut ctx = make_ctx(&mut w, &f);
+        policy.apply(&mut ctx); // must not panic
+        assert_eq!(policy.trace.len(), 2);
+    }
+
+    #[test]
+    fn test_culture_policy_engramum_competitive() {
+        let mut policy = culture_policy("engramum_competitive", 0.5, 4);
+        let mut w = vec![0.5_f32; 4];
+        let f = vec![1.0_f32, 0.5, 0.2, 0.0];
+        let mut ctx = make_ctx(&mut w, &f);
+        for _ in 0..10 {
+            policy.apply(&mut ctx);
+        }
+        for &wi in &w {
+            assert!(wi >= 0.0 && wi <= 1.0, "weight out of range: {wi}");
+        }
     }
 }

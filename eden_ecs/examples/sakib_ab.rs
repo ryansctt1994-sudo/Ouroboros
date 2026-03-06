@@ -34,7 +34,7 @@
 //! `record_sakib_index` is called only for the learning run to keep Tracy
 //! telemetry series clean.
 
-use eden_ecs::tracy::{record_sakib_index, sakib_index};
+use eden_ecs::tracy::{flow_entropy, record_flow_entropy, record_sakib_index, sakib_index};
 use eden_ecs::weaver::{culture_policy, PolicyContext, WeaverSandbox};
 
 // ── Deterministic LCG ────────────────────────────────────────────────────────
@@ -113,6 +113,9 @@ impl Graph {
 /// `tick` and `seed` before propagation.  Each step L2-normalises the node
 /// activations.  Flows are the source-node activation scaled by `flow_gain`,
 /// clamped to \[0, 1\].
+///
+/// If `noise_sigma > 0`, additive Gaussian noise is approximated via a
+/// Box-Muller step using the same LCG (no extra dependencies).
 fn compute_flows(
     graph: &Graph,
     edge_weights: &[f32],
@@ -120,6 +123,7 @@ fn compute_flows(
     seed: u32,
     steps: usize,
     flow_gain: f32,
+    noise_sigma: f32,
 ) -> Vec<f32> {
     let n = graph.n_nodes;
     let mut lcg = Lcg(seed ^ tick.wrapping_mul(0x9E37_79B9));
@@ -143,11 +147,27 @@ fn compute_flows(
     }
 
     // Flow = source activation × flow_gain, clamped [0,1].
-    graph
+    let mut flows: Vec<f32> = graph
         .edges
         .iter()
         .map(|&(src, _)| (act[src] * flow_gain).clamp(0.0, 1.0))
-        .collect()
+        .collect();
+
+    // Additive noise via Box-Muller (deterministic LCG, no extra deps).
+    if noise_sigma > 0.0 {
+        let mut i = 0;
+        while i + 1 < flows.len() {
+            let u1 = lcg.next_f32().max(1e-9);
+            let u2 = lcg.next_f32();
+            let mag = noise_sigma * (-2.0 * u1.ln()).sqrt();
+            let angle = std::f32::consts::TAU * u2;
+            flows[i] = (flows[i] + mag * angle.cos()).clamp(0.0, 1.0);
+            flows[i + 1] = (flows[i + 1] + mag * angle.sin()).clamp(0.0, 1.0);
+            i += 2;
+        }
+    }
+
+    flows
 }
 
 // ── Diagnostics ───────────────────────────────────────────────────────────────
@@ -212,6 +232,7 @@ fn run_episode(
     culture: &str,
     steps: usize,
     flow_gain: f32,
+    noise_sigma: f32,
     // Ticks at which to log flow percentiles to stderr.
     diag_ticks: &[u32],
 ) -> Episode {
@@ -221,7 +242,7 @@ fn run_episode(
     let mut sakib_curve = Vec::with_capacity(n_ticks as usize);
 
     for tick in 0..n_ticks {
-        let flows = compute_flows(graph, &weights, tick, seed, steps, flow_gain);
+        let flows = compute_flows(graph, &weights, tick, seed, steps, flow_gain, noise_sigma);
 
         // Debug builds check every tick; release builds rely on final assert_finite.
         #[cfg(debug_assertions)]
@@ -230,11 +251,12 @@ fn run_episode(
             assert_finite(&weights, "weights");
         }
 
-        // Flow percentile snapshot at selected ticks.
+        // Flow percentile + entropy snapshot at selected ticks.
         if diag_ticks.contains(&tick) {
             let (fp50, fp90, fp99) = percentiles(&flows);
+            let h = flow_entropy(&flows);
             eprintln!(
-                "[{tag}:{culture} tick={tick:4}] flows  p50={fp50:.3} p90={fp90:.3} p99={fp99:.3}"
+                "[{tag}:{culture} tick={tick:4}] flows  p50={fp50:.3} p90={fp90:.3} p99={fp99:.3}  H={h:.3}"
             );
         }
 
@@ -243,6 +265,7 @@ fn run_episode(
 
         if learning {
             record_sakib_index(s);
+            record_flow_entropy(flow_entropy(&flows));
             let mut ctx = PolicyContext {
                 edge_weights: &mut weights,
                 flow_rates: &flows,
@@ -272,8 +295,11 @@ fn main() {
     let culture = args.get(1).map(String::as_str).unwrap_or("baseline");
     let steps: usize = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(6);
     let flow_gain: f32 = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(2.0);
+    let noise_sigma: f32 = args.get(4).and_then(|s| s.parse().ok()).unwrap_or(0.0);
 
-    eprintln!("sakib_ab: culture={culture}  steps={steps}  flow_gain={flow_gain:.2}");
+    eprintln!(
+        "sakib_ab: culture={culture}  steps={steps}  flow_gain={flow_gain:.2}  noise={noise_sigma:.3}"
+    );
 
     // ── Graph ─────────────────────────────────────────────────────────────────
     const N_NODES: usize = 10_000;
@@ -305,6 +331,7 @@ fn main() {
         culture,
         steps,
         flow_gain,
+        noise_sigma,
         &diag_ticks,
     );
 
@@ -318,6 +345,7 @@ fn main() {
         culture,
         steps,
         flow_gain,
+        noise_sigma,
         &diag_ticks,
     );
 
