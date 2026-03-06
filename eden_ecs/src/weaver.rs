@@ -371,11 +371,7 @@ impl WeaverPolicy for EngramumCompetitive {
 
         // Step 2 — L∞-normalise (competition): relative salience, scale-invariant.
         // Step 3 — Hebbian weight update using the competitive trace.
-        let max_trace: f32 = self.trace[..len]
-            .iter()
-            .cloned()
-            .fold(0.0_f32, f32::max)
-            + 1e-8;
+        let max_trace: f32 = self.trace[..len].iter().cloned().fold(0.0_f32, f32::max) + 1e-8;
         for i in 0..len {
             let t = self.trace[i] / max_trace;
             w[i] = (w[i] + self.alpha * t * (1.0 - w[i])).clamp(0.0, 1.0);
@@ -621,7 +617,10 @@ mod tests {
         let mut ctx = make_ctx(&mut w, &f);
         policy.apply(&mut ctx);
         let mean = w.iter().sum::<f32>() / w.len() as f32;
-        assert!((mean - 0.5).abs() < 1e-5, "mean should be ≈ 0.5, got {mean}");
+        assert!(
+            (mean - 0.5).abs() < 1e-5,
+            "mean should be ≈ 0.5, got {mean}"
+        );
     }
 
     #[test]

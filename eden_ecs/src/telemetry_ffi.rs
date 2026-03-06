@@ -108,12 +108,7 @@ impl ECSStateBuffer {
     /// # Panics
     ///
     /// Panics in debug builds when any slice exceeds its pre-allocated limit.
-    pub fn flush_to_python(
-        &mut self,
-        errors: &[f64],
-        acts: &[f64],
-        weights: &[f64],
-    ) {
+    pub fn flush_to_python(&mut self, errors: &[f64], acts: &[f64], weights: &[f64]) {
         debug_assert!(
             errors.len() <= MAX_ENTITIES,
             "prediction_errors slice ({}) exceeds MAX_ENTITIES ({})",

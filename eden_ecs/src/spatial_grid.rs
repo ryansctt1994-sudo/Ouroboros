@@ -613,11 +613,7 @@ mod tests {
         let data: Vec<u32> = (0..16).collect();
         let mut chunks_seen = 0usize;
         let mut tail_seen = 0usize;
-        iter_chunks8(
-            &data,
-            |_| chunks_seen += 1,
-            |t| tail_seen += t.len(),
-        );
+        iter_chunks8(&data, |_| chunks_seen += 1, |t| tail_seen += t.len());
         assert_eq!(chunks_seen, 2);
         assert_eq!(tail_seen, 0);
     }
@@ -627,11 +623,7 @@ mod tests {
         let data: Vec<u32> = (0..11).collect();
         let mut chunks_seen = 0usize;
         let mut tail_seen = 0usize;
-        iter_chunks8(
-            &data,
-            |_| chunks_seen += 1,
-            |t| tail_seen += t.len(),
-        );
+        iter_chunks8(&data, |_| chunks_seen += 1, |t| tail_seen += t.len());
         assert_eq!(chunks_seen, 1);
         assert_eq!(tail_seen, 3);
     }
