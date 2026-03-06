@@ -122,17 +122,45 @@ class MuonCANS:
     (biases, layer-norms) it falls back to standard SGD with momentum so that
     all parameter shapes are handled uniformly.
 
+    Optionally accepts a **Sakib advantage** signal in :meth:`step` to scale
+    the effective learning rate dynamically.  The scaling formula is::
+
+        effective_lr = lr * (sakib_advantage + advantage_eps)
+
+    where ``advantage_eps`` is a small positive offset that prevents stalling
+    when the advantage signal is exactly zero.
+
+    After every call to :meth:`step`, per-parameter telemetry is written to
+    :attr:`metrics` (a plain dict).  The following keys are always populated:
+
+    * ``policy_delta_norm``  – list of ||Δw|| per parameter.
+    * ``cos_w_dw``           – list of cos(∠(w, Δw)) per parameter.
+    * ``weight_norm``        – list of ||w|| per parameter.
+    * ``grad_weight_cos``    – list of cos(g, w) per parameter (pre-projection).
+
+    When ``track_grad_history=True`` (default), the additional key is populated:
+
+    * ``grad_grad_cos``      – list of cos(g_t, g_{t-1}) per parameter.
+      Set to 1.0 on the first step (no previous gradient exists yet).
+      Disable with ``track_grad_history=False`` to avoid the per-step
+      gradient copy cost for large parameter arrays.
+
     Args:
-        params:            List of parameter arrays (numpy arrays, modified in place).
-        lr:                Learning rate.
-        momentum:          Momentum coefficient (default 0.95).
-        ns_steps:          Newton-Schulz iterations per step (default 5).
-        weight_decay:      L2 regularisation coefficient (default 0.0).
-        scalar_decay_mult: Extra L2 anchoring multiplier for 1-D parameters
-                           (default 10.0, must be >= 1.0).  The effective weight
-                           decay applied to 1-D params is
-                           ``scalar_decay_mult * weight_decay``.
-        eps:               Numerical stabilisation constant (default 1e-7).
+        params:             List of parameter arrays (numpy arrays, modified in place).
+        lr:                 Learning rate.
+        momentum:           Momentum coefficient (default 0.95).
+        ns_steps:           Newton-Schulz iterations per step (default 5).
+        weight_decay:       L2 regularisation coefficient (default 0.0).
+        scalar_decay_mult:  Extra L2 anchoring multiplier for 1-D parameters
+                            (default 10.0, must be >= 1.0).
+        eps:                Numerical stabilisation constant (default 1e-7).
+        advantage_eps:      Small offset added to the Sakib advantage before
+                            multiplying by ``lr``, preventing zero-stall
+                            (default 1e-4).
+        track_grad_history: If ``True`` (default), store a copy of each raw
+                            gradient for the next step's ``grad_grad_cos``
+                            computation.  Set to ``False`` for large models
+                            where the extra allocation is undesirable.
     """
 
     def __init__(
@@ -144,6 +172,8 @@ class MuonCANS:
         weight_decay: float = 0.0,
         scalar_decay_mult: float = 10.0,
         eps: float = 1e-7,
+        advantage_eps: float = 1e-4,
+        track_grad_history: bool = True,
     ) -> None:
         if lr <= 0:
             raise ValueError(f"lr must be positive, got {lr}")
@@ -151,6 +181,8 @@ class MuonCANS:
             raise ValueError(f"momentum must be in [0, 1), got {momentum}")
         if scalar_decay_mult < 1.0:
             raise ValueError(f"scalar_decay_mult must be >= 1.0, got {scalar_decay_mult}")
+        if advantage_eps < 0:
+            raise ValueError(f"advantage_eps must be non-negative, got {advantage_eps}")
 
         self.params = params
         self.lr = lr
@@ -159,10 +191,23 @@ class MuonCANS:
         self.weight_decay = weight_decay
         self.scalar_decay_mult = scalar_decay_mult
         self.eps = eps
+        self.advantage_eps = advantage_eps
+        self.track_grad_history = track_grad_history
 
         # Momentum buffers (initialised lazily on first step)
         self._buffers: List[Optional[np.ndarray]] = [None] * len(params)
+        # Previous raw-gradient snapshots for grad_grad_cos (only when enabled)
+        self._prev_grads: List[Optional[np.ndarray]] = [None] * len(params)
         self.step_count: int = 0
+
+        # Telemetry populated after every call to step()
+        self.metrics: Dict[str, List[float]] = {
+            "policy_delta_norm": [],
+            "cos_w_dw": [],
+            "weight_norm": [],
+            "grad_weight_cos": [],
+            "grad_grad_cos": [],
+        }
 
     # ------------------------------------------------------------------
     # Public API
@@ -182,12 +227,23 @@ class MuonCANS:
         """
         return _orthogonalise(G, num_steps=self.ns_steps, eps=self.eps)
 
-    def step(self, grads: List[np.ndarray]) -> None:
+    def step(
+        self,
+        grads: List[np.ndarray],
+        sakib_advantage: Optional[float] = None,
+    ) -> None:
         """Apply one optimisation step.
 
         Args:
-            grads: List of gradient arrays, one per parameter in ``self.params``.
-                   Must have the same shapes as the corresponding parameters.
+            grads:            List of gradient arrays, one per parameter in
+                              ``self.params``.  Must match parameter shapes.
+            sakib_advantage:  Optional scalar advantage signal (e.g. from the
+                              Sakib index).  When provided the effective learning
+                              rate for this step becomes::
+
+                                  effective_lr = lr * (sakib_advantage + advantage_eps)
+
+                              Pass ``None`` (default) to use ``lr`` unmodified.
 
         Raises:
             ValueError: If the number of gradients does not match parameters.
@@ -197,13 +253,60 @@ class MuonCANS:
                 f"Expected {len(self.params)} gradients, got {len(grads)}"
             )
 
+        # Compute effective learning rate (Sakib advantage scaling)
+        if sakib_advantage is not None:
+            effective_lr = self.lr * (float(sakib_advantage) + self.advantage_eps)
+        else:
+            effective_lr = self.lr
+
         self.step_count += 1
+
+        # Reset per-step telemetry lists
+        delta_norms: List[float] = []
+        cos_alignments: List[float] = []
+        w_norms: List[float] = []
+        grad_weight_cosines: List[float] = []
+        grad_grad_cosines: List[float] = []
 
         for i, (param, grad) in enumerate(zip(self.params, grads)):
             if grad is None:
                 continue
 
             g = grad.copy().astype(float)
+
+            # --- Pre-step diagnostics (raw gradient, before any modification) ---
+            g_flat = g.ravel()
+            g_norm_raw = float(np.linalg.norm(g_flat))
+            w_norm_raw = float(np.linalg.norm(param))
+
+            # cos(g_t, w) — is the orthogonal constraint meaningful or cosmetic?
+            denom_gw = g_norm_raw * w_norm_raw + self.eps
+            cos_gw = float(np.dot(g_flat, param.ravel()) / denom_gw)
+            grad_weight_cosines.append(cos_gw)
+
+            # cos(g_t, g_{t-1}) — successive gradient alignment.
+            # Healthy learning: cosine trends from weakly positive → more positive.
+            # Warning signs: persistently near 0 (random walk), or negative
+            # (optimizer undoing its previous step).
+            # Only computed (and gradient history only stored) when
+            # track_grad_history=True to avoid the per-step allocation cost
+            # for large parameter arrays.  When disabled the slot is None so
+            # callers can distinguish "not tracked" from a numeric value.
+            if self.track_grad_history:
+                prev_g = self._prev_grads[i]
+                if prev_g is not None:
+                    prev_norm = float(np.linalg.norm(prev_g))
+                    denom_gg = g_norm_raw * prev_norm + self.eps
+                    cos_gg: Optional[float] = float(np.dot(g_flat, prev_g) / denom_gg)
+                else:
+                    # First step: no previous gradient — defined as 1.0 by convention.
+                    cos_gg = 1.0
+                grad_grad_cosines.append(cos_gg)
+                self._prev_grads[i] = g_flat.copy()
+            else:
+                # Instrumentation disabled — append None so the key is always
+                # present in metrics but clearly marks "not measured".
+                grad_grad_cosines.append(None)
 
             # Weight-decay as gradient regularisation
             if self.weight_decay != 0.0:
@@ -221,7 +324,7 @@ class MuonCANS:
                 )
             effective_grad = self._buffers[i]
 
-            # Orthogonalise 2-D parameters; fall back to sign-normalised SGD for 1-D
+            # Orthogonalise 2-D parameters; fall back to RMS-normalised SGD for 1-D
             if effective_grad.ndim >= 2:
                 orig_shape = effective_grad.shape
                 mat = effective_grad.reshape(orig_shape[0], -1)
@@ -232,21 +335,66 @@ class MuonCANS:
                 rms = np.sqrt(np.mean(effective_grad ** 2)) + 1e-8
                 update = effective_grad / rms
 
-            param -= self.lr * update
+            # --- Post-update telemetry ---
+            delta = effective_lr * update
+            delta_norm = float(np.linalg.norm(delta))
+            w_norm = float(np.linalg.norm(param))
+            # Cosine alignment between current weight and update direction
+            denom = (w_norm * delta_norm) + self.eps
+            cos_val = float(np.dot(param.ravel(), delta.ravel()) / denom)
+
+            delta_norms.append(delta_norm)
+            cos_alignments.append(cos_val)
+            w_norms.append(w_norm)
+
+            # Retrieve the grad_grad_cos value just appended for logging
+            _cos_gg_log = grad_grad_cosines[-1] if grad_grad_cosines else None
+            logger.debug(
+                "step=%d param=%d policy_delta_norm=%.6g cos_w_dw=%.6g "
+                "weight_norm=%.6g grad_weight_cos=%.6g grad_grad_cos=%s",
+                self.step_count, i, delta_norm, cos_val, w_norm, cos_gw, _cos_gg_log,
+            )
+
+            param -= delta
+
+        # Persist telemetry for external inspection
+        self.metrics["policy_delta_norm"] = delta_norms
+        self.metrics["cos_w_dw"] = cos_alignments
+        self.metrics["weight_norm"] = w_norms
+        self.metrics["grad_weight_cos"] = grad_weight_cosines
+        self.metrics["grad_grad_cos"] = grad_grad_cosines
 
     def zero_grad(self) -> None:
         """No-op: gradient storage is managed externally by the caller."""
 
+    def reset_metrics(self) -> None:
+        """Clear all accumulated telemetry and gradient history.
+
+        Resets ``_prev_grads`` so that ``grad_grad_cos`` starts fresh at 1.0
+        on the next call to :meth:`step`, and empties every list inside
+        :attr:`metrics`.
+
+        Call this between independent experiments to prevent contamination
+        across runs — especially important when sharing a single
+        ``MuonCANS`` instance across multiple training phases.
+        """
+        self._prev_grads = [None] * len(self.params)
+        for key in self.metrics:
+            self.metrics[key] = []
+
     def reset_momentum(self) -> None:
-        """Zero all initialised momentum buffers in-place.
+        """Zero all initialised momentum buffers in-place and clear gradient history.
 
         Buffers that have not yet been initialised (``None``) are left as-is.
+        Gradient history (used for ``grad_grad_cos``) is also cleared so that
+        ``grad_grad_cos`` resets to 1.0 on the first step after the boundary.
         This is useful for resetting optimiser state between tasks without
         reallocating memory (the "ghost-breaker" pattern).
         """
         for buf in self._buffers:
             if buf is not None:
                 buf.fill(0.0)
+        self._prev_grads = [None] * len(self.params)
 
     def state_dict(self) -> Dict:
         """Return serialisable optimiser state."""
@@ -258,7 +406,10 @@ class MuonCANS:
             "weight_decay": self.weight_decay,
             "scalar_decay_mult": self.scalar_decay_mult,
             "eps": self.eps,
+            "advantage_eps": self.advantage_eps,
+            "track_grad_history": self.track_grad_history,
             "buffers": [b.tolist() if b is not None else None for b in self._buffers],
+            "metrics": {k: list(v) for k, v in self.metrics.items()},
         }
 
     def load_state_dict(self, state: Dict) -> None:
@@ -270,6 +421,10 @@ class MuonCANS:
         self.weight_decay = state["weight_decay"]
         self.scalar_decay_mult = state.get("scalar_decay_mult", 10.0)
         self.eps = state.get("eps", 1e-7)
+        self.advantage_eps = state.get("advantage_eps", 1e-4)
+        self.track_grad_history = state.get("track_grad_history", True)
         self._buffers = [
             np.array(b) if b is not None else None for b in state["buffers"]
         ]
+        if "metrics" in state:
+            self.metrics = {k: list(v) for k, v in state["metrics"].items()}
