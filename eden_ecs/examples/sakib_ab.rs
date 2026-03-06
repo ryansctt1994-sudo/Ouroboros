@@ -10,17 +10,29 @@
 //!
 //! # Output
 //!
-//! CSV to stdout with header:
+//! CSV to **stdout** with header:
 //! ```text
 //! tick,sakib_learning,sakib_frozen,culture
 //! ```
 //!
-//! Two episodes are run for every tick:
-//! * **learning** — the Weaver policy is applied each tick.
-//! * **frozen**   — the policy is never applied (static weights).
+//! Diagnostics (param summary, flow/weight percentiles, regime hint) go to **stderr**
+//! so they never contaminate the CSV.
 //!
-//! `record_sakib_index` is called only for the learning run to avoid mixing
-//! telemetry series.
+//! # Graph
+//!
+//! A fixed sparse directed graph with 10 000 nodes and out-degree 5 (50 000 edges)
+//! is generated deterministically via a 32-bit LCG.  Initial edge weights are in
+//! \[0.2, 0.8\] (also LCG-derived).
+//!
+//! # A/B protocol
+//!
+//! Two independent episodes are run with **identical** initial weights and
+//! deterministic per-tick flow injection:
+//! - **learning** — the [`WeaverSandbox`] policy is applied each tick.
+//! - **frozen**   — weights are never modified.
+//!
+//! `record_sakib_index` is called only for the learning run to keep Tracy
+//! telemetry series clean.
 
 use eden_ecs::tracy::{record_sakib_index, sakib_index};
 use eden_ecs::weaver::{culture_policy, PolicyContext, WeaverSandbox};
@@ -31,30 +43,59 @@ use eden_ecs::weaver::{culture_policy, PolicyContext, WeaverSandbox};
 struct Lcg(u32);
 
 impl Lcg {
-    fn next_f32(&mut self) -> f32 {
+    #[inline]
+    fn next(&mut self) -> u32 {
         self.0 = self.0.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
-        // Map high 24 bits to [0, 1).
-        (self.0 >> 8) as f32 / (1u32 << 24) as f32
+        self.0
+    }
+
+    /// Uniform float in [0, 1).
+    #[inline]
+    fn next_f32(&mut self) -> f32 {
+        // Use top 24 bits for full mantissa coverage.
+        (self.next() >> 8) as f32 / (1u32 << 24) as f32
+    }
+
+    /// Uniform integer in [0, n).
+    #[inline]
+    fn next_usize(&mut self, n: usize) -> usize {
+        (self.next() as usize) % n
     }
 }
 
-// ── Graph topology ────────────────────────────────────────────────────────────
+// ── Graph ─────────────────────────────────────────────────────────────────────
 
-/// A fixed sparse directed graph with `n_nodes` nodes and `n_edges` edges.
+/// Fixed sparse directed graph.
 struct Graph {
     n_nodes: usize,
-    /// Each element is `(src, dst)`.
+    /// (src, dst) for each edge, indexed 0..n_edges.
     edges: Vec<(usize, usize)>,
 }
 
 impl Graph {
-    /// Build a deterministic sparse graph: each node gets exactly 2 out-edges
-    /// pointing to `(node+1) % n` and `(node+3) % n`.
-    fn build(n_nodes: usize) -> Self {
-        let mut edges = Vec::with_capacity(n_nodes * 2);
-        for i in 0..n_nodes {
-            edges.push((i, (i + 1) % n_nodes));
-            edges.push((i, (i + 3) % n_nodes));
+    /// Build a random sparse directed graph with fixed out-degree per node.
+    ///
+    /// Guarantees: no self-loops; no duplicate (src, dst) pairs per node.
+    fn build_random(n_nodes: usize, out_degree: usize, seed: u32) -> Self {
+        assert!(out_degree < n_nodes, "out_degree must be < n_nodes");
+        let mut lcg = Lcg(seed ^ 0xA5A5_1234);
+        let mut edges = Vec::with_capacity(n_nodes * out_degree);
+        for src in 0..n_nodes {
+            let mut chosen: Vec<usize> = Vec::with_capacity(out_degree);
+            let mut guard = 0u32;
+            while chosen.len() < out_degree {
+                let dst = lcg.next_usize(n_nodes);
+                if dst != src && !chosen.contains(&dst) {
+                    chosen.push(dst);
+                }
+                guard += 1;
+                if guard > 100_000 {
+                    break; // safety valve — should never trigger for n≥6
+                }
+            }
+            for dst in chosen {
+                edges.push((src, dst));
+            }
         }
         Self { n_nodes, edges }
     }
@@ -64,130 +105,232 @@ impl Graph {
     }
 }
 
-// ── Message-passing flow simulation ──────────────────────────────────────────
+// ── Flow computation ──────────────────────────────────────────────────────────
 
-/// Perform `steps` rounds of message passing over `node_activations` using
-/// `edge_weights` and return the resulting per-edge flow magnitudes.
+/// Run `steps` rounds of message passing and return per-edge flow magnitudes.
 ///
-/// Each round:
-/// 1. Each node accumulates signals from in-edges weighted by `edge_weights`.
-/// 2. Node activations are L2-normalised.
-///
-/// Edge flows are computed as the source-node activation scaled by
-/// `flow_gain`, clamped to `[0, 1]`.  Using the steady-state source
-/// activation (rather than a temporal gradient) gives stable, non-zero flows
-/// throughout the simulation.
+/// A single unit pulse is injected into a node chosen deterministically from
+/// `tick` and `seed` before propagation.  Each step L2-normalises the node
+/// activations.  Flows are the source-node activation scaled by `flow_gain`,
+/// clamped to \[0, 1\].
 fn compute_flows(
     graph: &Graph,
-    node_activations: &mut Vec<f32>,
     edge_weights: &[f32],
+    tick: u32,
+    seed: u32,
     steps: usize,
     flow_gain: f32,
 ) -> Vec<f32> {
     let n = graph.n_nodes;
+    let mut lcg = Lcg(seed ^ tick.wrapping_mul(0x9E37_79B9));
+    let inject = lcg.next_usize(n);
+
+    let mut act = vec![0.0_f32; n];
+    act[inject] = 1.0;
 
     for _ in 0..steps {
         let mut next = vec![0.0_f32; n];
         for (edge_idx, &(src, dst)) in graph.edges.iter().enumerate() {
-            next[dst] += node_activations[src] * edge_weights[edge_idx];
+            next[dst] += act[src] * edge_weights[edge_idx];
         }
-        // L2 normalise.
         let norm: f32 = next.iter().map(|x| x * x).sum::<f32>().sqrt();
         if norm > 1e-9 {
             for v in next.iter_mut() {
                 *v /= norm;
             }
         }
-        *node_activations = next;
+        act = next;
     }
 
-    // Edge flow = source-node activation magnitude scaled by flow_gain.
+    // Flow = source activation × flow_gain, clamped [0,1].
     graph
         .edges
         .iter()
-        .map(|&(src, _dst)| (node_activations[src] * flow_gain).clamp(0.0, 1.0))
+        .map(|&(src, _)| (act[src] * flow_gain).clamp(0.0, 1.0))
         .collect()
+}
+
+// ── Diagnostics ───────────────────────────────────────────────────────────────
+
+/// Abort with a clear message if any value in `slice` is non-finite (NaN or Inf).
+fn assert_finite(slice: &[f32], label: &str) {
+    for (i, &v) in slice.iter().enumerate() {
+        if !v.is_finite() {
+            eprintln!("FATAL: {label}[{i}] = {v} (non-finite). Aborting.");
+            std::process::exit(1);
+        }
+    }
+}
+
+/// Compute (p50, p90, p99) from an unsorted slice by sorting a clone.
+///
+/// Allocation is intentional: called at most twice per episode, not per tick.
+fn percentiles(values: &[f32]) -> (f32, f32, f32) {
+    let n = values.len();
+    if n == 0 {
+        return (0.0, 0.0, 0.0);
+    }
+    let mut sorted = values.to_vec();
+    sorted.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let p50 = sorted[n / 2];
+    let p90 = sorted[(n * 9) / 10];
+    let p99 = sorted[(n * 99) / 100];
+    (p50, p90, p99)
+}
+
+/// Classify the network regime based on final weight percentiles.
+///
+/// | Regime      | Signal                                                    |
+/// |-------------|-----------------------------------------------------------|
+/// | collapse    | p90 < 0.15 — decay dominates; network going inert        |
+/// | amplifier   | p99 > 0.95 AND p50 < 0.4 — winner-take-all channels      |
+/// | routing     | structured heterogeneity; Sakib gap learning > frozen     |
+fn regime_hint(p50: f32, p90: f32, p99: f32) -> &'static str {
+    if p90 < 0.15 {
+        "collapse"
+    } else if p99 > 0.95 && p50 < 0.4 {
+        "amplifier"
+    } else {
+        "routing"
+    }
+}
+
+// ── Episode ───────────────────────────────────────────────────────────────────
+
+struct Episode {
+    sakib_curve: Vec<f32>,
+    final_weights: Vec<f32>,
+}
+
+fn run_episode(
+    graph: &Graph,
+    initial_weights: &[f32],
+    learning: bool,
+    n_ticks: u32,
+    flow_threshold: f32,
+    seed: u32,
+    culture: &str,
+    steps: usize,
+    flow_gain: f32,
+    // Ticks at which to log flow percentiles to stderr.
+    diag_ticks: &[u32],
+) -> Episode {
+    let tag = if learning { "learning" } else { "frozen  " };
+    let mut weights = initial_weights.to_vec();
+    let mut sandbox = WeaverSandbox::new(culture_policy(culture, flow_threshold, weights.len()));
+    let mut sakib_curve = Vec::with_capacity(n_ticks as usize);
+
+    for tick in 0..n_ticks {
+        let flows = compute_flows(graph, &weights, tick, seed, steps, flow_gain);
+
+        // Debug builds check every tick; release builds rely on final assert_finite.
+        #[cfg(debug_assertions)]
+        {
+            assert_finite(&flows, "flows");
+            assert_finite(&weights, "weights");
+        }
+
+        // Flow percentile snapshot at selected ticks.
+        if diag_ticks.contains(&tick) {
+            let (fp50, fp90, fp99) = percentiles(&flows);
+            eprintln!(
+                "[{tag}:{culture} tick={tick:4}] flows  p50={fp50:.3} p90={fp90:.3} p99={fp99:.3}"
+            );
+        }
+
+        let s = sakib_index(&weights, &flows, flow_threshold);
+        sakib_curve.push(s);
+
+        if learning {
+            record_sakib_index(s);
+            let mut ctx = PolicyContext {
+                edge_weights: &mut weights,
+                flow_rates: &flows,
+            };
+            sandbox.execute(&mut ctx);
+        }
+    }
+
+    // Final weight percentiles + regime hint.
+    let (wp50, wp90, wp99) = percentiles(&weights);
+    let regime = regime_hint(wp50, wp90, wp99);
+    eprintln!(
+        "[{tag}:{culture}] weights p50={wp50:.3} p90={wp90:.3} p99={wp99:.3} → {regime}"
+    );
+
+    Episode {
+        sakib_curve,
+        final_weights: weights,
+    }
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 fn main() {
-    // ── Parse CLI args ────────────────────────────────────────────────────────
+    // ── CLI args ──────────────────────────────────────────────────────────────
     let args: Vec<String> = std::env::args().collect();
     let culture = args.get(1).map(String::as_str).unwrap_or("baseline");
-    let steps: usize = args
-        .get(2)
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(6);
-    let flow_gain: f32 = args
-        .get(3)
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(2.0);
+    let steps: usize = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(6);
+    let flow_gain: f32 = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(2.0);
 
-    eprintln!(
-        "sakib_ab: culture={culture}  steps={steps}  flow_gain={flow_gain:.2}"
-    );
+    eprintln!("sakib_ab: culture={culture}  steps={steps}  flow_gain={flow_gain:.2}");
 
-    // ── Build graph ───────────────────────────────────────────────────────────
-    const N_NODES: usize = 16;
-    const N_TICKS: usize = 40;
+    // ── Graph ─────────────────────────────────────────────────────────────────
+    const N_NODES: usize = 10_000;
+    const OUT_DEGREE: usize = 5; // → 50 000 edges
+    const N_TICKS: u32 = 2_000;
     const FLOW_THRESHOLD: f32 = 0.3;
+    const SEED: u32 = 12_345;
 
-    let graph = Graph::build(N_NODES);
-    let n_edges = graph.n_edges();
+    let graph = Graph::build_random(N_NODES, OUT_DEGREE, SEED);
+    eprintln!("graph: {N_NODES} nodes × {OUT_DEGREE} out-degree = {} edges", graph.n_edges());
 
     // ── Initial weights via LCG in [0.2, 0.8] ────────────────────────────────
-    let mut lcg = Lcg(0xDEAD_BEEF);
-    let initial_weights: Vec<f32> = (0..n_edges)
+    let mut lcg = Lcg(SEED ^ 0xC0FF_EE00);
+    let initial_weights: Vec<f32> = (0..graph.n_edges())
         .map(|_| 0.2 + lcg.next_f32() * 0.6)
         .collect();
 
-    // ── Build policies ────────────────────────────────────────────────────────
-    let policy_learning = culture_policy(culture, FLOW_THRESHOLD, n_edges);
-    let mut sandbox_learning = WeaverSandbox::new(policy_learning);
+    // Ticks at which to log flow percentiles (early and late).
+    let diag_ticks = [100u32, N_TICKS - 100];
 
-    // ── Initialise node activations (deterministic) ───────────────────────────
-    let mut activations_learning: Vec<f32> = (0..N_NODES)
-        .map(|i| (i as f32 + 1.0) / N_NODES as f32)
-        .collect();
-    let mut activations_frozen = activations_learning.clone();
+    // ── Run episodes ──────────────────────────────────────────────────────────
+    let learn = run_episode(
+        &graph,
+        &initial_weights,
+        true,
+        N_TICKS,
+        FLOW_THRESHOLD,
+        SEED,
+        culture,
+        steps,
+        flow_gain,
+        &diag_ticks,
+    );
 
-    let mut weights_learning = initial_weights.clone();
-    let weights_frozen = initial_weights.clone();
+    let frozen = run_episode(
+        &graph,
+        &initial_weights,
+        false,
+        N_TICKS,
+        FLOW_THRESHOLD,
+        SEED,
+        culture,
+        steps,
+        flow_gain,
+        &diag_ticks,
+    );
 
-    // ── CSV header ────────────────────────────────────────────────────────────
+    // ── Final NaN/Inf guard (release builds) ──────────────────────────────────
+    assert_finite(&learn.final_weights, "learn.final_weights");
+    assert_finite(&frozen.final_weights, "frozen.final_weights");
+
+    // ── CSV output to stdout ──────────────────────────────────────────────────
     println!("tick,sakib_learning,sakib_frozen,culture");
-
-    for tick in 0..N_TICKS {
-        // ── Learning run ─────────────────────────────────────────────────────
-        let flows_learning = compute_flows(
-            &graph,
-            &mut activations_learning,
-            &weights_learning,
-            steps,
-            flow_gain,
+    for t in 0..(N_TICKS as usize) {
+        println!(
+            "{t},{:.6},{:.6},{culture}",
+            learn.sakib_curve[t], frozen.sakib_curve[t]
         );
-
-        // Apply policy.
-        let mut ctx = PolicyContext {
-            edge_weights: &mut weights_learning,
-            flow_rates: &flows_learning,
-        };
-        sandbox_learning.execute(&mut ctx);
-
-        let s_learning = sakib_index(&weights_learning, &flows_learning, FLOW_THRESHOLD);
-        record_sakib_index(s_learning);
-
-        // ── Frozen run ────────────────────────────────────────────────────────
-        let flows_frozen = compute_flows(
-            &graph,
-            &mut activations_frozen,
-            &weights_frozen,
-            steps,
-            flow_gain,
-        );
-        let s_frozen = sakib_index(&weights_frozen, &flows_frozen, FLOW_THRESHOLD);
-
-        println!("{tick},{s_learning:.6},{s_frozen:.6},{culture}");
     }
 }

@@ -252,15 +252,39 @@ impl WeaverPolicy for Hebbium {
 /// `trace[i] = beta * trace[i] + (1 - beta) * flow[i]`
 /// `w[i]     = clamp(w[i] + alpha * trace[i] * (1 - w[i]), 0, 1)`
 ///
-/// The trace is lazily resized to `min(|weights|, |flows|)` so mismatched
-/// slices never cause a panic.
+/// The trace is lazily grown to `min(|weights|, |flows|)` so mismatched
+/// slices never cause a panic.  The trace is never shrunk so accumulated
+/// history is preserved if the graph temporarily reports fewer edges.
 pub struct Engramum {
     /// Hebbian learning rate (e.g. 0.05 – 0.2).
     pub alpha: f32,
-    /// EMA decay factor (0 < β < 1; higher = longer memory).
+    /// EMA decay factor (0 < beta < 1; higher = longer memory).
     pub beta: f32,
-    /// Per-edge EMA trace (initialised to zeros; resized automatically).
+    /// Per-edge EMA trace (initialised to zeros; grown automatically).
     pub trace: Vec<f32>,
+}
+
+impl Engramum {
+    /// Create a new `Engramum` policy with a pre-allocated trace of length
+    /// `num_edges`.  Prefer this constructor over struct-literal syntax when
+    /// the edge count is known up-front.
+    pub fn new(alpha: f32, beta: f32, num_edges: usize) -> Self {
+        Self {
+            alpha,
+            beta,
+            trace: vec![0.0; num_edges],
+        }
+    }
+
+    /// Grow the internal trace to at least `n` elements.
+    ///
+    /// Never shrinks — accumulated trace state is preserved even when the
+    /// active slice length temporarily decreases.
+    fn ensure_len(&mut self, n: usize) {
+        if self.trace.len() < n {
+            self.trace.resize(n, 0.0);
+        }
+    }
 }
 
 impl WeaverPolicy for Engramum {
@@ -268,10 +292,7 @@ impl WeaverPolicy for Engramum {
         let w = &mut *ctx.edge_weights;
         let f = ctx.flow_rates;
         let len = w.len().min(f.len());
-        // Resize trace to match the active slice length.
-        if self.trace.len() < len {
-            self.trace.resize(len, 0.0);
-        }
+        self.ensure_len(len);
         for i in 0..len {
             self.trace[i] = self.beta * self.trace[i] + (1.0 - self.beta) * f[i];
             w[i] = (w[i] + self.alpha * self.trace[i] * (1.0 - w[i])).clamp(0.0, 1.0);
@@ -310,12 +331,14 @@ pub fn sakibium_policy(flow_threshold: f32) -> Box<dyn WeaverPolicy> {
 
 /// Build a culture-specific composed policy for A/B experiments.
 ///
-/// | `culture`    | Policy                                              |
-/// |--------------|-----------------------------------------------------|
-/// | `"baseline"` | [`sakibium_policy`]                                 |
-/// | `"hebbium"`  | [`Hebbium`] → `FlowNormalisation`                  |
-/// | `"engramum"` | [`Engramum`] → `FlowNormalisation`                 |
+/// | `culture`    | Policy composition                                              |
+/// |--------------|-----------------------------------------------------------------|
+/// | `"baseline"` | [`sakibium_policy`]                                             |
+/// | `"hebbium"`  | [`Hebbium`] → [`RedundancyDecay`] → `FlowNormalisation`         |
+/// | `"engramum"` | [`Engramum`] → [`RedundancyDecay`] → `FlowNormalisation`        |
 ///
+/// All non-baseline cultures include `RedundancyDecay` to prevent unbounded
+/// potentiation (amplifier regime) and `FlowNormalisation` for homeostasis.
 /// Unrecognised culture strings fall back to `"baseline"`.
 ///
 /// # Parameters
@@ -330,13 +353,17 @@ pub fn culture_policy(
     match culture {
         "hebbium" => Box::new(ComposePolicy::new(vec![
             Box::new(Hebbium { alpha: 0.1 }),
+            Box::new(RedundancyDecay {
+                decay_rate: 0.01,
+                min_weight: 0.01,
+            }),
             Box::new(FlowNormalisation { target_mean: 0.5 }),
         ])),
         "engramum" => Box::new(ComposePolicy::new(vec![
-            Box::new(Engramum {
-                alpha: 0.1,
-                beta: 0.9,
-                trace: vec![0.0; num_edges],
+            Box::new(Engramum::new(0.1, 0.9, num_edges)),
+            Box::new(RedundancyDecay {
+                decay_rate: 0.01,
+                min_weight: 0.01,
             }),
             Box::new(FlowNormalisation { target_mean: 0.5 }),
         ])),
@@ -632,11 +659,7 @@ mod tests {
     fn test_engramum_weight_increases_with_sustained_flow() {
         let mut w = vec![0.5_f32];
         let f = [1.0_f32];
-        let mut policy = Engramum {
-            alpha: 0.1,
-            beta: 0.9,
-            trace: vec![0.0],
-        };
+        let mut policy = Engramum::new(0.1, 0.9, 1);
         let mut ctx = make_ctx(&mut w, &f);
         // Run for a few ticks so the trace accumulates.
         for _ in 0..10 {
@@ -679,6 +702,25 @@ mod tests {
             "Engramum(beta=0) should equal Hebbium; e={} h={}",
             w_e[0],
             w_h[0]
+        );
+    }
+
+    #[test]
+    fn test_engramum_trace_accumulates() {
+        // Second tick should potentiate more than the first because the EMA
+        // trace has accumulated flow signal from tick 1.
+        let mut w = vec![0.0_f32];
+        let f = [1.0_f32];
+        let mut policy = Engramum::new(1.0, 0.5, 1);
+        // tick 1: trace = 0.5*0 + 0.5*1 = 0.5; w = 0.0 + 1.0*0.5*(1-0.0) = 0.5
+        policy.apply(&mut make_ctx(&mut w, &f));
+        let after1 = w[0];
+        // tick 2: trace = 0.5*0.5 + 0.5*1 = 0.75; Δw = 1.0*0.75*(1-0.5) = 0.375
+        policy.apply(&mut make_ctx(&mut w, &f));
+        let after2 = w[0];
+        assert!(
+            after2 > after1,
+            "second tick should potentiate more due to trace; after1={after1} after2={after2}"
         );
     }
 
