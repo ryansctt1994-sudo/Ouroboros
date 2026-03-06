@@ -250,8 +250,7 @@ fn run_culture(
     const SEED_B: u32 = 12_345 ^ 0xBBBB_0000;
 
     let mut weights = initial_weights.to_vec();
-    let mut sandbox =
-        WeaverSandbox::new(culture_policy(culture, flow_threshold, weights.len()));
+    let mut sandbox = WeaverSandbox::new(culture_policy(culture, flow_threshold, weights.len()));
 
     // Phase A.
     eprintln!("[{culture}] Phase A …");
@@ -299,9 +298,7 @@ fn run_culture(
         inject_b.1,
     );
     let (wp50, wp90, wp99) = percentiles(&weights);
-    eprintln!(
-        "[{culture}] B done  weights p50={wp50:.3} p90={wp90:.3} p99={wp99:.3}"
-    );
+    eprintln!("[{culture}] B done  weights p50={wp50:.3} p90={wp90:.3} p99={wp99:.3}");
 
     // Phase A₂ (recovery).
     eprintln!("[{culture}] Phase A₂ …");
@@ -345,9 +342,7 @@ fn main() {
     let n_ticks: u32 = args.get(1).and_then(|s| s.parse().ok()).unwrap_or(2_000);
     let flow_gain: f32 = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(2.0);
 
-    eprintln!(
-        "sakib_aba: n_ticks={n_ticks} (per phase)  flow_gain={flow_gain:.2}"
-    );
+    eprintln!("sakib_aba: n_ticks={n_ticks} (per phase)  flow_gain={flow_gain:.2}");
 
     const N_NODES: usize = 10_000;
     const OUT_DEGREE: usize = 5;
@@ -356,7 +351,7 @@ fn main() {
     const SEED: u32 = 12_345;
 
     // Injection node groups (spec-mandated small regions to force specialisation).
-    let inject_a = (0_usize, 8_usize);   // nodes 0..8
+    let inject_a = (0_usize, 8_usize); // nodes 0..8
     let inject_b = (32_usize, 40_usize); // nodes 32..40
 
     let graph = Graph::build_random(N_NODES, OUT_DEGREE, SEED);
@@ -372,12 +367,7 @@ fn main() {
         .collect();
 
     // All four cultures — ranked by expected engram strength.
-    let cultures = [
-        "baseline",
-        "hebbium",
-        "engramum",
-        "engramum_competitive",
-    ];
+    let cultures = ["baseline", "hebbium", "engramum", "engramum_competitive"];
 
     // CSV header.
     println!("tick,phase,culture,sakib,entropy");

@@ -288,9 +288,7 @@ fn run_episode(
     // Final weight percentiles + regime hint.
     let (wp50, wp90, wp99) = percentiles(&weights);
     let regime = regime_hint(wp50, wp90, wp99);
-    eprintln!(
-        "[{tag}:{culture}] weights p50={wp50:.3} p90={wp90:.3} p99={wp99:.3} → {regime}"
-    );
+    eprintln!("[{tag}:{culture}] weights p50={wp50:.3} p90={wp90:.3} p99={wp99:.3} → {regime}");
 
     Episode {
         sakib_curve,
@@ -320,7 +318,10 @@ fn main() {
     const SEED: u32 = 12_345;
 
     let graph = Graph::build_random(N_NODES, OUT_DEGREE, SEED);
-    eprintln!("graph: {N_NODES} nodes × {OUT_DEGREE} out-degree = {} edges", graph.n_edges());
+    eprintln!(
+        "graph: {N_NODES} nodes × {OUT_DEGREE} out-degree = {} edges",
+        graph.n_edges()
+    );
 
     // ── Initial weights via LCG in [0.2, 0.8] ────────────────────────────────
     let mut lcg = Lcg(SEED ^ 0xC0FF_EE00);
