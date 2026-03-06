@@ -290,20 +290,23 @@ class MuonCANS:
             # (optimizer undoing its previous step).
             # Only computed (and gradient history only stored) when
             # track_grad_history=True to avoid the per-step allocation cost
-            # for large parameter arrays.
+            # for large parameter arrays.  When disabled the slot is None so
+            # callers can distinguish "not tracked" from a numeric value.
             if self.track_grad_history:
                 prev_g = self._prev_grads[i]
                 if prev_g is not None:
                     prev_norm = float(np.linalg.norm(prev_g))
                     denom_gg = g_norm_raw * prev_norm + self.eps
-                    cos_gg = float(np.dot(g_flat, prev_g) / denom_gg)
+                    cos_gg: Optional[float] = float(np.dot(g_flat, prev_g) / denom_gg)
                 else:
                     # First step: no previous gradient — defined as 1.0 by convention.
                     cos_gg = 1.0
                 grad_grad_cosines.append(cos_gg)
                 self._prev_grads[i] = g_flat.copy()
             else:
-                grad_grad_cosines.append(float("nan"))
+                # Instrumentation disabled — append None so the key is always
+                # present in metrics but clearly marks "not measured".
+                grad_grad_cosines.append(None)
 
             # Weight-decay as gradient regularisation
             if self.weight_decay != 0.0:
@@ -344,10 +347,12 @@ class MuonCANS:
             cos_alignments.append(cos_val)
             w_norms.append(w_norm)
 
+            # Retrieve the grad_grad_cos value just appended for logging
+            _cos_gg_log = grad_grad_cosines[-1] if grad_grad_cosines else None
             logger.debug(
                 "step=%d param=%d policy_delta_norm=%.6g cos_w_dw=%.6g "
-                "weight_norm=%.6g grad_weight_cos=%.6g grad_grad_cos=%.6g",
-                self.step_count, i, delta_norm, cos_val, w_norm, cos_gw, cos_gg,
+                "weight_norm=%.6g grad_weight_cos=%.6g grad_grad_cos=%s",
+                self.step_count, i, delta_norm, cos_val, w_norm, cos_gw, _cos_gg_log,
             )
 
             param -= delta

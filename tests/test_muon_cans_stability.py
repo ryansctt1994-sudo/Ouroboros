@@ -602,6 +602,59 @@ class TestGradGradCosine:
         opt2.step([-g])  # opposing gradient → cos = -1.0
         assert opt2.metrics["grad_grad_cos"][0] == pytest.approx(-1.0, abs=1e-6)
 
+    # ------------------------------------------------------------------
+    # Invariant 1 & 2 — track_grad_history flag
+    # ------------------------------------------------------------------
+
+    def test_track_grad_history_true_produces_numeric_values(self) -> None:
+        """Invariant 1: track_grad_history=True (default) behaves exactly as before.
+
+        After each step, metrics["grad_grad_cos"] holds one finite float per
+        parameter (not None).  The flag must not alter gradient values or
+        weight updates.
+        """
+        rng = np.random.default_rng(42)
+        p = rng.standard_normal((8, 4))
+        opt = MuonCANS([p], lr=0.01, momentum=0.0, track_grad_history=True)
+        for _ in range(5):
+            g = rng.standard_normal((8, 4))
+            opt.step([g])
+            # metrics are refreshed each step: one entry per parameter
+            v = opt.metrics["grad_grad_cos"][0]
+            assert v is not None, "grad_grad_cos should be numeric, not None"
+            assert math.isfinite(v), f"grad_grad_cos is not finite: {v}"
+            assert -1.0 - 1e-9 <= v <= 1.0 + 1e-9, f"grad_grad_cos out of range: {v}"
+
+    def test_track_grad_history_false_does_not_affect_weights(self) -> None:
+        """Invariant 2: track_grad_history=False leaves weight updates identical.
+
+        The flag controls only telemetry.  Two optimisers with the same seed —
+        one with history tracking, one without — must produce the same final
+        weights.  The disabled run's grad_grad_cos entries must all be None.
+        """
+        grads = [np.random.default_rng(i).standard_normal((8, 4)) for i in range(5)]
+
+        p_tracked   = np.random.default_rng(99).standard_normal((8, 4))
+        p_untracked = p_tracked.copy()
+
+        opt_on  = MuonCANS([p_tracked],   lr=0.01, momentum=0.9, track_grad_history=True)
+        opt_off = MuonCANS([p_untracked], lr=0.01, momentum=0.9, track_grad_history=False)
+
+        for g in grads:
+            opt_on.step([g.copy()])
+            opt_off.step([g.copy()])
+            # Disabled run: current step's metric entry is None
+            assert opt_off.metrics["grad_grad_cos"][0] is None, (
+                "Expected None when track_grad_history=False, "
+                f"got {opt_off.metrics['grad_grad_cos'][0]!r}"
+            )
+
+        # Weights must be numerically identical — only telemetry differs
+        np.testing.assert_array_equal(
+            p_tracked, p_untracked,
+            err_msg="track_grad_history flag must not affect weight updates",
+        )
+
 
 class TestRepresentationDrift:
     """cos(w_t, w_{t-1}) — how violently representations rotate.
