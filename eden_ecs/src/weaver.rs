@@ -307,19 +307,21 @@ impl WeaverPolicy for Engramum {
 // ── Policy factories ──────────────────────────────────────────────────────────
 
 /// **Engramum Competitive** — EMA-traced Hebbian potentiation with competitive
-/// (L1-normalised) traces.
+/// (L∞-normalised) traces.
 ///
-/// After the EMA update the trace is normalised across all active edges so
-/// that traces represent *routing probabilities* rather than absolute
-/// magnitudes.  This prevents any single edge from monopolising potentiation
-/// and encourages the emergence of modular routing structure.
+/// After the EMA update the trace is normalised by its maximum value so that
+/// traces represent *relative routing salience* — the most active edge always
+/// receives the full `alpha` update; all others receive a proportionally
+/// smaller update.  This **L∞ normalisation** is scale-invariant: it behaves
+/// identically on graphs with 32 or 50 000 edges, unlike L1 normalisation
+/// (divide by sum) which degrades to zero updates on large graphs.
 ///
 /// The three update steps that change the phase diagram:
 ///
 /// ```text
 /// trace[i]  ← beta * trace[i] + (1 - beta) * flow[i]   // EMA accumulate
-/// trace[i] /= Σ trace + ε                               // competition
-/// w[i]      ← clamp(w[i] + alpha * trace[i] * (1 - w[i]), 0, 1)
+/// t[i]       = trace[i] / (max(trace) + ε)               // L∞ competition
+/// w[i]      ← clamp(w[i] + alpha * t[i] * (1 - w[i]), 0, 1)
 /// ```
 ///
 /// Unlike plain [`Engramum`], the competition step produces winner-take-most
@@ -344,6 +346,10 @@ impl EngramumCompetitive {
         }
     }
 
+    /// Grow the internal trace to at least `n` elements.
+    ///
+    /// Never shrinks — accumulated trace state is preserved even when the
+    /// active slice length temporarily decreases.
     fn ensure_len(&mut self, n: usize) {
         if self.trace.len() < n {
             self.trace.resize(n, 0.0);
@@ -363,11 +369,15 @@ impl WeaverPolicy for EngramumCompetitive {
             self.trace[i] = self.beta * self.trace[i] + (1.0 - self.beta) * f[i];
         }
 
-        // Step 2 — L1-normalise: traces become routing probabilities (competition).
+        // Step 2 — L∞-normalise (competition): relative salience, scale-invariant.
         // Step 3 — Hebbian weight update using the competitive trace.
-        let total: f32 = self.trace[..len].iter().sum::<f32>() + 1e-8;
+        let max_trace: f32 = self.trace[..len]
+            .iter()
+            .cloned()
+            .fold(0.0_f32, f32::max)
+            + 1e-8;
         for i in 0..len {
-            let t = self.trace[i] / total;
+            let t = self.trace[i] / max_trace;
             w[i] = (w[i] + self.alpha * t * (1.0 - w[i])).clamp(0.0, 1.0);
         }
     }
@@ -900,6 +910,32 @@ mod tests {
         let mut ctx = make_ctx(&mut w, &f);
         policy.apply(&mut ctx); // must not panic
         assert_eq!(policy.trace.len(), 2);
+    }
+
+    #[test]
+    fn test_engramum_competitive_linf_normalization() {
+        // With L∞-norm, the max-flow edge always gets the full alpha update
+        // regardless of graph size.  Verify on a 1-edge graph (trivial) and
+        // compare to a 4-edge graph to confirm scale-invariance.
+        let f = [1.0_f32, 0.0, 0.0, 0.0];
+
+        // 1-edge version.
+        let mut w1 = vec![0.0_f32];
+        let mut policy1 = EngramumCompetitive::new(0.5, 0.0, 1); // beta=0 → trace=flow
+        policy1.apply(&mut make_ctx(&mut w1, &f[..1]));
+        // trace = flow = 1.0; max = 1.0; t = 1.0; Δw = 0.5 * 1.0 * 1.0 = 0.5
+        assert!((w1[0] - 0.5).abs() < 1e-6, "expected 0.5, got {}", w1[0]);
+
+        // 4-edge version — same edge 0 should also get Δw = 0.5.
+        let mut w4 = vec![0.0_f32; 4];
+        let mut policy4 = EngramumCompetitive::new(0.5, 0.0, 4);
+        policy4.apply(&mut make_ctx(&mut w4, &f));
+        assert!(
+            (w4[0] - 0.5).abs() < 1e-6,
+            "L∞ should be scale-invariant; 1-edge={} 4-edge={}",
+            w1[0],
+            w4[0]
+        );
     }
 
     #[test]

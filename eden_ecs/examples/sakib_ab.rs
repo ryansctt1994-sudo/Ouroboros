@@ -3,10 +3,10 @@
 //! # Usage
 //!
 //! ```sh
-//! cargo run -p eden_ecs --example sakib_ab --release -- [culture] [steps] [flow_gain]
+//! cargo run -p eden_ecs --example sakib_ab --release -- [culture] [steps] [flow_gain] [noise]
 //! ```
 //!
-//! Defaults: `culture=baseline  steps=6  flow_gain=2.0`
+//! Defaults: `culture=baseline  steps=6  flow_gain=2.0  noise=0.0`
 //!
 //! # Output
 //!
@@ -146,15 +146,17 @@ fn compute_flows(
         act = next;
     }
 
-    // Flow = source activation × flow_gain, clamped [0,1].
-    let mut flows: Vec<f32> = graph
-        .edges
-        .iter()
-        .map(|&(src, _)| (act[src] * flow_gain).clamp(0.0, 1.0))
-        .collect();
-
-    // Additive noise via Box-Muller (deterministic LCG, no extra deps).
+    // Flow = (act[src] / max_act) * flow_gain, clamped [0,1].
+    // Max-normalization preserves relative importance regardless of graph size,
+    // so FLOW_THRESHOLD=0.3 means "top 30% of activation" rather than absolute magnitude.
+    let max_act: f32 = act.iter().cloned().fold(0.0_f32, f32::max).max(1e-9);
+    // Flow noise via Box-Muller (deterministic LCG, no extra deps).
     if noise_sigma > 0.0 {
+        let mut flows: Vec<f32> = graph
+            .edges
+            .iter()
+            .map(|&(src, _)| (act[src] / max_act * flow_gain).clamp(0.0, 1.0))
+            .collect();
         let mut i = 0;
         while i + 1 < flows.len() {
             let u1 = lcg.next_f32().max(1e-9);
@@ -165,9 +167,14 @@ fn compute_flows(
             flows[i + 1] = (flows[i + 1] + mag * angle.sin()).clamp(0.0, 1.0);
             i += 2;
         }
+        flows
+    } else {
+        graph
+            .edges
+            .iter()
+            .map(|&(src, _)| (act[src] / max_act * flow_gain).clamp(0.0, 1.0))
+            .collect()
     }
-
-    flows
 }
 
 // ── Diagnostics ───────────────────────────────────────────────────────────────
@@ -264,8 +271,11 @@ fn run_episode(
         sakib_curve.push(s);
 
         if learning {
+            let h = flow_entropy(&flows);
+            // Per-tick telemetry line to stderr (learning run only).
+            eprintln!("tick={tick} sakib={s:.4} entropy={h:.3}");
             record_sakib_index(s);
-            record_flow_entropy(flow_entropy(&flows));
+            record_flow_entropy(h);
             let mut ctx = PolicyContext {
                 edge_weights: &mut weights,
                 flow_rates: &flows,

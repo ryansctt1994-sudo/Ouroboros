@@ -1,42 +1,47 @@
 //! A→B→A engram persistence test.
 //!
-//! Tests whether a trained Weaver network can **recover** a previously learned
-//! routing pattern faster than a freshly initialised network.  If it can, the
-//! network has formed a persistent **engram** — the trace left by experience.
+//! Tests whether a Weaver network can **recover** a previously learned routing
+//! pattern faster after interference than a freshly initialised network.  If
+//! it can, the network has formed a **persistent engram**.
 //!
 //! # Protocol
 //!
-//! Three phases of equal length (`ticks_per_phase` ticks each):
+//! Three phases, each `n_ticks` ticks long:
 //!
-//! | Phase | Injection region | What we ask               |
-//! |-------|-----------------|---------------------------|
-//! | A     | nodes [0, N/3)  | baseline learning          |
-//! | B     | nodes [N/3,2N/3)| interference / overwriting |
-//! | A′    | nodes [0, N/3)  | recovery                  |
+//! | Phase | Injection nodes | Question                          |
+//! |-------|-----------------|-----------------------------------|
+//! | A     | 0..8            | Build a routing pattern           |
+//! | B     | 32..40          | Interfere / overwrite with new pattern |
+//! | A₂    | 0..8            | Can the original pattern recover? |
 //!
-//! Two networks run in parallel:
-//! - **continuing**: weights evolve through all three phases (the engram network).
-//! - **fresh**: reset to initial weights at the start of A′ (the null baseline).
+//! All cultures are run in a single invocation and compared side-by-side.
+//! For each culture, the **continuing** network evolves through all three
+//! phases; recovery speed in A₂ is the primary metric.
 //!
-//! If the engram is real, the *continuing* network should reach the same
-//! Sakib level as the *fresh* network at the end of A in fewer ticks during A′.
+//! # Recovery metric
+//!
+//! `recovery_ticks` = first tick in A₂ where Sakib ≥ 90% of peak Sakib
+//! observed during phase A.  Printed as `recovery=never` when not reached.
 //!
 //! # Output
 //!
 //! CSV to **stdout**:
 //! ```text
-//! phase,tick,sakib_continuing,sakib_fresh,culture
+//! tick,phase,culture,sakib,entropy
 //! ```
 //!
-//! Diagnostics (entropy, weight percentiles, recovery ticks) go to **stderr**.
+//! `tick` is the global simulation tick (A: 0..n_ticks, B: n_ticks..2n_ticks,
+//! A₂: 2n_ticks..3n_ticks).
+//!
+//! Diagnostics and recovery summary go to **stderr**.
 //!
 //! # Usage
 //!
 //! ```sh
-//! cargo run -p eden_ecs --example sakib_aba --release -- [culture] [ticks_per_phase] [flow_gain]
+//! cargo run -p eden_ecs --example sakib_aba --release -- [n_ticks] [flow_gain]
 //! ```
 //!
-//! Defaults: `culture=engramum_competitive  ticks_per_phase=600  flow_gain=2.0`
+//! Defaults: `n_ticks=2000  flow_gain=2.0`
 
 use eden_ecs::tracy::{flow_entropy, record_flow_entropy, record_sakib_index, sakib_index};
 use eden_ecs::weaver::{culture_policy, PolicyContext, WeaverSandbox};
@@ -98,13 +103,9 @@ impl Graph {
     }
 }
 
-// ── Flow computation (region-specific injection) ──────────────────────────────
+// ── Flow computation ──────────────────────────────────────────────────────────
 
-/// Compute flows with injection restricted to `inject_range = (lo, hi)` nodes.
-///
-/// The injected node is chosen deterministically from `tick` and `seed`,
-/// but only within the range `[lo, hi)`.  This creates phase-specific
-/// activation patterns so that different graph regions specialise.
+/// Compute flows with injection restricted to nodes `[inject_lo, inject_hi)`.
 fn compute_flows(
     graph: &Graph,
     edge_weights: &[f32],
@@ -136,10 +137,13 @@ fn compute_flows(
         act = next;
     }
 
+    // Flow = (act[src] / max_act) * flow_gain, clamped [0,1].
+    // Max-normalization keeps threshold=0.3 meaningful as "top 30% of activation".
+    let max_act: f32 = act.iter().cloned().fold(0.0_f32, f32::max).max(1e-9);
     graph
         .edges
         .iter()
-        .map(|&(src, _)| (act[src] * flow_gain).clamp(0.0, 1.0))
+        .map(|&(src, _)| (act[src] / max_act * flow_gain).clamp(0.0, 1.0))
         .collect()
 }
 
@@ -164,17 +168,22 @@ fn percentiles(values: &[f32]) -> (f32, f32, f32) {
     (sorted[n / 2], sorted[(n * 9) / 10], sorted[(n * 99) / 100])
 }
 
-// ── Phase runner ──────────────────────────────────────────────────────────────
+// ── Per-culture experiment ────────────────────────────────────────────────────
 
-/// Run a single phase, updating `weights` in-place if `learning=true`.
-///
-/// Returns the per-tick Sakib curve for the phase.
+/// Holds per-tick (sakib, entropy) for one phase.
+struct PhaseCurve {
+    sakib: Vec<f32>,
+    entropy: Vec<f32>,
+}
+
+/// Run one phase, returning per-tick (sakib, entropy).
+/// Weights are updated in-place when `learning=true`.
 fn run_phase(
     graph: &Graph,
     weights: &mut Vec<f32>,
     sandbox: &mut WeaverSandbox,
     learning: bool,
-    record_telemetry: bool,
+    emit_telemetry: bool,
     n_ticks: u32,
     flow_threshold: f32,
     seed: u32,
@@ -182,26 +191,23 @@ fn run_phase(
     flow_gain: f32,
     inject_lo: usize,
     inject_hi: usize,
-) -> Vec<f32> {
-    let mut curve = Vec::with_capacity(n_ticks as usize);
+) -> PhaseCurve {
+    let mut sakib_vec = Vec::with_capacity(n_ticks as usize);
+    let mut entropy_vec = Vec::with_capacity(n_ticks as usize);
+
     for tick in 0..n_ticks {
         let flows = compute_flows(
-            graph,
-            weights,
-            tick,
-            seed,
-            steps,
-            flow_gain,
-            inject_lo,
-            inject_hi,
+            graph, weights, tick, seed, steps, flow_gain, inject_lo, inject_hi,
         );
 
         let s = sakib_index(weights, &flows, flow_threshold);
-        curve.push(s);
+        let h = flow_entropy(&flows);
+        sakib_vec.push(s);
+        entropy_vec.push(h);
 
-        if record_telemetry {
+        if emit_telemetry {
             record_sakib_index(s);
-            record_flow_entropy(flow_entropy(&flows));
+            record_flow_entropy(h);
         }
 
         if learning {
@@ -212,19 +218,130 @@ fn run_phase(
             sandbox.execute(&mut ctx);
         }
     }
-    curve
+
+    PhaseCurve {
+        sakib: sakib_vec,
+        entropy: entropy_vec,
+    }
+}
+
+/// Run the full A→B→A protocol for one culture.
+///
+/// Returns `(curve_a, curve_b, curve_a2, recovery_ticks)` where
+/// `recovery_ticks` is the first tick in A₂ where Sakib ≥ 90% of peak in A
+/// (or `None` if never reached).
+fn run_culture(
+    graph: &Graph,
+    initial_weights: &[f32],
+    culture: &str,
+    n_ticks: u32,
+    flow_threshold: f32,
+    steps: usize,
+    flow_gain: f32,
+    inject_a: (usize, usize),
+    inject_b: (usize, usize),
+) -> (PhaseCurve, PhaseCurve, PhaseCurve, Option<u32>) {
+    const SEED: u32 = 12_345;
+    const SEED_B: u32 = 12_345 ^ 0xBBBB_0000;
+
+    let mut weights = initial_weights.to_vec();
+    let mut sandbox =
+        WeaverSandbox::new(culture_policy(culture, flow_threshold, weights.len()));
+
+    // Phase A.
+    eprintln!("[{culture}] Phase A …");
+    let curve_a = run_phase(
+        graph,
+        &mut weights,
+        &mut sandbox,
+        true,
+        true, // emit telemetry only for phase A learning
+        n_ticks,
+        flow_threshold,
+        SEED,
+        steps,
+        flow_gain,
+        inject_a.0,
+        inject_a.1,
+    );
+
+    let peak_a = curve_a
+        .sakib
+        .iter()
+        .cloned()
+        .fold(f32::NEG_INFINITY, f32::max);
+    let target_recovery = 0.9 * peak_a;
+    let (wp50, wp90, wp99) = percentiles(&weights);
+    eprintln!(
+        "[{culture}] A done  peak_sakib={peak_a:.4}  target_90%={target_recovery:.4} \
+         weights p50={wp50:.3} p90={wp90:.3} p99={wp99:.3}"
+    );
+
+    // Phase B (interference).
+    eprintln!("[{culture}] Phase B …");
+    let curve_b = run_phase(
+        graph,
+        &mut weights,
+        &mut sandbox,
+        true,
+        false,
+        n_ticks,
+        flow_threshold,
+        SEED_B,
+        steps,
+        flow_gain,
+        inject_b.0,
+        inject_b.1,
+    );
+    let (wp50, wp90, wp99) = percentiles(&weights);
+    eprintln!(
+        "[{culture}] B done  weights p50={wp50:.3} p90={wp90:.3} p99={wp99:.3}"
+    );
+
+    // Phase A₂ (recovery).
+    eprintln!("[{culture}] Phase A₂ …");
+    let curve_a2 = run_phase(
+        graph,
+        &mut weights,
+        &mut sandbox,
+        true,
+        false,
+        n_ticks,
+        flow_threshold,
+        SEED,
+        steps,
+        flow_gain,
+        inject_a.0,
+        inject_a.1,
+    );
+    let (wp50, wp90, wp99) = percentiles(&weights);
+    let sakib_a2_final = curve_a2.sakib.last().cloned().unwrap_or(0.0);
+    eprintln!(
+        "[{culture}] A₂ done  sakib_final={sakib_a2_final:.4} \
+         weights p50={wp50:.3} p90={wp90:.3} p99={wp99:.3}"
+    );
+
+    assert_finite(&weights, &format!("{culture}.weights"));
+
+    // Recovery metric.
+    let recovery = curve_a2
+        .sakib
+        .iter()
+        .position(|&s| s >= target_recovery)
+        .map(|t| t as u32);
+
+    (curve_a, curve_b, curve_a2, recovery)
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    let culture = args.get(1).map(String::as_str).unwrap_or("engramum_competitive");
-    let ticks_per_phase: u32 = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(600);
-    let flow_gain: f32 = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(2.0);
+    let n_ticks: u32 = args.get(1).and_then(|s| s.parse().ok()).unwrap_or(2_000);
+    let flow_gain: f32 = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(2.0);
 
     eprintln!(
-        "sakib_aba: culture={culture}  ticks_per_phase={ticks_per_phase}  flow_gain={flow_gain:.2}"
+        "sakib_aba: n_ticks={n_ticks} (per phase)  flow_gain={flow_gain:.2}"
     );
 
     const N_NODES: usize = 10_000;
@@ -233,9 +350,9 @@ fn main() {
     const STEPS: usize = 6;
     const SEED: u32 = 12_345;
 
-    // Injection regions for phases A and B.
-    let region_a = (0, N_NODES / 3);
-    let region_b = (N_NODES / 3, 2 * N_NODES / 3);
+    // Injection node groups (spec-mandated small regions to force specialisation).
+    let inject_a = (0_usize, 8_usize);   // nodes 0..8
+    let inject_b = (32_usize, 40_usize); // nodes 32..40
 
     let graph = Graph::build_random(N_NODES, OUT_DEGREE, SEED);
     eprintln!(
@@ -249,157 +366,63 @@ fn main() {
         .map(|_| 0.2 + lcg.next_f32() * 0.6)
         .collect();
 
-    // ── Continuing network (lives through A → B → A′) ────────────────────────
-    let mut weights_cont = initial_weights.clone();
-    let mut sandbox_cont = WeaverSandbox::new(culture_policy(
-        culture,
-        FLOW_THRESHOLD,
-        weights_cont.len(),
-    ));
+    // All four cultures — ranked by expected engram strength.
+    let cultures = [
+        "baseline",
+        "hebbium",
+        "engramum",
+        "engramum_competitive",
+    ];
 
-    eprintln!("--- Phase A (continuing) ---");
-    let curve_a_cont = run_phase(
-        &graph,
-        &mut weights_cont,
-        &mut sandbox_cont,
-        true,
-        true, // record telemetry for continuing run only
-        ticks_per_phase,
-        FLOW_THRESHOLD,
-        SEED,
-        STEPS,
-        flow_gain,
-        region_a.0,
-        region_a.1,
-    );
-    let sakib_end_a = *curve_a_cont.last().unwrap_or(&0.0);
-    let (wp50, wp90, wp99) = percentiles(&weights_cont);
-    eprintln!(
-        "[continuing:A] Sakib_final={sakib_end_a:.4}  weights p50={wp50:.3} p90={wp90:.3} p99={wp99:.3}"
-    );
+    // CSV header.
+    println!("tick,phase,culture,sakib,entropy");
 
-    eprintln!("--- Phase B (continuing) ---");
-    let curve_b_cont = run_phase(
-        &graph,
-        &mut weights_cont,
-        &mut sandbox_cont,
-        true,
-        false, // don't mix B telemetry into learning series
-        ticks_per_phase,
-        FLOW_THRESHOLD,
-        SEED ^ 0xBBBB_0000, // different seed for B injection
-        STEPS,
-        flow_gain,
-        region_b.0,
-        region_b.1,
-    );
-    let sakib_end_b = *curve_b_cont.last().unwrap_or(&0.0);
-    let (wp50, wp90, wp99) = percentiles(&weights_cont);
-    eprintln!(
-        "[continuing:B] Sakib_final={sakib_end_b:.4}  weights p50={wp50:.3} p90={wp90:.3} p99={wp99:.3}"
-    );
+    // Recovery summary accumulator (printed at end to stderr).
+    let mut recovery_summary: Vec<(String, Option<u32>)> = Vec::new();
 
-    eprintln!("--- Phase A′ (continuing) ---");
-    let curve_a2_cont = run_phase(
-        &graph,
-        &mut weights_cont,
-        &mut sandbox_cont,
-        true,
-        true,
-        ticks_per_phase,
-        FLOW_THRESHOLD,
-        SEED,
-        STEPS,
-        flow_gain,
-        region_a.0,
-        region_a.1,
-    );
-    let sakib_end_a2_cont = *curve_a2_cont.last().unwrap_or(&0.0);
-    let (wp50, wp90, wp99) = percentiles(&weights_cont);
-    eprintln!(
-        "[continuing:A′] Sakib_final={sakib_end_a2_cont:.4}  weights p50={wp50:.3} p90={wp90:.3} p99={wp99:.3}"
-    );
+    for culture in cultures {
+        eprintln!("\n=== {culture} ===");
+        let (curve_a, curve_b, curve_a2, recovery) = run_culture(
+            &graph,
+            &initial_weights,
+            culture,
+            n_ticks,
+            FLOW_THRESHOLD,
+            STEPS,
+            flow_gain,
+            inject_a,
+            inject_b,
+        );
 
-    // ── Fresh network (reset to initial_weights at start of A′) ──────────────
-    let mut weights_fresh = initial_weights.clone();
-    let mut sandbox_fresh = WeaverSandbox::new(culture_policy(
-        culture,
-        FLOW_THRESHOLD,
-        weights_fresh.len(),
-    ));
+        // Emit CSV rows — global tick counter.
+        for (i, (&s, &h)) in curve_a.sakib.iter().zip(&curve_a.entropy).enumerate() {
+            println!("{},{},{},{:.6},{:.4}", i, "A", culture, s, h);
+        }
+        let b_offset = n_ticks as usize;
+        for (i, (&s, &h)) in curve_b.sakib.iter().zip(&curve_b.entropy).enumerate() {
+            println!("{},{},{},{:.6},{:.4}", b_offset + i, "B", culture, s, h);
+        }
+        let a2_offset = 2 * n_ticks as usize;
+        // CSV uses "A2" (ASCII-safe phase token); docs use the subscript "A₂".
+        for (i, (&s, &h)) in curve_a2.sakib.iter().zip(&curve_a2.entropy).enumerate() {
+            println!("{},{},{},{:.6},{:.4}", a2_offset + i, "A2", culture, s, h);
+        }
 
-    eprintln!("--- Phase A′ (fresh — starts from scratch) ---");
-    let curve_a2_fresh = run_phase(
-        &graph,
-        &mut weights_fresh,
-        &mut sandbox_fresh,
-        true,
-        false,
-        ticks_per_phase,
-        FLOW_THRESHOLD,
-        SEED,
-        STEPS,
-        flow_gain,
-        region_a.0,
-        region_a.1,
-    );
-    let sakib_end_a2_fresh = *curve_a2_fresh.last().unwrap_or(&0.0);
-    let (wp50, wp90, wp99) = percentiles(&weights_fresh);
-    eprintln!(
-        "[fresh:A′] Sakib_final={sakib_end_a2_fresh:.4}  weights p50={wp50:.3} p90={wp90:.3} p99={wp99:.3}"
-    );
-
-    assert_finite(&weights_cont, "weights_cont");
-    assert_finite(&weights_fresh, "weights_fresh");
-
-    // ── Recovery analysis ─────────────────────────────────────────────────────
-    // How many A′ ticks for the continuing network to first match or exceed
-    // the final Sakib level of Phase A?
-    let target = sakib_end_a;
-    let cont_recovery_tick = curve_a2_cont
-        .iter()
-        .position(|&s| s >= target)
-        .map(|t| t as i64)
-        .unwrap_or(-1);
-    let fresh_recovery_tick = curve_a2_fresh
-        .iter()
-        .position(|&s| s >= target)
-        .map(|t| t as i64)
-        .unwrap_or(-1);
-
-    eprintln!("--- Recovery analysis ---");
-    eprintln!("Target Sakib (end of Phase A): {target:.4}");
-    match (cont_recovery_tick, fresh_recovery_tick) {
-        (-1, -1) => eprintln!("Neither network recovered to target within Phase A′."),
-        (-1, t) => eprintln!(
-            "Fresh recovered at tick {t}; continuing never recovered → no engram signal."
-        ),
-        (c, -1) => eprintln!(
-            "Continuing recovered at tick {c}; fresh never recovered → strong engram signal!"
-        ),
-        (c, f) if c < f => eprintln!(
-            "Continuing recovered {f_minus_c} ticks faster (continuing={c}, fresh={f}) → engram signal.",
-            f_minus_c = f - c
-        ),
-        (c, f) if c > f => eprintln!(
-            "Fresh recovered faster (fresh={f}, continuing={c}) → no engram advantage."
-        ),
-        (c, _) => eprintln!("Both recovered at same tick ({c}) → inconclusive."),
+        recovery_summary.push((culture.to_string(), recovery));
     }
 
-    // ── CSV output ────────────────────────────────────────────────────────────
-    println!("phase,tick,sakib_continuing,sakib_fresh,culture");
-    for (t, (&sc, &sf)) in curve_a_cont
-        .iter()
-        .zip(std::iter::repeat(&f32::NAN))
-        .enumerate()
-    {
-        println!("A,{t},{sc:.6},{:.6},{culture}", sf);
+    // ── Recovery summary (stderr) ─────────────────────────────────────────────
+    eprintln!("\n=== Recovery summary (ticks in A₂ to reach 90% of peak-A Sakib) ===");
+    for (culture, ticks) in &recovery_summary {
+        match ticks {
+            Some(t) => eprintln!("culture={culture} recovery={t}"),
+            None => eprintln!("culture={culture} recovery=never"),
+        }
     }
-    for (t, &sc) in curve_b_cont.iter().enumerate() {
-        println!("B,{t},{sc:.6},NaN,{culture}");
-    }
-    for (t, (&sc, &sf)) in curve_a2_cont.iter().zip(curve_a2_fresh.iter()).enumerate() {
-        println!("A2,{t},{sc:.6},{sf:.6},{culture}");
-    }
+
+    // Print expected ordering hint.
+    eprintln!(
+        "\nExpected ordering (fastest recovery): \
+         engramum_competitive > engramum > hebbium > baseline"
+    );
 }
