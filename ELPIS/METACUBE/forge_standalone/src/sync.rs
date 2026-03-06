@@ -22,9 +22,9 @@
 //! engine.synchronize_step();
 //! ```
 
-use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::f64::consts::PI;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 
 /// Error types for synchronization operations
 #[derive(Debug, Clone, PartialEq)]
@@ -39,7 +39,7 @@ pub enum SyncError {
 pub type SyncResult<T> = Result<T, SyncError>;
 
 /// Consciousness state representation (7 dimensions)
-/// 
+///
 /// # Cache-Line Alignment
 /// Aligned to 64 bytes to prevent false sharing in multi-threaded access.
 /// Size: 7 f64 fields (56 bytes) + 8 bytes padding = 64 bytes total.
@@ -53,7 +53,7 @@ pub struct ConsciousnessState {
     pub memory: f64,
     pub creativity: f64,
     pub integration: f64,
-    _padding: [u8; 8],  // Pad to 64 bytes total
+    _padding: [u8; 8], // Pad to 64 bytes total
 }
 
 impl ConsciousnessState {
@@ -85,27 +85,27 @@ impl ConsciousnessState {
     }
 
     /// Projects 7D consciousness to 3D space for Ouroboros validation
-    /// 
+    ///
     /// # Projection Rationale:
     /// - D1 (Cognitive Axis): awareness + cognition + integration
     /// - D2 (Temporal Axis): intention + memory  
     /// - D3 (Emotional-Creative Axis): emotion + creativity
-    /// 
+    ///
     /// All dimensions are normalized by their count (3, 2, or 2)
     pub fn to_ternary(&self) -> [f64; 3] {
         // Map 7D consciousness to 3D ternary representation
         // Using PCA-like projection optimized for toroidal manifold
         let state = self.to_array();
-        
+
         // Dimension 1: Awareness + Cognition + Integration (cognitive axis)
         let d1 = (state[0] + state[3] + state[6]) / 3.0;
-        
+
         // Dimension 2: Intention + Memory (temporal axis)
         let d2 = (state[1] + state[4]) / 2.0;
-        
+
         // Dimension 3: Emotion + Creativity (affective axis)
         let d3 = (state[2] + state[5]) / 2.0;
-        
+
         // Normalize to sum to 1.0 for ternary representation
         let total = d1 + d2 + d3;
         if total > 0.0 {
@@ -118,7 +118,7 @@ impl ConsciousnessState {
     /// Calculate metacube metrics
     pub fn calculate_metrics(&self) -> MetacubeMetrics {
         let state = self.to_array();
-        
+
         // Single-pass: accumulate sum, sum_sq, and product simultaneously
         let mut sum = 0.0_f64;
         let mut sum_sq = 0.0_f64;
@@ -128,22 +128,22 @@ impl ConsciousnessState {
             sum_sq += x * x;
             product *= x;
         }
-        
+
         let mean = sum / 7.0;
         // Variance via E[X²] - E[X]² (avoids second pass)
         // max(0.0) guards against tiny negatives from float imprecision
         let variance = (sum_sq / 7.0 - mean * mean).max(0.0);
         let diversity = variance.sqrt();
-        
+
         let coherence = if mean > 0.0 {
             (1.0 - (diversity / mean)).max(0.0)
         } else {
             0.0
         };
-        
+
         let efficiency = mean;
         let synergy = product.powf(1.0 / 7.0);
-        
+
         MetacubeMetrics {
             diversity,
             coherence,
@@ -190,11 +190,11 @@ impl MetacubeMetrics {
 /// A small pseudocount (1e-12) prevents log(0).
 fn aitchison_distance(a: &[f64; 3], b: &[f64; 3]) -> f64 {
     let pseudocount = 1e-12; // Numerical stability constant to avoid log(0)
-    
+
     // Geometric means
     let g_a = ((a[0] + pseudocount) * (a[1] + pseudocount) * (a[2] + pseudocount)).powf(1.0 / 3.0);
     let g_b = ((b[0] + pseudocount) * (b[1] + pseudocount) * (b[2] + pseudocount)).powf(1.0 / 3.0);
-    
+
     // CLR-transformed difference
     let mut sum_sq = 0.0;
     for i in 0..3 {
@@ -238,7 +238,7 @@ impl TernaryCycleNormalizer {
         let z = self.radius * self.lambda * phi.sin();
 
         // Reconstruct angles from Cartesian (preserving sign/quadrant)
-        let theta_recovered = y.atan2(x);  // atan2(y, x) preserves full [-π, π] range and correct quadrant
+        let theta_recovered = y.atan2(x); // atan2(y, x) preserves full [-π, π] range and correct quadrant
         let r_proj = (x * x + y * y).sqrt();
         let phi_recovered = z.atan2(r_proj - self.radius);
 
@@ -260,11 +260,11 @@ impl TernaryCycleNormalizer {
     /// using Aitchison distance (appropriate for simplex-valued data)
     pub fn delta_check(&self, expected: [f64; 3], actual: [f64; 3]) -> DeltaCheckResult {
         let delta = aitchison_distance(&expected, &actual);
-        
+
         // Threshold: Aitchison distance scale differs from Euclidean.
         // Empirically, 0.5 is a reasonable pass/fail boundary for 3-simplex data.
         let threshold = 0.5;
-        
+
         DeltaCheckResult {
             delta,
             verdict: if delta < threshold { "PASS" } else { "FAIL" },
@@ -327,13 +327,19 @@ impl AtomicState {
     }
 
     fn store(&self, state: ConsciousnessState) {
-        self.awareness.store(state.awareness.to_bits(), Ordering::Release);
-        self.intention.store(state.intention.to_bits(), Ordering::Release);
-        self.emotion.store(state.emotion.to_bits(), Ordering::Release);
-        self.cognition.store(state.cognition.to_bits(), Ordering::Release);
+        self.awareness
+            .store(state.awareness.to_bits(), Ordering::Release);
+        self.intention
+            .store(state.intention.to_bits(), Ordering::Release);
+        self.emotion
+            .store(state.emotion.to_bits(), Ordering::Release);
+        self.cognition
+            .store(state.cognition.to_bits(), Ordering::Release);
         self.memory.store(state.memory.to_bits(), Ordering::Release);
-        self.creativity.store(state.creativity.to_bits(), Ordering::Release);
-        self.integration.store(state.integration.to_bits(), Ordering::Release);
+        self.creativity
+            .store(state.creativity.to_bits(), Ordering::Release);
+        self.integration
+            .store(state.integration.to_bits(), Ordering::Release);
     }
 }
 
@@ -382,7 +388,7 @@ impl SyncEngine {
             let current = state.load();
             let ternary = current.to_ternary();
             let normalized_ternary = self.normalizer.normalize(ternary);
-            
+
             // Reconstruct consciousness state from normalized ternary
             // This is a simplified inverse projection
             let awareness = normalized_ternary[0] * 1.0;
@@ -392,7 +398,7 @@ impl SyncEngine {
             let memory = normalized_ternary[1] * 1.0;
             let emotion = normalized_ternary[2] * 1.0;
             let creativity = normalized_ternary[2] * 1.0;
-            
+
             let updated = ConsciousnessState::new([
                 awareness,
                 intention,
@@ -402,7 +408,7 @@ impl SyncEngine {
                 creativity,
                 integration,
             ]);
-            
+
             state.store(updated);
         }
     }
@@ -430,11 +436,14 @@ impl SyncEngine {
 
     /// Compute per-agent unified metric (gamma) values
     pub fn agent_gammas(&self) -> Vec<f64> {
-        self.states.iter().map(|state| {
-            let current = state.load();
-            let metrics = current.calculate_metrics();
-            metrics.unified_metric()
-        }).collect()
+        self.states
+            .iter()
+            .map(|state| {
+                let current = state.load();
+                let metrics = current.calculate_metrics();
+                metrics.unified_metric()
+            })
+            .collect()
     }
 
     /// Get unified metric (gamma) for a specific agent
@@ -474,7 +483,7 @@ mod tests {
     fn test_ternary_projection() {
         let state = ConsciousnessState::new([0.8, 0.7, 0.6, 0.9, 0.7, 0.6, 0.8]);
         let ternary = state.to_ternary();
-        
+
         // Ternary should sum to 1.0
         let sum: f64 = ternary.iter().sum();
         assert!((sum - 1.0).abs() < 1e-10);
@@ -484,7 +493,7 @@ mod tests {
     fn test_to_ternary_all_dimensions() {
         let state = ConsciousnessState::new([0.5; 7]);
         let proj = state.to_ternary();
-        
+
         assert!(proj[0] > 0.0, "D1 should be non-zero");
         assert!(proj[1] > 0.0, "D2 should be non-zero");
         assert!(proj[2] > 0.0, "D3 should be non-zero (was missing!)");
@@ -496,7 +505,7 @@ mod tests {
         let state = ConsciousnessState::new([0.8, 0.7, 0.6, 0.9, 0.7, 0.6, 0.8]);
         let metrics = state.calculate_metrics();
         let gamma = metrics.unified_metric();
-        
+
         // Diverse state should have reasonable gamma
         assert!(gamma >= 0.0 && gamma <= 1.0);
         assert!(gamma > 0.0, "Gamma should be positive for diverse state");
@@ -506,27 +515,27 @@ mod tests {
     fn test_sync_engine() {
         let mut engine = SyncEngine::new(3);
         let state = ConsciousnessState::new([0.8, 0.7, 0.6, 0.9, 0.7, 0.6, 0.8]);
-        
+
         engine.update_agent(0, state).unwrap();
         let retrieved = engine.get_agent(0).unwrap();
-        
+
         assert_eq!(retrieved.awareness, 0.8);
     }
 
     #[test]
     fn test_synchronization() {
         let mut engine = SyncEngine::new(5);
-        
+
         // Initialize with diverse states
         for i in 0..5 {
             let val = 0.5 + (i as f64) * 0.1;
             let state = ConsciousnessState::new([val; 7]);
             engine.update_agent(i, state).unwrap();
         }
-        
+
         // Run synchronization
         engine.synchronize_step();
-        
+
         // Check network metrics
         let metrics = engine.network_metrics();
         assert_eq!(metrics.num_agents, 5);
@@ -540,10 +549,22 @@ mod tests {
         // Uniform state: all 0.7 — diversity should be 0, coherence should be 1
         let state = ConsciousnessState::new([0.7; 7]);
         let metrics = state.calculate_metrics();
-        assert!((metrics.diversity - 0.0).abs() < 1e-10, "Uniform state should have zero diversity");
-        assert!((metrics.coherence - 1.0).abs() < 1e-10, "Uniform state should have perfect coherence");
-        assert!((metrics.efficiency - 0.7).abs() < 1e-10, "Efficiency should equal mean");
-        assert!((metrics.synergy - 0.7).abs() < 1e-10, "Geometric mean of uniform values equals the value");
+        assert!(
+            (metrics.diversity - 0.0).abs() < 1e-10,
+            "Uniform state should have zero diversity"
+        );
+        assert!(
+            (metrics.coherence - 1.0).abs() < 1e-10,
+            "Uniform state should have perfect coherence"
+        );
+        assert!(
+            (metrics.efficiency - 0.7).abs() < 1e-10,
+            "Efficiency should equal mean"
+        );
+        assert!(
+            (metrics.synergy - 0.7).abs() < 1e-10,
+            "Geometric mean of uniform values equals the value"
+        );
     }
 
     #[test]
@@ -551,10 +572,22 @@ mod tests {
         // Diverse state: spread values
         let state = ConsciousnessState::new([0.1, 0.3, 0.5, 0.7, 0.9, 0.2, 0.8]);
         let metrics = state.calculate_metrics();
-        assert!(metrics.diversity > 0.0, "Diverse state should have positive diversity");
-        assert!(metrics.coherence < 1.0, "Diverse state should have imperfect coherence");
-        assert!(metrics.synergy > 0.0, "Synergy should be positive for all-positive inputs");
-        assert!(metrics.synergy <= metrics.efficiency, "Geometric mean ≤ arithmetic mean (AM-GM)");
+        assert!(
+            metrics.diversity > 0.0,
+            "Diverse state should have positive diversity"
+        );
+        assert!(
+            metrics.coherence < 1.0,
+            "Diverse state should have imperfect coherence"
+        );
+        assert!(
+            metrics.synergy > 0.0,
+            "Synergy should be positive for all-positive inputs"
+        );
+        assert!(
+            metrics.synergy <= metrics.efficiency,
+            "Geometric mean ≤ arithmetic mean (AM-GM)"
+        );
     }
 
     #[test]
@@ -573,12 +606,21 @@ mod tests {
         let normalizer = TernaryCycleNormalizer::new(1.0, 0.3);
         let input = [0.4, 0.35, 0.25];
         let output = normalizer.normalize(input);
-        
+
         // Output must still be a valid simplex (sum ≈ 1.0, all non-negative)
         let sum: f64 = output.iter().sum();
-        assert!((sum - 1.0).abs() < 1e-6, "Normalizer output must sum to 1.0, got {}", sum);
+        assert!(
+            (sum - 1.0).abs() < 1e-6,
+            "Normalizer output must sum to 1.0, got {}",
+            sum
+        );
         for (i, &v) in output.iter().enumerate() {
-            assert!(v >= 0.0, "Simplex component {} must be non-negative, got {}", i, v);
+            assert!(
+                v >= 0.0,
+                "Simplex component {} must be non-negative, got {}",
+                i,
+                v
+            );
         }
     }
 
@@ -588,17 +630,25 @@ mod tests {
         let normalizer = TernaryCycleNormalizer::new(1.0, 0.3);
         let a = normalizer.normalize([0.5, 0.3, 0.2]);
         let b = normalizer.normalize([0.2, 0.3, 0.5]);
-        
+
         // These are different inputs; outputs should differ
         let diff: f64 = a.iter().zip(b.iter()).map(|(x, y)| (x - y).abs()).sum();
-        assert!(diff > 1e-6, "Different inputs collapsed to same output (diff={})", diff);
+        assert!(
+            diff > 1e-6,
+            "Different inputs collapsed to same output (diff={})",
+            diff
+        );
     }
 
     #[test]
     fn test_aitchison_distance_zero_for_identical() {
         let a = [0.4, 0.35, 0.25];
         let d = aitchison_distance(&a, &a);
-        assert!(d < 1e-10, "Aitchison distance of identical points should be ~0, got {}", d);
+        assert!(
+            d < 1e-10,
+            "Aitchison distance of identical points should be ~0, got {}",
+            d
+        );
     }
 
     #[test]
@@ -606,7 +656,10 @@ mod tests {
         let a = [0.5, 0.3, 0.2];
         let b = [0.2, 0.5, 0.3];
         let d = aitchison_distance(&a, &b);
-        assert!(d > 0.0, "Aitchison distance of different points should be positive");
+        assert!(
+            d > 0.0,
+            "Aitchison distance of different points should be positive"
+        );
     }
 
     #[test]
@@ -615,7 +668,10 @@ mod tests {
         let b = [0.1, 0.6, 0.3];
         let d_ab = aitchison_distance(&a, &b);
         let d_ba = aitchison_distance(&b, &a);
-        assert!((d_ab - d_ba).abs() < 1e-10, "Aitchison distance should be symmetric");
+        assert!(
+            (d_ab - d_ba).abs() < 1e-10,
+            "Aitchison distance should be symmetric"
+        );
     }
 
     #[test]

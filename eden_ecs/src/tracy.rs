@@ -363,7 +363,10 @@ mod tests {
     fn test_flow_entropy_concentrated() {
         // All flow on one edge → H ≈ 0.
         let h = flow_entropy(&[1.0, 0.0, 0.0, 0.0]);
-        assert!(h < 1e-6, "concentrated flow should have entropy ≈ 0, got {h}");
+        assert!(
+            h < 1e-6,
+            "concentrated flow should have entropy ≈ 0, got {h}"
+        );
     }
 
     #[test]

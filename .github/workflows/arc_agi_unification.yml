@@ -36,14 +36,14 @@ jobs:
       - name: 🐍 Set up Python Epistemic Layer
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
           cache: 'pip'
 
       - name: 🧪 Inject Nutrients (Dependencies)
         run: |
           python -m pip install --upgrade pip
           # Including the crucial xgboost antidote to prevent CodexReactor starvation
-          pip install pytest pytest-asyncio numpy scikit-learn xgboost torch tensorboard
+          pip install pytest pytest-asyncio numpy scikit-learn xgboost torch tensorboard matplotlib psutil pyyaml
 
       - name: 👁️ The Pre-Flight Augur (Diagnostic Matrix)
         id: diagnostics

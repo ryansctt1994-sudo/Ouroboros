@@ -252,9 +252,7 @@ pub unsafe extern "C" fn diffusion_buf_concentrations_ptr(
 /// # Safety
 /// `buf` must be a valid, non-null [`DiffusionBufferF16`] pointer.
 #[no_mangle]
-pub unsafe extern "C" fn diffusion_buf_gradients_ptr(
-    buf: *const DiffusionBufferF16,
-) -> *const u16 {
+pub unsafe extern "C" fn diffusion_buf_gradients_ptr(buf: *const DiffusionBufferF16) -> *const u16 {
     if buf.is_null() {
         return std::ptr::null();
     }
@@ -370,11 +368,8 @@ mod tests {
             assert!(diffusion_buf_gradients_ptr(std::ptr::null()).is_null());
             assert_eq!(diffusion_buf_voxel_count(std::ptr::null()), 0);
 
-            let rc = diffusion_buf_write_concentrations_f32(
-                std::ptr::null_mut(),
-                std::ptr::null(),
-                0,
-            );
+            let rc =
+                diffusion_buf_write_concentrations_f32(std::ptr::null_mut(), std::ptr::null(), 0);
             assert_eq!(rc, -1);
         }
     }

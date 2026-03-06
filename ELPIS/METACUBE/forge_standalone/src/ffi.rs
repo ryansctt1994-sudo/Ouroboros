@@ -2,7 +2,7 @@
 //!
 //! Provides C-compatible API for integration with Python and other languages
 
-use crate::{ForgeEngine, ConsciousnessState};
+use crate::{ConsciousnessState, ForgeEngine};
 
 /// Create a new Forge engine
 #[no_mangle]
@@ -27,10 +27,14 @@ pub extern "C" fn forge_engine_consensus_round(engine: *mut ForgeEngine) -> u8 {
     if engine.is_null() {
         return 0;
     }
-    
+
     unsafe {
         let result = (*engine).consensus_round();
-        if result.consensus_achieved { 1 } else { 0 }
+        if result.consensus_achieved {
+            1
+        } else {
+            0
+        }
     }
 }
 
@@ -40,7 +44,7 @@ pub extern "C" fn forge_engine_get_network_gamma(engine: *const ForgeEngine) -> 
     if engine.is_null() {
         return 0.0;
     }
-    
+
     unsafe {
         let metrics = (*engine).network_metrics();
         metrics.mean_gamma
@@ -58,19 +62,19 @@ pub extern "C" fn forge_engine_update_agent_array(
     if engine.is_null() || values.is_null() {
         return -1;
     }
-    
+
     // Bounds check
     if values_len < 7 {
         return -3;
     }
-    
+
     unsafe {
         let slice = std::slice::from_raw_parts(values, 7);
         let vals: [f64; 7] = match slice.try_into() {
             Ok(v) => v,
-            Err(_) => return -4,  // Conversion error (should never happen after bounds check)
+            Err(_) => return -4, // Conversion error (should never happen after bounds check)
         };
-        
+
         let state = ConsciousnessState::new(vals);
         match (*engine).update_agent(agent_id, state) {
             Ok(_) => 0,
@@ -81,14 +85,11 @@ pub extern "C" fn forge_engine_update_agent_array(
 
 /// Get unified metric (gamma) for a specific agent
 #[no_mangle]
-pub extern "C" fn forge_engine_get_agent_gamma(
-    engine: *const ForgeEngine,
-    agent_id: usize,
-) -> f64 {
+pub extern "C" fn forge_engine_get_agent_gamma(engine: *const ForgeEngine, agent_id: usize) -> f64 {
     if engine.is_null() {
         return 0.0;
     }
-    
+
     unsafe {
         match (*engine).get_agent_gamma(agent_id) {
             Ok(gamma) => gamma,
@@ -99,16 +100,12 @@ pub extern "C" fn forge_engine_get_agent_gamma(
 
 /// Get the agreement ratio from the last consensus round
 #[no_mangle]
-pub extern "C" fn forge_engine_get_consensus_agreement(
-    engine: *const ForgeEngine,
-) -> f64 {
+pub extern "C" fn forge_engine_get_consensus_agreement(engine: *const ForgeEngine) -> f64 {
     if engine.is_null() {
         return 0.0;
     }
-    
-    unsafe {
-        (*engine).get_consensus_agreement()
-    }
+
+    unsafe { (*engine).get_consensus_agreement() }
 }
 
 #[cfg(test)]
@@ -120,11 +117,11 @@ mod tests {
         // Create engine via FFI (need at least 4 agents for BFT)
         let engine = forge_engine_new(5);
         assert!(!engine.is_null());
-        
+
         // Get gamma
         let gamma = forge_engine_get_network_gamma(engine);
         assert!(gamma >= 0.0);
-        
+
         // Free engine
         forge_engine_free(engine);
     }

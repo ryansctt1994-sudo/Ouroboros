@@ -16,8 +16,10 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use eden_ecs::{
     spatial_grid::{GridConfig, PackedEntityRef, SpatialGrid},
-    weaver::{ComposePolicy, FlowNormalisation, PolicyContext, RedundancyDecay,
-             SelectiveReinforcement, WeaverSandbox},
+    weaver::{
+        ComposePolicy, FlowNormalisation, PolicyContext, RedundancyDecay, SelectiveReinforcement,
+        WeaverSandbox,
+    },
 };
 
 // ── Spatial grid benchmarks ───────────────────────────────────────────────────
