@@ -46,7 +46,7 @@ pub struct ForgeConsensus {
 
 impl ForgeConsensus {
     /// Create new consensus protocol
-    /// 
+    ///
     /// # Safety
     /// Does NOT panic on num_agents < 4 (minimum for BFT).
     /// Instead uses fallback mode with simple majority (2/3 threshold).
@@ -58,21 +58,21 @@ impl ForgeConsensus {
             return Self {
                 num_agents: 0,
                 fault_tolerance: 0,
-                consensus_threshold: 1.0,  // Impossible to reach
+                consensus_threshold: 1.0, // Impossible to reach
                 params: ConsensusParams::default(),
             };
         }
-        
+
         // For < 4 agents, use fallback mode with simple 2/3 majority
         let (fault_tolerance, consensus_threshold) = if num_agents >= 4 {
-            let ft = (num_agents - 1) / 3;  // Byzantine fault tolerance
+            let ft = (num_agents - 1) / 3; // Byzantine fault tolerance
             let thresh = (2.0 * ft as f64 + 1.0) / num_agents as f64;
             (ft, thresh)
         } else {
             // Fallback: simple 2/3 majority (not BFT, but better than crashing)
             (0, 0.67)
         };
-        
+
         Self {
             num_agents,
             fault_tolerance,
@@ -87,9 +87,7 @@ impl ForgeConsensus {
     }
 
     /// Validate a proposal from an agent
-    pub fn validate_proposal(&self, 
-                            proposer_gamma: f64, 
-                            network_gammas: &[f64]) -> ProposalStatus {
+    pub fn validate_proposal(&self, proposer_gamma: f64, network_gammas: &[f64]) -> ProposalStatus {
         if network_gammas.is_empty() {
             return ProposalStatus::Timeout;
         }
@@ -103,7 +101,7 @@ impl ForgeConsensus {
         }
 
         let agreement_ratio = agreements as f64 / network_gammas.len() as f64;
-        
+
         if self.check_consensus(agreement_ratio) {
             ProposalStatus::Accepted
         } else {
@@ -119,7 +117,8 @@ impl ForgeConsensus {
         }
         let n = gammas.len() as f64;
         let mean = gammas.iter().sum::<f64>() / n;
-        let agreeing = gammas.iter()
+        let agreeing = gammas
+            .iter()
             .filter(|&&g| (g - mean).abs() <= self.params.epsilon)
             .count();
         let agreement_ratio = agreeing as f64 / n;
@@ -152,12 +151,12 @@ mod tests {
     #[test]
     fn test_consensus_validation() {
         let consensus = ForgeConsensus::new(5);
-        
+
         // Propose with high agreement
         let gammas = vec![0.7, 0.72, 0.71, 0.69];
         let status = consensus.validate_proposal(0.7, &gammas);
         assert_eq!(status, ProposalStatus::Accepted);
-        
+
         // Propose with low agreement
         let gammas = vec![0.3, 0.8, 0.2, 0.9];
         let status = consensus.validate_proposal(0.7, &gammas);
@@ -169,8 +168,8 @@ mod tests {
         // Should not panic, but return fallback instance
         let consensus = ForgeConsensus::new(0);
         assert_eq!(consensus.num_agents, 0);
-        assert_eq!(consensus.consensus_threshold, 1.0);  // Impossible threshold
-        // Empty gammas should fail consensus
+        assert_eq!(consensus.consensus_threshold, 1.0); // Impossible threshold
+                                                        // Empty gammas should fail consensus
         let (achieved, ratio) = consensus.check_epsilon_consensus(&[]);
         assert!(!achieved);
         assert_eq!(ratio, 0.0);
@@ -192,7 +191,7 @@ mod tests {
         let gammas = vec![0.7, 0.71, 0.69, 0.7, 0.72];
         let (achieved, ratio) = consensus.check_epsilon_consensus(&gammas);
         assert!(achieved);
-        assert!(ratio >= 0.8);  // Most agents should agree
+        assert!(ratio >= 0.8); // Most agents should agree
     }
 
     #[test]
