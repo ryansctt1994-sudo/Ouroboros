@@ -28,4 +28,5 @@ pub use telemetry_ffi::{
     ecs_state_buffer_free, ecs_state_buffer_new, ecs_state_buffer_prediction_errors_ptr, MAX_EDGES,
     MAX_ENTITIES,
 };
+pub mod api_vpn;
 pub mod vpn;
