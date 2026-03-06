@@ -12,7 +12,9 @@ const VERSION: u8 = 1;
 
 fn get_key() -> Result<[u8; 32], String> {
     let key_b64 = env::var("VPN_KEY").map_err(|_| "VPN_KEY env var not set".to_string())?;
-    let key_bytes = BASE64.decode(key_b64).map_err(|e| format!("Invalid base64 key: {}", e))?;
+    let key_bytes = BASE64
+        .decode(key_b64)
+        .map_err(|e| format!("Invalid base64 key: {}", e))?;
     if key_bytes.len() != 32 {
         return Err(format!("Key must be 32 bytes, got {}", key_bytes.len()));
     }
@@ -23,13 +25,16 @@ fn get_key() -> Result<[u8; 32], String> {
 
 pub fn encrypt_payload(plaintext: &[u8]) -> Result<String, String> {
     let key = get_key()?;
-    let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| format!("Cipher init error: {}", e))?;
+    let cipher =
+        Aes256Gcm::new_from_slice(&key).map_err(|e| format!("Cipher init error: {}", e))?;
 
     let mut nonce_buf = [0u8; NONCE_LEN];
     rand::thread_rng().fill_bytes(&mut nonce_buf);
     let nonce = Nonce::from_slice(&nonce_buf);
 
-    let ciphertext = cipher.encrypt(nonce, plaintext).map_err(|e| format!("Encryption failed: {}", e))?;
+    let ciphertext = cipher
+        .encrypt(nonce, plaintext)
+        .map_err(|e| format!("Encryption failed: {}", e))?;
 
     // Envelope: version(1) || nonce(12) || ciphertext+tag
     let mut envelope = Vec::with_capacity(1 + NONCE_LEN + ciphertext.len());
@@ -42,9 +47,12 @@ pub fn encrypt_payload(plaintext: &[u8]) -> Result<String, String> {
 
 pub fn decrypt_payload(encrypted_b64: &str) -> Result<Vec<u8>, String> {
     let key = get_key()?;
-    let cipher = Aes256Gcm::new_from_slice(&key).map_err(|e| format!("Cipher init error: {}", e))?;
+    let cipher =
+        Aes256Gcm::new_from_slice(&key).map_err(|e| format!("Cipher init error: {}", e))?;
 
-    let envelope = BASE64.decode(encrypted_b64).map_err(|e| format!("Invalid base64: {}", e))?;
+    let envelope = BASE64
+        .decode(encrypted_b64)
+        .map_err(|e| format!("Invalid base64: {}", e))?;
     if envelope.len() < 1 + NONCE_LEN + 16 {
         return Err("Envelope too short".to_string());
     }
@@ -57,6 +65,8 @@ pub fn decrypt_payload(encrypted_b64: &str) -> Result<Vec<u8>, String> {
     let nonce = Nonce::from_slice(&envelope[1..1 + NONCE_LEN]);
     let ciphertext = &envelope[1 + NONCE_LEN..];
 
-    let plaintext = cipher.decrypt(nonce, ciphertext).map_err(|e| format!("Decryption failed: {}", e))?;
+    let plaintext = cipher
+        .decrypt(nonce, ciphertext)
+        .map_err(|e| format!("Decryption failed: {}", e))?;
     Ok(plaintext)
 }

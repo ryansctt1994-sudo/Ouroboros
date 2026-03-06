@@ -1,5 +1,5 @@
-use tracing::{info, error};
 use std::time::Duration;
+use tracing::{error, info};
 
 pub fn record_hop(endpoint: &str, hop_depth: usize, latency: Duration, status: u16) {
     info!(

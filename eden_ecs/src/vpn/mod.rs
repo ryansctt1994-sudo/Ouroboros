@@ -4,15 +4,18 @@
 //! - Burrow exits (endpoints) get sealed after cave‑ins: cooldown on failure.
 //! - Carry a map: refresh anchor list periodically and cache it.
 
-mod health;
-mod retry;
 mod crypto;
+mod health;
 mod observability;
+mod retry;
 
-pub use health::EndpointHealth;
-pub use retry::{RetryPolicy, attempt_with_retry};
-pub use crypto::{encrypt_payload, decrypt_payload};
-pub use observability::{record_hop, record_failure};
+pub use crypto::{decrypt_payload, encrypt_payload};
+pub use health::{EndpointHealth, DEFAULT_COOLDOWN_SECS, DEFAULT_MAX_HOP_DEPTH};
+pub use observability::{record_failure, record_hop};
+pub use retry::{
+    attempt_with_retry, RetryPolicy, DEFAULT_BASE_RETRY_MS, DEFAULT_MAX_RETRIES,
+    DEFAULT_RETRY_FACTOR,
+};
 
 #[cfg(test)]
 mod tests;

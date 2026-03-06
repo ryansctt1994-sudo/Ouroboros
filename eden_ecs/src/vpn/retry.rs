@@ -1,6 +1,10 @@
 use std::time::Duration;
 use tokio::time::sleep;
 
+pub const DEFAULT_BASE_RETRY_MS: u64 = 150;
+pub const DEFAULT_RETRY_FACTOR: f64 = 2.0;
+pub const DEFAULT_MAX_RETRIES: usize = 3;
+
 pub struct RetryPolicy {
     max_attempts: usize,
     base_delay: Duration,
@@ -14,6 +18,14 @@ impl RetryPolicy {
             base_delay: Duration::from_millis(base_delay_ms),
             factor,
         }
+    }
+
+    pub fn default_policy() -> Self {
+        Self::new(
+            DEFAULT_MAX_RETRIES,
+            DEFAULT_BASE_RETRY_MS,
+            DEFAULT_RETRY_FACTOR,
+        )
     }
 
     pub async fn retry<F, Fut, T, E>(&self, mut operation: F) -> Result<T, E>

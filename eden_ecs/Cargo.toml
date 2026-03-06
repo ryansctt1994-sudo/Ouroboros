@@ -16,14 +16,24 @@ crate-type = ["cdylib", "rlib"]
 tracy = ["dep:tracy-client"]
 
 [dependencies]
+aes-gcm = "0.10.3"
+base64 = "0.22.1"
 # IEEE 754 binary16 (f16) for GPU diffusion / Niagara zero-copy buffers.
 half = "2"
+rand = { version = "0.8", features = ["std"] }
+tokio = { version = "1.50.0", features = ["time", "macros", "rt-multi-thread"] }
+tracing = "0.1.44"
 # Tracy live profiler client (optional — only linked when the `tracy` feature
 # is enabled so that normal builds have no overhead).
 tracy-client = { version = "0.17", optional = true }
+zeroize = "1.8.2"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
+quickcheck = "1.1.0"
+quickcheck_macros = "1.2.0"
+reqwest = "0.11"
+wiremock = "0.6.5"
 
 [[bench]]
 name = "spatial_grid"

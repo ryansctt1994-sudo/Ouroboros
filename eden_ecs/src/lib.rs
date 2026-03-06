@@ -23,14 +23,9 @@ pub mod tracy;
 pub mod weaver;
 
 pub use telemetry_ffi::{
-    ecs_state_buffer_activations_ptr,
-    ecs_state_buffer_connectivity_weights_ptr,
-    ecs_state_buffer_entity_count,
-    ecs_state_buffer_edge_count,
-    ecs_state_buffer_flush,
-    ecs_state_buffer_free,
-    ecs_state_buffer_new,
-    ecs_state_buffer_prediction_errors_ptr,
-    MAX_EDGES,
+    ecs_state_buffer_activations_ptr, ecs_state_buffer_connectivity_weights_ptr,
+    ecs_state_buffer_edge_count, ecs_state_buffer_entity_count, ecs_state_buffer_flush,
+    ecs_state_buffer_free, ecs_state_buffer_new, ecs_state_buffer_prediction_errors_ptr, MAX_EDGES,
     MAX_ENTITIES,
 };
+pub mod vpn;
