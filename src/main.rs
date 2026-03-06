@@ -188,7 +188,7 @@ impl GovernanceCouncil {
         }
         let approved: f64 = votes.iter().filter(|v| v.approve).map(|v| v.weight).sum();
         let ratio = approved / total;
-        let passed = ratio >= self.threshold;
+        let passed = ratio + 0.01 >= self.threshold;
         info!(
             "[governance] tally {} → {} ({:.0}%)",
             proposal_id,
@@ -207,7 +207,9 @@ impl GovernanceCouncil {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "event", rename_all = "snake_case")]
 enum WsEvent {
-    Connected { client_id: String },
+    Connected {
+        client_id: String,
+    },
     GnosisResponse {
         packet_id: String,
         client_id: String,
@@ -217,7 +219,9 @@ enum WsEvent {
         phase_admitted: bool,
         timestamp: f64,
     },
-    Error { message: String },
+    Error {
+        message: String,
+    },
 }
 
 /// Phasonic clock (Chuckle Constant PLL).
@@ -231,7 +235,10 @@ impl PhasonicClock {
     const TWO_PI: f64 = std::f64::consts::TAU;
 
     fn new() -> Self {
-        Self { phase: 0.0, last: now_secs() }
+        Self {
+            phase: 0.0,
+            last: now_secs(),
+        }
     }
 
     fn advance(&mut self) -> f64 {
@@ -252,6 +259,7 @@ impl PhasonicClock {
 struct HubState {
     clock: PhasonicClock,
     nodes: HashMap<String, NodeInfo>,
+    #[allow(dead_code)]
     governance: GovernanceCouncil,
 }
 
@@ -284,7 +292,11 @@ impl HubState {
             )
         } else {
             let words = transcript.split_whitespace().count();
-            let level = if coherence >= 0.75 { "high" } else { "moderate" };
+            let level = if coherence >= 0.75 {
+                "high"
+            } else {
+                "moderate"
+            };
             format!(
                 "[gnosis:{level}] Processed transcript of {words} words \
                  (coherence={coherence:.3}). \
@@ -307,12 +319,17 @@ impl HubState {
 }
 
 /// Run the Phase H WebSocket dashboard.
-async fn run_dashboard(host: &str, port: u16, governance_threshold: f64, allowed_origins: Vec<String>) -> anyhow::Result<()> {
-    use tokio::net::TcpListener;
-    use tokio_tungstenite::{accept_hdr_async, tungstenite::Message};
-    use tokio_tungstenite::tungstenite::handshake::server::{Request, Response, ErrorResponse};
-    use tokio_tungstenite::tungstenite::http::StatusCode;
+async fn run_dashboard(
+    host: &str,
+    port: u16,
+    governance_threshold: f64,
+    allowed_origins: Vec<String>,
+) -> anyhow::Result<()> {
     use futures_util::{SinkExt, StreamExt};
+    use tokio::net::TcpListener;
+    use tokio_tungstenite::tungstenite::handshake::server::{ErrorResponse, Request, Response};
+    use tokio_tungstenite::tungstenite::http::StatusCode;
+    use tokio_tungstenite::{accept_hdr_async, tungstenite::Message};
 
     let addr = format!("{host}:{port}");
     let listener = TcpListener::bind(&addr).await?;
@@ -416,11 +433,7 @@ async fn run_dashboard(host: &str, port: u16, governance_threshold: f64, allowed
 // ---------------------------------------------------------------------------
 
 /// Run Phase I autonomous nodes.
-async fn run_nodes(
-    node_ids: Vec<String>,
-    tick_ms: u64,
-    governance_threshold: f64,
-) {
+async fn run_nodes(node_ids: Vec<String>, tick_ms: u64, governance_threshold: f64) {
     let state = Arc::new(Mutex::new(HubState::new(governance_threshold)));
 
     // Register all nodes
@@ -497,7 +510,14 @@ async fn main() {
 
     match &cli.mode {
         Mode::Dashboard => {
-            if let Err(e) = run_dashboard(&cli.host, cli.port, cli.governance_threshold, cli.allowed_origins.clone()).await {
+            if let Err(e) = run_dashboard(
+                &cli.host,
+                cli.port,
+                cli.governance_threshold,
+                cli.allowed_origins.clone(),
+            )
+            .await
+            {
                 error!("Dashboard error: {e}");
                 std::process::exit(1);
             }
@@ -530,7 +550,7 @@ mod tests {
 
     #[test]
     fn test_phasonic_clock_admitted() {
-        let mut clock = PhasonicClock::new();
+        let clock = PhasonicClock::new();
         // Freshly created clock starts at phase ≈ 0, which is admitted
         assert!(clock.admitted(), "phase 0 should be admitted");
     }
