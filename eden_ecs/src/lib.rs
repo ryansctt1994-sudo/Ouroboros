@@ -17,12 +17,12 @@
 //! |-------------------|----------------------------------------------------|
 //! | `tracy`           | Enable live Tracy profiling (zero overhead if off) |
 
+pub mod diagnostics;
 pub mod ffi_f16;
 pub mod spatial_grid;
 pub mod telemetry_ffi;
 pub mod tracy;
 pub mod weaver;
-pub mod diagnostics;
 
 pub use telemetry_ffi::{
     ecs_state_buffer_activations_ptr, ecs_state_buffer_connectivity_weights_ptr,

@@ -372,8 +372,7 @@ pub fn clustering_coefficient(
                     for &(k, w_ik) in &nbrs[a + 1..] {
                         let key = (j.min(k), j.max(k));
                         if let Some(&w_jk) = edge_map.get(&key) {
-                            let product =
-                                (w_ij / w_max) * (w_ik / w_max) * (w_jk / w_max);
+                            let product = (w_ij / w_max) * (w_ik / w_max) * (w_jk / w_max);
                             tri_sum += product.cbrt();
                         }
                     }
@@ -526,8 +525,14 @@ mod tests {
         let (mean, std, sparsity, gini) = weight_distribution_stats(&[0.5]);
         assert!((mean - 0.5).abs() < 1e-6, "mean should be 0.5, got {mean}");
         assert!(std < 1e-6, "std of a single value should be 0, got {std}");
-        assert!((sparsity - 0.0).abs() < 1e-6, "0.5 is not sparse, got {sparsity}");
-        assert!(gini < 1e-5, "gini of a single value should be 0, got {gini}");
+        assert!(
+            (sparsity - 0.0).abs() < 1e-6,
+            "0.5 is not sparse, got {sparsity}"
+        );
+        assert!(
+            gini < 1e-5,
+            "gini of a single value should be 0, got {gini}"
+        );
     }
 
     #[test]
@@ -536,7 +541,10 @@ mod tests {
         let (mean, std, sparsity, gini) = weight_distribution_stats(&weights);
         assert!((mean - 0.5).abs() < 1e-5, "mean should be 0.5, got {mean}");
         assert!(std < 1e-5, "std should be 0 for uniform, got {std}");
-        assert!((sparsity - 0.0).abs() < 1e-6, "no sparse weights, got {sparsity}");
+        assert!(
+            (sparsity - 0.0).abs() < 1e-6,
+            "no sparse weights, got {sparsity}"
+        );
         assert!(gini < 1e-5, "gini should be 0 for uniform, got {gini}");
     }
 
@@ -547,8 +555,14 @@ mod tests {
         assert!((mean - 0.0).abs() < 1e-6);
         assert!((std - 0.0).abs() < 1e-6);
         // All weights < 0.01 → sparsity = 1.0
-        assert!((sparsity - 1.0).abs() < 1e-6, "all zero → sparsity=1.0, got {sparsity}");
-        assert!((gini - 0.0).abs() < 1e-6, "zero total → gini=0.0, got {gini}");
+        assert!(
+            (sparsity - 1.0).abs() < 1e-6,
+            "all zero → sparsity=1.0, got {sparsity}"
+        );
+        assert!(
+            (gini - 0.0).abs() < 1e-6,
+            "zero total → gini=0.0, got {gini}"
+        );
     }
 
     #[test]
@@ -636,7 +650,7 @@ mod tests {
     fn test_eigenvalues_complete_graph_k3() {
         // Complete directed graph K₃ (all 6 directed edges, weight 1).
         // Adjacency matrix [[0,1,1],[1,0,1],[1,1,0]] has eigenvalues 2, -1, -1.
-        let edges = vec![(0,1),(0,2),(1,0),(1,2),(2,0),(2,1)];
+        let edges = vec![(0, 1), (0, 2), (1, 0), (1, 2), (2, 0), (2, 1)];
         let weights = vec![1.0_f32; 6];
         let evs = dominant_eigenvalues(3, &edges, &weights, 2, 50);
         assert_eq!(evs.len(), 2, "should return k=2 eigenvalues");
@@ -667,7 +681,7 @@ mod tests {
         // Symmetric undirected path 0--1--2--3 (both directed edges per pair).
         // For a non-negative symmetric matrix the dominant eigenvalue is positive
         // (Perron-Frobenius), and the all-ones init converges to it reliably.
-        let edges = vec![(0usize,1),(1,0),(1,2),(2,1),(2,3),(3,2)];
+        let edges = vec![(0usize, 1), (1, 0), (1, 2), (2, 1), (2, 3), (3, 2)];
         let weights = vec![0.5_f32, 0.5, 0.8, 0.8, 0.3, 0.3];
         let evs = dominant_eigenvalues(4, &edges, &weights, 1, 30);
         assert!(!evs.is_empty());
@@ -763,7 +777,10 @@ mod tests {
         let edges = vec![(0, 1), (1, 2), (2, 0), (0, 3), (3, 4)];
         let weights = vec![0.8_f32, 0.6, 0.9, 0.4, 0.5];
         let c = clustering_coefficient(5, &edges, &weights, ClusteringMethod::Onnela);
-        assert!((0.0..=1.0).contains(&c), "Onnela C must be in [0,1], got {c}");
+        assert!(
+            (0.0..=1.0).contains(&c),
+            "Onnela C must be in [0,1], got {c}"
+        );
     }
 
     #[test]
@@ -830,7 +847,10 @@ mod tests {
         let weights = vec![1.0_f32; 4];
         let communities = vec![0, 0, 1, 1];
         let q = modularity(4, &edges, &weights, &communities);
-        assert!(q > 0.3, "two perfect communities should give Q > 0.3, got {q}");
+        assert!(
+            q > 0.3,
+            "two perfect communities should give Q > 0.3, got {q}"
+        );
     }
 
     #[test]

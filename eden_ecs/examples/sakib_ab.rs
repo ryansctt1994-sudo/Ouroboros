@@ -48,8 +48,8 @@
 //! telemetry series clean.
 
 use eden_ecs::diagnostics::{
-    clustering_coefficient, ClusteringMethod, dominant_eigenvalues, modularity,
-    weight_distribution_stats,
+    clustering_coefficient, dominant_eigenvalues, modularity, weight_distribution_stats,
+    ClusteringMethod,
 };
 use eden_ecs::tracy::{
     flow_entropy, record_clustering_coefficient, record_dominant_eigenvalue, record_flow_entropy,
@@ -296,8 +296,12 @@ fn run_episode(
         if diagnostics && learning && tick > 0 && tick % 100 == 0 {
             let (_, _, sparsity, gini) = weight_distribution_stats(&weights);
             let evs = dominant_eigenvalues(graph.n_nodes, &graph.edges, &weights, 3, 20);
-            let clustering =
-                clustering_coefficient(graph.n_nodes, &graph.edges, &weights, ClusteringMethod::Onnela);
+            let clustering = clustering_coefficient(
+                graph.n_nodes,
+                &graph.edges,
+                &weights,
+                ClusteringMethod::Onnela,
+            );
             let q = modularity(graph.n_nodes, &graph.edges, &weights, communities);
 
             // Format eigenvalue list as "[0.85,0.42,0.21]".
