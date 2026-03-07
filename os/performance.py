@@ -166,6 +166,11 @@ class LRUCache:
     """
     Simple LRU (Least Recently Used) cache implementation.
     Thread-safe and optimized for AI inference caching.
+
+    Invariants (all operations O(1) via collections.OrderedDict):
+    - Access promotes the key to MRU via move_to_end().
+    - Insertion evicts the LRU entry via popitem(last=False).
+    - Updating an existing key promotes it rather than reinserting.
     """
     
     def __init__(self, max_size: int = 100):
