@@ -25,10 +25,46 @@ from dataclasses import dataclass, field
 
 import requests
 
+from performance import LRUCache
+
 logger = logging.getLogger("eden_ai")
 
-# Local Ollama config
-OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://host.lima.internal:11434")
+
+def resolve_ollama_host() -> str:
+    """Return the Ollama base URL to use.
+
+    Priority:
+    1. ``OLLAMA_HOST`` environment variable — used as-is, no probing.
+    2. ``http://host.lima.internal:11434`` — works inside a Lima VM.
+    3. ``http://localhost:11434`` — macOS directly / Linux / Docker.
+
+    Each candidate is probed with a 1-second timeout so startup is never
+    delayed by more than ~2 seconds when Ollama is absent.
+    """
+    if "OLLAMA_HOST" in os.environ:
+        return os.environ["OLLAMA_HOST"]
+
+    candidates = [
+        "http://host.lima.internal:11434",
+        "http://localhost:11434",
+    ]
+    for host in candidates:
+        try:
+            r = requests.get(f"{host}/api/tags", timeout=1)
+            if r.status_code == 200:
+                logger.info(f"Ollama reachable at {host}")
+                return host
+        except Exception:
+            pass
+
+    logger.warning(
+        "Ollama not reachable at any candidate host; defaulting to http://localhost:11434"
+    )
+    return "http://localhost:11434"
+
+
+# Resolved once at import time — no per-request overhead.
+OLLAMA_HOST = resolve_ollama_host()
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "deepseek-coder:6.7b")
 
 SYSTEM_PROMPT = (
@@ -130,8 +166,8 @@ class LLMRouter:
             return None
 
     def _call_ollama(self, messages: list, max_tokens: int,
-                     temperature: float) -> str:
-        """Call local Ollama as final fallback."""
+                     temperature: float) -> Optional[str]:
+        """Call local Ollama as final fallback. Returns None if unreachable."""
         parts = [f"System: {SYSTEM_PROMPT}"]
         for m in messages:
             role = m["role"].capitalize()
@@ -139,21 +175,26 @@ class LLMRouter:
         parts.append("Assistant:")
         full_prompt = "\n\n".join(parts)
 
-        r = requests.post(
-            f"{OLLAMA_HOST}/api/generate",
-            json={
-                "model": OLLAMA_MODEL,
-                "prompt": full_prompt,
-                "stream": False,
-                "options": {
-                    "temperature": temperature,
-                    "num_predict": max_tokens,
-                    "stop": ["User:", "System:"]
-                }
-            },
-            timeout=300  # local can be slow
-        )
-        r.raise_for_status()
+        try:
+            r = requests.post(
+                f"{OLLAMA_HOST}/api/generate",
+                json={
+                    "model": OLLAMA_MODEL,
+                    "prompt": full_prompt,
+                    "stream": False,
+                    "options": {
+                        "temperature": temperature,
+                        "num_predict": max_tokens,
+                        "stop": ["User:", "System:"]
+                    }
+                },
+                timeout=300  # local can be slow
+            )
+            r.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Ollama request failed: {e}")
+            return None
+
         self.last_provider = f"Ollama ({OLLAMA_MODEL})"
         return r.json().get("response", "").strip()
 
@@ -179,9 +220,9 @@ class EdenAI:
         self.model_loaded = False
         self.vectors_data = None
         self.model_path = model_path
-        self._cache = {}
         self._cache_enabled = cache_size > 0
         self._max_cache = cache_size
+        self._cache = LRUCache(max_size=cache_size) if cache_size > 0 else None
         self.router = LLMRouter()
 
         # Test Ollama connection
@@ -266,8 +307,9 @@ class EdenAI:
         # Check cache
         if self._cache_enabled:
             cache_key = self._generate_cache_key(messages, temperature, max_tokens)
-            if cache_key in self._cache:
-                return self._cache[cache_key]
+            cached = self._cache.get(cache_key)
+            if cached is not None:
+                return cached
 
         # Build context from last user message and prepend if available
         last_user_msg = next(
@@ -283,12 +325,12 @@ class EdenAI:
         # Route through providers with full conversation
         text = self.router.query(enriched, max_tokens, temperature)
 
+        if text is None:
+            raise RuntimeError("All LLM providers failed")
+
         # Cache
         if self._cache_enabled:
-            if len(self._cache) >= self._max_cache:
-                oldest = next(iter(self._cache))
-                del self._cache[oldest]
-            self._cache[cache_key] = text
+            self._cache.put(cache_key, text)
 
         return text
 
@@ -304,6 +346,7 @@ class EdenAI:
         return hashlib.sha256(key_data.encode()).hexdigest()
 
     def get_status(self) -> Dict[str, Any]:
+        cache_size = self._cache.get_stats()['size'] if self._cache_enabled else 0
         return {
             "backend": "multi-provider-router",
             "ollama_host": OLLAMA_HOST,
@@ -313,7 +356,7 @@ class EdenAI:
             "model_loaded": self.model_loaded,
             "vectors_loaded": self.vectors_data is not None,
             "vector_count": len(self.vectors_data.get('vectors', [])) if self.vectors_data else 0,
-            "cache_size": len(self._cache) if self._cache_enabled else 0
+            "cache_size": cache_size
         }
 
     def get_performance_report(self) -> str:
