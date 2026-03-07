@@ -143,6 +143,30 @@ pub fn record_flow_entropy(h: f32) {
     plot_f64("flow_entropy", h as f64);
 }
 
+/// Emit the mean weighted clustering coefficient to `"clustering_coefficient"`.
+#[inline(always)]
+pub fn record_clustering_coefficient(c: f32) {
+    plot_f64("clustering_coefficient", c as f64);
+}
+
+/// Emit Newman's modularity Q to `"modularity"`.
+#[inline(always)]
+pub fn record_modularity(q: f32) {
+    plot_f64("modularity", q as f64);
+}
+
+/// Emit the weight Gini coefficient to `"weight_gini"`.
+#[inline(always)]
+pub fn record_weight_gini(g: f32) {
+    plot_f64("weight_gini", g as f64);
+}
+
+/// Emit the dominant eigenvalue to `"dominant_eigenvalue"`.
+#[inline(always)]
+pub fn record_dominant_eigenvalue(e: f32) {
+    plot_f64("dominant_eigenvalue", e as f64);
+}
+
 // ── Flow Entropy computation ──────────────────────────────────────────────────
 
 /// Compute the **Shannon entropy** of the flow distribution.

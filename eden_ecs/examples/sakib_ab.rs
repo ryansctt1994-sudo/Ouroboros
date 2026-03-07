@@ -3,10 +3,22 @@
 //! # Usage
 //!
 //! ```sh
-//! cargo run -p eden_ecs --example sakib_ab --release -- [culture] [steps] [flow_gain] [noise]
+//! cargo run -p eden_ecs --example sakib_ab --release -- [options]
 //! ```
 //!
-//! Defaults: `culture=baseline  steps=6  flow_gain=2.0  noise=0.0`
+//! Named options (preferred):
+//! ```text
+//! --culture   <name>    baseline|hebbium|engramum|engramum_competitive  [default: baseline]
+//! --steps     <n>       message-passing steps per tick                  [default: 6]
+//! --gain      <f>       flow gain multiplier                            [default: 2.0]
+//! --noise     <f>       Box-Muller noise sigma                          [default: 0.0]
+//! --diagnostics         emit graph diagnostics to stderr every 100 ticks
+//! ```
+//!
+//! Positional args (legacy, evaluated only when named flag is absent):
+//! ```text
+//! [culture] [steps] [flow_gain] [noise]
+//! ```
 //!
 //! # Output
 //!
@@ -15,8 +27,9 @@
 //! tick,sakib_learning,sakib_frozen,culture
 //! ```
 //!
-//! Diagnostics (param summary, flow/weight percentiles, regime hint) go to **stderr**
-//! so they never contaminate the CSV.
+//! Diagnostics (param summary, flow/weight percentiles, regime hint, and when
+//! `--diagnostics` is set: eigenvalues, clustering, modularity, gini, sparsity)
+//! go to **stderr** so they never contaminate the CSV.
 //!
 //! # Graph
 //!
@@ -34,7 +47,14 @@
 //! `record_sakib_index` is called only for the learning run to keep Tracy
 //! telemetry series clean.
 
-use eden_ecs::tracy::{flow_entropy, record_flow_entropy, record_sakib_index, sakib_index};
+use eden_ecs::diagnostics::{
+    clustering_coefficient, dominant_eigenvalues, modularity, weight_distribution_stats,
+    ClusteringMethod,
+};
+use eden_ecs::tracy::{
+    flow_entropy, record_clustering_coefficient, record_dominant_eigenvalue, record_flow_entropy,
+    record_modularity, record_sakib_index, record_weight_gini, sakib_index,
+};
 use eden_ecs::weaver::{culture_policy, PolicyContext, WeaverSandbox};
 
 // ── Deterministic LCG ────────────────────────────────────────────────────────
@@ -243,6 +263,10 @@ fn run_episode(
     noise_sigma: f32,
     // Ticks at which to log flow percentiles to stderr.
     diag_ticks: &[u32],
+    // When true, emit graph-structure diagnostics every 100 ticks (learning only).
+    diagnostics: bool,
+    // Community assignment for modularity: communities[node] = node % 4.
+    communities: &[usize],
 ) -> Episode {
     let tag = if learning { "learning" } else { "frozen  " };
     let mut weights = initial_weights.to_vec();
@@ -266,6 +290,38 @@ fn run_episode(
             eprintln!(
                 "[{tag}:{culture} tick={tick:4}] flows  p50={fp50:.3} p90={fp90:.3} p99={fp99:.3}  H={h:.3}"
             );
+        }
+
+        // Graph-structure diagnostics every 100 ticks (learning run only).
+        if diagnostics && learning && tick > 0 && tick % 100 == 0 {
+            let (_, _, sparsity, gini) = weight_distribution_stats(&weights);
+            let evs = dominant_eigenvalues(graph.n_nodes, &graph.edges, &weights, 3, 20);
+            let clustering = clustering_coefficient(
+                graph.n_nodes,
+                &graph.edges,
+                &weights,
+                ClusteringMethod::Onnela,
+            );
+            let q = modularity(graph.n_nodes, &graph.edges, &weights, communities);
+
+            // Format eigenvalue list as "[0.85,0.42,0.21]".
+            let ev_str = evs
+                .iter()
+                .map(|e| format!("{e:.2}"))
+                .collect::<Vec<_>>()
+                .join(",");
+            eprintln!(
+                "[diag tick={tick}] eigenvalues=[{ev_str}] clustering={clustering:.2} \
+                 modularity={q:.2} gini={gini:.2} sparsity={sparsity:.2}"
+            );
+
+            // Tracy telemetry for the live profiler.
+            if let Some(&e1) = evs.first() {
+                record_dominant_eigenvalue(e1);
+            }
+            record_clustering_coefficient(clustering);
+            record_modularity(q);
+            record_weight_gini(gini);
         }
 
         let s = sakib_index(&weights, &flows, flow_threshold);
@@ -301,10 +357,51 @@ fn run_episode(
 fn main() {
     // ── CLI args ──────────────────────────────────────────────────────────────
     let args: Vec<String> = std::env::args().collect();
-    let culture = args.get(1).map(String::as_str).unwrap_or("baseline");
-    let steps: usize = args.get(2).and_then(|s| s.parse().ok()).unwrap_or(6);
-    let flow_gain: f32 = args.get(3).and_then(|s| s.parse().ok()).unwrap_or(2.0);
-    let noise_sigma: f32 = args.get(4).and_then(|s| s.parse().ok()).unwrap_or(0.0);
+
+    // Named-arg helper: returns the value after --flag if present.
+    let named = |flag: &str| -> Option<&str> {
+        args.windows(2)
+            .find(|w| w[0] == flag)
+            .map(|w| w[1].as_str())
+    };
+
+    // Boolean flag: present anywhere in args.
+    let has_flag = |flag: &str| args.iter().any(|a| a == flag);
+
+    let diagnostics = has_flag("--diagnostics");
+
+    // Support --name value (named) with positional fallback for backward compat.
+    let culture = named("--culture")
+        .or_else(|| {
+            args.get(1)
+                .filter(|a| !a.starts_with("--"))
+                .map(String::as_str)
+        })
+        .unwrap_or("baseline");
+    let steps: usize = named("--steps")
+        .and_then(|s| s.parse().ok())
+        .or_else(|| {
+            args.get(2)
+                .filter(|a| !a.starts_with("--"))
+                .and_then(|s| s.parse().ok())
+        })
+        .unwrap_or(6);
+    let flow_gain: f32 = named("--gain")
+        .and_then(|s| s.parse().ok())
+        .or_else(|| {
+            args.get(3)
+                .filter(|a| !a.starts_with("--"))
+                .and_then(|s| s.parse().ok())
+        })
+        .unwrap_or(2.0);
+    let noise_sigma: f32 = named("--noise")
+        .and_then(|s| s.parse().ok())
+        .or_else(|| {
+            args.get(4)
+                .filter(|a| !a.starts_with("--"))
+                .and_then(|s| s.parse().ok())
+        })
+        .unwrap_or(0.0);
 
     eprintln!(
         "sakib_ab: culture={culture}  steps={steps}  flow_gain={flow_gain:.2}  noise={noise_sigma:.3}"
@@ -329,6 +426,10 @@ fn main() {
         .map(|_| 0.2 + lcg.next_f32() * 0.6)
         .collect();
 
+    // Community assignment for modularity diagnostics: node_id % 4.
+    // Four communities of ~2 500 nodes each on the 10 000-node graph.
+    let communities: Vec<usize> = (0..N_NODES).map(|i| i % 4).collect();
+
     // Ticks at which to log flow percentiles (early and late).
     let diag_ticks = [100u32, N_TICKS - 100];
 
@@ -345,6 +446,8 @@ fn main() {
         flow_gain,
         noise_sigma,
         &diag_ticks,
+        diagnostics,
+        &communities,
     );
 
     let frozen = run_episode(
@@ -359,6 +462,8 @@ fn main() {
         flow_gain,
         noise_sigma,
         &diag_ticks,
+        diagnostics,
+        &communities,
     );
 
     // ── Final NaN/Inf guard (release builds) ──────────────────────────────────
