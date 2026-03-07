@@ -180,7 +180,42 @@ class EdenDaemon:
             logger.error(f"Failed to initialize patch manager: {e}")
             self.patch_mgr = None
         self.chat_history = []
-    
+        self._restore_chat()
+
+    # ── Chat persistence ──────────────────────────────────────────────────────
+
+    @staticmethod
+    def _chat_history_path() -> Path:
+        """Return platform-appropriate path for the chat history file."""
+        if sys.platform == "darwin":
+            base = Path.home() / "Library" / "Application Support" / "eden"
+        else:
+            base = Path.home() / ".local" / "share" / "eden"
+        return base / "chat_history.json"
+
+    def _persist_chat(self) -> None:
+        """Flush the last 50 chat messages to disk."""
+        try:
+            path = self._chat_history_path()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(self.chat_history[-50:], f, indent=2)
+        except Exception as e:
+            logger.warning(f"Could not persist chat history: {e}")
+
+    def _restore_chat(self) -> None:
+        """Load persisted chat history from disk on startup."""
+        try:
+            path = self._chat_history_path()
+            if path.exists():
+                with open(path, encoding="utf-8") as f:
+                    loaded = json.load(f)
+                if isinstance(loaded, list):
+                    self.chat_history = loaded[-50:]
+                    logger.info(f"Restored {len(self.chat_history)} chat messages from {path}")
+        except Exception as e:
+            logger.warning(f"Could not restore chat history: {e}")
+
     def _init_world(self):
         """Initialize the ECS world."""
         if EDEN_ECS_AVAILABLE:
@@ -537,6 +572,9 @@ class EdenDaemon:
 
             # Add assistant response to history
             self.chat_history.append({"role": "assistant", "content": response_text})
+
+            # Persist to disk after every exchange
+            self._persist_chat()
 
             return {"response": response_text}
 
