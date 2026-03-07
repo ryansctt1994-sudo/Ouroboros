@@ -14,7 +14,7 @@ import functools
 import logging
 import time
 from typing import Callable, Any, Dict, Optional
-from collections import defaultdict, deque
+from collections import defaultdict, OrderedDict
 from threading import Lock
 
 logger = logging.getLogger("eden_performance")
@@ -176,8 +176,7 @@ class LRUCache:
             max_size: Maximum number of items to cache
         """
         self.max_size = max_size
-        self._cache = {}
-        self._access_order = deque()  # Using deque for O(1) popleft
+        self._cache = OrderedDict()
         self._lock = Lock()
         self._hits = 0
         self._misses = 0
@@ -185,13 +184,12 @@ class LRUCache:
     def get(self, key: str) -> Optional[Any]:
         """Get value from cache."""
         with self._lock:
-            if key in self._cache:
-                # Move to end (most recently used)
-                self._access_order.remove(key)
-                self._access_order.append(key)
+            try:
+                value = self._cache[key]
+                self._cache.move_to_end(key)  # mark as most recently used — O(1)
                 self._hits += 1
-                return self._cache[key]
-            else:
+                return value
+            except KeyError:
                 self._misses += 1
                 return None
     
@@ -199,21 +197,18 @@ class LRUCache:
         """Put value in cache."""
         with self._lock:
             if key in self._cache:
-                # Update existing
-                self._access_order.remove(key)
+                # Update existing and mark as most recently used — O(1)
+                self._cache.move_to_end(key)
             elif len(self._cache) >= self.max_size:
-                # Evict least recently used - O(1) operation
-                lru_key = self._access_order.popleft()
-                del self._cache[lru_key]
+                # Evict least recently used — O(1)
+                self._cache.popitem(last=False)
             
             self._cache[key] = value
-            self._access_order.append(key)
     
     def clear(self):
         """Clear the cache."""
         with self._lock:
             self._cache.clear()
-            self._access_order.clear()
             self._hits = 0
             self._misses = 0
     
