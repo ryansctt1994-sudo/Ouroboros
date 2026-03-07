@@ -9,6 +9,7 @@
 //! | [`weaver`]        | Fungal routing policy sandbox                         |
 //! | [`ffi_f16`]       | Half-precision `f16` buffers for GPU diffusion / UE5  |
 //! | [`tracy`]         | Tracy profiling macros and Sakib Index metric         |
+//! | [`diagnostics`]   | Graph-structure diagnostics (eigenvalues, clustering, modularity, Gini) |
 //!
 //! # Feature flags
 //!
@@ -21,6 +22,7 @@ pub mod spatial_grid;
 pub mod telemetry_ffi;
 pub mod tracy;
 pub mod weaver;
+pub mod diagnostics;
 
 pub use telemetry_ffi::{
     ecs_state_buffer_activations_ptr, ecs_state_buffer_connectivity_weights_ptr,
