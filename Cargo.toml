@@ -3,9 +3,9 @@ name = "ouroboros-cathedral"
 version = "0.1.0"
 authors = ["AIOSPANDORA Development Team"]
 edition = "2021"
-description = "ABRAXIS / Cathedral-OS entry point for AIOSPANDORA/Ouroboros"
+description = "ABRAXIS / Cathedral-OS entry point for ryansctt1994-sudo/Ouroboros"
 license = "MIT"
-repository = "https://github.com/AIOSPANDORA/Ouroboros"
+repository = "https://github.com/ryansctt1994-sudo/Ouroboros"
 readme = "README.md"
 
 [[bin]]
