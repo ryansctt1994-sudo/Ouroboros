@@ -1,0 +1,70 @@
+{
+  "policy_id": "symcrucible-policy-v0.2",
+  "title": "SymCrucible Ordered Transition Gate Policy",
+  "semantics": "ordered-first-match-wins",
+  "checkpoints": [
+    "interaction_classifier",
+    "council_review",
+    "engine_analysis",
+    "sentinel_authority",
+    "sentinel_evidence",
+    "sentinel_reversibility",
+    "sentinel_target",
+    "transition_gate",
+    "chronicle_seal"
+  ],
+  "verdicts": {
+    "APPROVE": "Permit safe answer or low-risk reversible action.",
+    "PAUSE": "Withhold action and support reflection or de-escalation.",
+    "ESCALATE": "Require human review before execution.",
+    "REJECT": "Block unsafe, destructive, or impermissible transition.",
+    "REVISE": "Request missing information or safer target before proceeding."
+  },
+  "rules": [
+    {
+      "id": "R1_PAUSE_VENTING",
+      "when": { "intent": "venting" },
+      "verdict": "PAUSE",
+      "reason": "The proposal is affective support, not an executable transition."
+    },
+    {
+      "id": "R2_REJECT_DESTRUCTIVE_CRITICAL",
+      "when": { "risk": "critical" },
+      "verdict": "REJECT",
+      "reason": "Critical destructive transitions are blocked in demo policy."
+    },
+    {
+      "id": "R3_REVISE_UNVERIFIED_TARGET",
+      "when": { "target_verified": false },
+      "verdict": "REVISE",
+      "reason": "The target is not verified, so the transition cannot be admitted."
+    },
+    {
+      "id": "R4_ESCALATE_HIGH_RISK_OR_MONEY",
+      "when_any": [
+        { "risk": "high" },
+        { "action_type": "money_movement" }
+      ],
+      "verdict": "ESCALATE",
+      "reason": "High-risk or money-moving transitions require human authority."
+    },
+    {
+      "id": "R5_APPROVE_NO_ACTION",
+      "when": { "action_type": "none" },
+      "verdict": "APPROVE",
+      "reason": "Safe answer generation does not execute external side effects."
+    },
+    {
+      "id": "R6_APPROVE_REVERSIBLE_EXTERNAL_ACTION",
+      "when": { "reversible": true, "target_verified": true },
+      "verdict": "APPROVE",
+      "reason": "The external action is reversible, target-verified, and evidence-backed."
+    },
+    {
+      "id": "R7_DEFAULT_ESCALATE",
+      "when": {},
+      "verdict": "ESCALATE",
+      "reason": "No policy rule safely admitted the transition."
+    }
+  ]
+}
