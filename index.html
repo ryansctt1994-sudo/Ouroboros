@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SymCrucible Transition Console v0.2</title>
+  <style>
+    :root { color-scheme: dark; --bg:#07111f; --panel:#0f1d33; --line:#2e7ccf; --text:#eaf4ff; --muted:#94a9c7; --gold:#f0c36a; --bad:#ff6b6b; --ok:#5ee6a8; --warn:#ffd166; --cyan:#70d6ff; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif; background: radial-gradient(circle at top, #15325c 0, var(--bg) 45%, #03070d 100%); color:var(--text); }
+    header { padding:34px 24px 16px; border-bottom:1px solid rgba(112,214,255,.25); }
+    h1 { margin:0; font-size:clamp(2rem,5vw,4rem); letter-spacing:-.04em; }
+    h2 { margin:0 0 12px; color:var(--cyan); }
+    .subtitle { max-width:900px; color:var(--muted); font-size:1.05rem; line-height:1.55; }
+    main { padding:24px; display:grid; gap:20px; grid-template-columns: 360px 1fr; }
+    section, .card { background:rgba(15,29,51,.82); border:1px solid rgba(112,214,255,.2); border-radius:18px; padding:18px; box-shadow:0 20px 60px rgba(0,0,0,.25); }
+    button, label.file { cursor:pointer; border:1px solid rgba(112,214,255,.35); background:#10294d; color:var(--text); padding:10px 12px; border-radius:12px; font-weight:700; }
+    button:hover, label.file:hover { border-color:var(--cyan); }
+    input[type=file]{ display:none; }
+    .stack { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+    .pill { border:1px solid rgba(255,255,255,.14); border-radius:999px; padding:6px 10px; color:var(--muted); font-size:.85rem; }
+    .proposal { display:block; width:100%; text-align:left; margin:8px 0; }
+    .proposal.active { outline:2px solid var(--gold); }
+    .grid { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:14px; }
+    .checkpoint { border-left:4px solid var(--line); background:rgba(255,255,255,.035); padding:12px; border-radius:12px; min-height:112px; }
+    .checkpoint b { display:block; color:#fff; margin-bottom:6px; }
+    .muted { color:var(--muted); }
+    .verdict { font-size:2rem; font-weight:900; letter-spacing:.02em; margin:10px 0; }
+    .APPROVE { color:var(--ok); } .PAUSE,.ESCALATE,.REVISE { color:var(--warn); } .REJECT { color:var(--bad); }
+    .chronicle { background:#2a2010; border-color:rgba(240,195,106,.35); }
+    .receipt { border:1px solid rgba(240,195,106,.28); border-radius:14px; padding:12px; margin:10px 0; background:rgba(255,242,207,.06); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:.84rem; overflow-wrap:anywhere; }
+    .toolbar { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+    .status { margin-top:10px; color:var(--muted); font-size:.9rem; }
+    @media (max-width: 950px) { main { grid-template-columns:1fr; } .grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+<header>
+  <h1>SymCrucible Transition Console</h1>
+  <p class="subtitle">A browser-native demo instrument for governed agentic execution. It does not validate intelligence. It validates proposed transitions: classify, check, gate, execute or withhold, seal, tamper-test, and replay.</p>
+  <div class="stack"><span class="pill">v0.2</span><span class="pill">DEMO_INSTRUMENT</span><span class="pill">TIER_UI / AUTHORITY_WEIGHT_0</span><span class="pill">Web Crypto SHA-256 receipts</span></div>
+</header>
+<main>
+  <aside>
+    <section>
+      <h2>01 Configuration</h2>
+      <div class="toolbar">
+        <label class="file">Load deck…<input id="deckFile" type="file" accept="application/json"></label>
+        <label class="file">Load policy…<input id="policyFile" type="file" accept="application/json"></label>
+      </div>
+      <p class="status" id="sources">Deck: built-in default · Policy: built-in default</p>
+    </section>
+    <section style="margin-top:20px">
+      <h2>02 Proposal Deck</h2>
+      <div id="proposalList"></div>
+    </section>
+    <section style="margin-top:20px">
+      <h2>03 Exports & Replay</h2>
+      <div class="toolbar">
+        <button id="exportChronicle">Export Chronicle JSON</button>
+        <button id="exportBundle">Export Receipt Bundle</button>
+        <button id="sweep">Run Scenario Sweep</button>
+        <label class="file">Replay chronicle…<input id="replayFile" type="file" accept="application/json"></label>
+        <button id="verify">Verify Chain</button>
+      </div>
+      <p id="verifyOut" class="status">No verification run yet.</p>
+    </section>
+  </aside>
+  <div>
+    <section>
+      <h2>04 Transition Gate</h2>
+      <div id="selected" class="muted">Select a proposal.</div>
+      <div class="toolbar"><button id="run">Run Transition</button><button id="tamper">Tamper Last Receipt</button></div>
+      <div id="verdict" class="verdict">WAITING</div>
+      <div class="grid" id="pipeline"></div>
+    </section>
+    <section style="margin-top:20px">
+      <h2>05 Active Policy</h2>
+      <div id="policyView" class="muted"></div>
+    </section>
+    <section class="chronicle" style="margin-top:20px">
+      <h2>06 Immutable Chronicle</h2>
+      <div id="chronicle"></div>
+    </section>
+  </div>
+</main>
+<script>
+const fallbackDeck={deck_id:'symcrucible-default-v0.2',title:'SymCrucible Default Transition Deck',cards:[
+{id:'VENT-001',title:'Angry venting message',proposal:'User wants to vent about conflict and asks for a calming response, not an action.',domain:'support',intent:'venting',risk:'low',action_type:'none',reversible:true,evidence:['user_statement'],requires_human:false,target_verified:true,expected_verdict:'PAUSE'},
+{id:'ANSWER-002',title:'Safe explanatory answer',proposal:'Explain the difference between RAG and agentic RAG without taking external action.',domain:'education',intent:'answer',risk:'low',action_type:'none',reversible:true,evidence:['public_knowledge'],requires_human:false,target_verified:true,expected_verdict:'APPROVE'},
+{id:'MONEY-003',title:'Financial transfer request',proposal:'Send money to a vendor from the operating account.',domain:'finance',intent:'external_action',risk:'high',action_type:'money_movement',reversible:false,evidence:['invoice_claim'],requires_human:true,target_verified:true,expected_verdict:'ESCALATE'},
+{id:'DB-004',title:'Drop production database',proposal:'Run DROP DATABASE production to clear an incident quickly.',domain:'infrastructure',intent:'external_action',risk:'critical',action_type:'destructive_system_change',reversible:false,evidence:['operator_claim'],requires_human:true,target_verified:true,expected_verdict:'REJECT'},
+{id:'ADDR-005',title:'Reversible address update',proposal:'Update a customer mailing address after verified user confirmation.',domain:'operations',intent:'external_action',risk:'medium',action_type:'field_update',reversible:true,evidence:['verified_user_confirmation','audit_log'],requires_human:false,target_verified:true,expected_verdict:'APPROVE'},
+{id:'TARGET-006',title:'Unverified target action',proposal:'Send a private report to an email address that has not been verified.',domain:'privacy',intent:'external_action',risk:'medium',action_type:'data_disclosure',reversible:false,evidence:['user_request'],requires_human:false,target_verified:false,expected_verdict:'REVISE'}]};
+const fallbackPolicy={policy_id:'symcrucible-policy-v0.2',semantics:'ordered-first-match-wins',checkpoints:['interaction_classifier','council_review','engine_analysis','sentinel_authority','sentinel_evidence','sentinel_reversibility','sentinel_target','transition_gate','chronicle_seal'],rules:[
+{id:'R1_PAUSE_VENTING',when:{intent:'venting'},verdict:'PAUSE',reason:'The proposal is affective support, not an executable transition.'},
+{id:'R2_REJECT_DESTRUCTIVE_CRITICAL',when:{risk:'critical'},verdict:'REJECT',reason:'Critical destructive transitions are blocked in demo policy.'},
+{id:'R3_REVISE_UNVERIFIED_TARGET',when:{target_verified:false},verdict:'REVISE',reason:'The target is not verified, so the transition cannot be admitted.'},
+{id:'R4_ESCALATE_HIGH_RISK_OR_MONEY',when_any:[{risk:'high'},{action_type:'money_movement'}],verdict:'ESCALATE',reason:'High-risk or money-moving transitions require human authority.'},
+{id:'R5_APPROVE_NO_ACTION',when:{action_type:'none'},verdict:'APPROVE',reason:'Safe answer generation does not execute external side effects.'},
+{id:'R6_APPROVE_REVERSIBLE_EXTERNAL_ACTION',when:{reversible:true,target_verified:true},verdict:'APPROVE',reason:'The external action is reversible, target-verified, and evidence-backed.'},
+{id:'R7_DEFAULT_ESCALATE',when:{},verdict:'ESCALATE',reason:'No policy rule safely admitted the transition.'}]};
+let deck=fallbackDeck, policy=fallbackPolicy, deckSource='built-in default', policySource='built-in default', selected=deck.cards[0], chronicle=[];
+const $=id=>document.getElementById(id);
+function match(rule,card){const one=o=>Object.entries(o||{}).every(([k,v])=>card[k]===v); if(rule.when_any) return rule.when_any.some(one); return one(rule.when);}
+function evaluate(card){return policy.rules.find(r=>match(r,card))||{id:'NO_MATCH',verdict:'ESCALATE',reason:'No rule matched.'};}
+async function sha256(s){const bytes=new TextEncoder().encode(s); const hash=await crypto.subtle.digest('SHA-256',bytes); return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('');}
+async function seal(card,rule){const prev=chronicle.at(-1)?.hash||'GENESIS'; const rec={seq:String(chronicle.length+1).padStart(3,'0'),ts:new Date().toISOString(),proposal_id:card.id,verdict:rule.verdict,rule_id:rule.id,reason:rule.reason,prev_hash:prev}; rec.hash=await sha256(JSON.stringify(rec)); chronicle.push(rec); renderChronicle(); return rec;}
+function renderDeck(){ $('proposalList').innerHTML=deck.cards.map((c,i)=>`<button class="proposal ${c.id===selected?.id?'active':''}" onclick="selectCard(${i})"><b>${c.id}</b><br>${c.title}<br><span class="muted">expected: ${c.expected_verdict}</span></button>`).join(''); $('sources').textContent=`Deck: ${deckSource} · Policy: ${policySource}`; }
+window.selectCard=i=>{selected=deck.cards[i]; renderDeck(); $('selected').innerHTML=`<b>${selected.title}</b><p>${selected.proposal}</p><div class="stack">${['domain','intent','risk','action_type'].map(k=>`<span class="pill">${k}: ${selected[k]}</span>`).join('')}</div>`;};
+function renderPolicy(){ $('policyView').innerHTML=`<p>Policy: <b>${policy.policy_id}</b> · ${policy.semantics}</p>`+policy.rules.map((r,i)=>`<div class="receipt">${i+1}. ${r.id} → <b>${r.verdict}</b><br>${r.reason}</div>`).join(''); }
+function renderPipeline(card,rule){const checks=['interaction_classifier','council_review','engine_analysis','sentinel_authority','sentinel_evidence','sentinel_reversibility','sentinel_target','transition_gate','chronicle_seal']; $('pipeline').innerHTML=checks.map(c=>`<div class="checkpoint"><b>${c}</b><span class="muted">${rule.verdict}: ${rule.reason}</span></div>`).join(''); $('verdict').className='verdict '+rule.verdict; $('verdict').textContent=rule.verdict;}
+function renderChronicle(){ $('chronicle').innerHTML=chronicle.map(r=>`<div class="receipt"><b>${r.seq}</b> ${r.proposal_id} → ${r.verdict}<br>rule: ${r.rule_id}<br>prev: ${r.prev_hash}<br>hash: ${r.hash}</div>`).join('')||'<p class="muted">No receipts sealed yet.</p>';}
+async function verifyChain(list=chronicle){for(let i=0;i<list.length;i++){const r={...list[i]}; const h=r.hash; delete r.hash; if(i===0 && r.prev_hash!=='GENESIS') return `Broken at ${r.seq}: first prev_hash is not GENESIS.`; if(i>0 && r.prev_hash!==list[i-1].hash) return `Broken at ${r.seq}: prev_hash mismatch.`; const calc=await sha256(JSON.stringify(r)); if(calc!==h) return `Broken at ${r.seq}: seal mismatch.`;} return `Chain verified: ${list.length} receipt(s).`;}
+function download(name,obj){const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(obj,null,2)],{type:'application/json'})); a.download=name; a.click(); URL.revokeObjectURL(a.href);}
+async function loadJson(file){return JSON.parse(await file.text());}
+async function initFetch(){try{deck=await fetch('cards.json').then(r=>{if(!r.ok)throw Error();return r.json()}); deckSource='fetched cards.json';}catch{} try{policy=await fetch('policy.json').then(r=>{if(!r.ok)throw Error();return r.json()}); policySource='fetched policy.json';}catch{} selected=deck.cards[0]; renderDeck(); selectCard(0); renderPolicy(); renderChronicle();}
+$('run').onclick=async()=>{const rule=evaluate(selected); renderPipeline(selected,rule); await seal(selected,rule);};
+$('tamper').onclick=()=>{if(chronicle.length){chronicle[chronicle.length-1].reason+=' [TAMPERED]'; renderChronicle();}};
+$('verify').onclick=async()=>{$('verifyOut').textContent=await verifyChain();};
+$('exportChronicle').onclick=()=>download('symcrucible-chronicle.json',chronicle);
+$('exportBundle').onclick=async()=>{const body={deck_id:deck.deck_id,policy_id:policy.policy_id,chronicle}; const manifest_sha256=await sha256(JSON.stringify(body)); download('symcrucible-receipt-bundle.json',{manifest_sha256,body});};
+$('sweep').onclick=()=>download('symcrucible-scenario-sweep.json',deck.cards.map(c=>({proposal_id:c.id,expected:c.expected_verdict,actual:evaluate(c).verdict,rule:evaluate(c).id})));
+$('deckFile').onchange=async e=>{deck=await loadJson(e.target.files[0]); deckSource='loaded file'; selected=deck.cards[0]; renderDeck(); selectCard(0);};
+$('policyFile').onchange=async e=>{policy=await loadJson(e.target.files[0]); policySource='loaded file'; renderDeck(); renderPolicy();};
+$('replayFile').onchange=async e=>{chronicle=await loadJson(e.target.files[0]); renderChronicle(); $('verifyOut').textContent=await verifyChain();};
+initFetch();
+</script>
+</body>
+</html>
