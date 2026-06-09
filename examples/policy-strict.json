@@ -1,0 +1,13 @@
+{
+  "policy_id": "symcrucible-policy-strict-v0.2",
+  "title": "Strict SymCrucible Policy",
+  "semantics": "ordered-first-match-wins",
+  "notes": "Diffability example: reversible external actions escalate instead of auto-approving.",
+  "rules": [
+    { "id": "S1_PAUSE_VENTING", "when": { "intent": "venting" }, "verdict": "PAUSE", "reason": "Supportive venting remains non-executable." },
+    { "id": "S2_REJECT_CRITICAL", "when": { "risk": "critical" }, "verdict": "REJECT", "reason": "Critical destructive transitions are blocked." },
+    { "id": "S3_REVISE_UNVERIFIED_TARGET", "when": { "target_verified": false }, "verdict": "REVISE", "reason": "Target verification is required before disclosure or action." },
+    { "id": "S4_APPROVE_NO_ACTION", "when": { "action_type": "none" }, "verdict": "APPROVE", "reason": "Safe answer generation has no external side effects." },
+    { "id": "S5_DEFAULT_ESCALATE", "when": {}, "verdict": "ESCALATE", "reason": "Strict policy escalates all external actions unless separately authorized." }
+  ]
+}
