@@ -1,0 +1,19 @@
+# SYMCRUCIBLE_TRANSITION_CONSOLE_v0.2 replication manifest
+#
+# Upstream anchor for the externally archived v0.2 artifact:
+UPSTREAM_COMMIT 88a8ce0b3346b7422ef417f024db5f45ccae9f5c
+#
+# The lines below bind the v0.2 artifact files to their Git blob object IDs at the
+# upstream commit. run.sh verifies these anchors with:
+#   git rev-parse "$UPSTREAM_COMMIT:<path>"
+#
+# During replication, run.sh also emits an observed SHA-256 manifest for the local
+# checkout as REPLICATION_OBSERVED.sha256. That observed file is what a second
+# party should attach to a signed replication receipt.
+#
+GIT_BLOB bd81446cad2a7bc2598ba054071d862e34d668a8  index.html
+GIT_BLOB b74d8e64de674241efa12e2ff195ac70430433ee  cards.json
+GIT_BLOB cc020f20704b1b548bfc91788d581f95fdbf7b7b  policy.json
+GIT_BLOB 76b7687cedb52d997880d8d85a37af6ab88ed5f9  examples/policy-strict.json
+GIT_BLOB 20d50a9236fd9a58aaebe5e20cb787220b59226f  examples/medguide-triage-deck.json
+GIT_BLOB 23c9e0986057dde4dff95a0b2d16741733ae60d2  examples/devops-incident-deck.json
