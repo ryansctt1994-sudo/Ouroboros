@@ -21,6 +21,7 @@ from .registry import (
     VerifiedRegistrySnapshot,
     load_verified_registry_snapshot,
 )
+from .root_trust import RootTrustConfigurationError, load_root_trust_anchors
 
 
 EXIT_CODES: dict[KernelPanicCode, int] = {
@@ -160,7 +161,7 @@ def initialize_environment_minimal(
     """Minimal Phase 1E boot gate.
 
     This remains as a lightweight test hook. Production boot should use
-    initialize_environment_with_registry.
+    initialize_environment_with_source_root.
     """
 
     actual_boot_id = boot_id or f"boot_{uuid4().hex}"
@@ -267,6 +268,31 @@ def initialize_environment_with_registry(
     )
 
 
+def initialize_environment_with_source_root(
+    ledger_path: Path,
+    state_path: Path,
+    registry_path: Path,
+    boot_id: str | None = None,
+    production_mode: bool = True,
+) -> KernelEnvironment:
+    try:
+        root_anchors = load_root_trust_anchors(production_mode=production_mode)
+    except RootTrustConfigurationError as exc:
+        raise KernelBootError(
+            panic_code=exc.panic_code,
+            message=str(exc),
+            safe_details={"production_mode": production_mode},
+        ) from exc
+
+    return initialize_environment_with_registry(
+        ledger_path=ledger_path,
+        state_path=state_path,
+        registry_path=registry_path,
+        root_anchors=root_anchors,
+        boot_id=boot_id,
+    )
+
+
 def build_diagnostic_receipt_from_error(
     error: KernelBootError,
     boot_id: str,
@@ -334,6 +360,33 @@ def boot_main_with_registry(
             registry_path=registry_path,
             root_anchors=root_anchors,
             boot_id=boot_id,
+        )
+        return 0
+    except KernelBootError as error:
+        return _panic_to_diagnostics(
+            error=error,
+            boot_id=boot_id,
+            diagnostics_path=diagnostics_path,
+            registry_path=registry_path,
+            ledger_path=ledger_path,
+        )
+
+
+def boot_main_with_source_root(
+    ledger_path: Path,
+    state_path: Path,
+    diagnostics_path: Path,
+    registry_path: Path,
+    production_mode: bool = True,
+) -> int:
+    boot_id = f"boot_{uuid4().hex}"
+    try:
+        initialize_environment_with_source_root(
+            ledger_path=ledger_path,
+            state_path=state_path,
+            registry_path=registry_path,
+            boot_id=boot_id,
+            production_mode=production_mode,
         )
         return 0
     except KernelBootError as error:
