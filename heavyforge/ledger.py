@@ -2,10 +2,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import portalocker
 from pydantic import BaseModel
 
 from .contracts import SealedJudgeReceipt
 from .receipts import canonical_json_bytes, compute_receipt_hash, sha256_hex
+
+
+class LedgerLockError(RuntimeError):
+    pass
 
 
 class LedgerEntry(BaseModel):
@@ -44,8 +49,9 @@ def make_ledger_entry(
 def append_to_ledger_unlocked(ledger_path: Path, receipt: SealedJudgeReceipt) -> LedgerEntry:
     """Append without file locking.
 
-    Phase 1D keeps this pure and testable. Production/local concurrent writers
-    should wrap this with portalocker in the boot/ledger manager layer.
+    This remains for pure tests only. Runtime writers should use
+    append_to_ledger_locked so sequence assignment and append happen under the
+    same cooperative lock.
     """
 
     ledger_path.parent.mkdir(parents=True, exist_ok=True)
@@ -58,16 +64,49 @@ def append_to_ledger_unlocked(ledger_path: Path, receipt: SealedJudgeReceipt) ->
     return entry
 
 
+def append_to_ledger_locked(
+    ledger_path: Path,
+    receipt: SealedJudgeReceipt,
+    timeout: float = 5.0,
+) -> LedgerEntry:
+    """Append one sealed receipt under a cross-platform cooperative lock."""
+
+    ledger_path.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        with portalocker.Lock(
+            ledger_path,
+            mode="a+",
+            timeout=timeout,
+            encoding="utf-8",
+        ) as handle:
+            handle.seek(0)
+            entries = _read_entries_from_lines(handle.read().splitlines())
+            previous = entries[-1] if entries else None
+            entry = make_ledger_entry(receipt=receipt, previous=previous)
+
+            handle.seek(0, 2)
+            handle.write(entry.model_dump_json() + "\n")
+            handle.flush()
+            return entry
+    except portalocker.exceptions.LockException as exc:
+        raise LedgerLockError(f"Unable to acquire ledger lock: {exc}") from exc
+
+
 def read_ledger_entries(ledger_path: Path) -> list[LedgerEntry]:
     if not ledger_path.exists():
         return []
 
-    entries: list[LedgerEntry] = []
     with ledger_path.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            if not line.strip():
-                continue
-            entries.append(LedgerEntry.model_validate_json(line))
+        return _read_entries_from_lines(handle.readlines())
+
+
+def _read_entries_from_lines(lines: list[str]) -> list[LedgerEntry]:
+    entries: list[LedgerEntry] = []
+    for line in lines:
+        if not line.strip():
+            continue
+        entries.append(LedgerEntry.model_validate_json(line))
     return entries
 
 
