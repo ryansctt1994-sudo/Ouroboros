@@ -57,7 +57,6 @@ def test_worker_repair_caps_at_plausible():
         judge_decision=clean_judge(),
         judge_failed=False,
         judge_repaired=False,
-        replay_verified=True,
     )
 
     assert level == AuthorityLevel.PLAUSIBLE
@@ -72,7 +71,6 @@ def test_unresolved_dispute_caps_at_plausible():
         judge_decision=judge,
         judge_failed=False,
         judge_repaired=False,
-        replay_verified=True,
     )
 
     assert level == AuthorityLevel.PLAUSIBLE
@@ -87,7 +85,6 @@ def test_missing_evidence_caps_at_plausible():
         judge_decision=judge,
         judge_failed=False,
         judge_repaired=False,
-        replay_verified=True,
     )
 
     assert level == AuthorityLevel.PLAUSIBLE
@@ -104,21 +101,13 @@ def test_clean_evidence_supported_run():
     assert level == AuthorityLevel.EVIDENCE_SUPPORTED
 
 
-def test_replay_verified_requires_external_replay_flag():
-    without_replay = calculate_authority_level(
+def test_base_authority_calculator_cannot_emit_replay_verified():
+    level = calculate_authority_level(
         worker_results=[clean_worker()],
         judge_decision=clean_judge(),
         judge_failed=False,
         judge_repaired=False,
-        replay_verified=False,
-    )
-    with_replay = calculate_authority_level(
-        worker_results=[clean_worker()],
-        judge_decision=clean_judge(),
-        judge_failed=False,
-        judge_repaired=False,
-        replay_verified=True,
     )
 
-    assert without_replay == AuthorityLevel.EVIDENCE_SUPPORTED
-    assert with_replay == AuthorityLevel.REPLAY_VERIFIED
+    assert level == AuthorityLevel.EVIDENCE_SUPPORTED
+    assert level != AuthorityLevel.REPLAY_VERIFIED
