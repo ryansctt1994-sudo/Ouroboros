@@ -33,6 +33,7 @@ dev = [
 [project.scripts]
 ouroboros = "ouroboros.cli:main"
 heavyforge-diagnostics = "heavyforge.cli.diagnostics_cli:main"
+kaskal-codegov = "heavyforge.codegov.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["ouroboros*", "eden_ecs*", "ABRAXIS*", "heavyforge*"]
