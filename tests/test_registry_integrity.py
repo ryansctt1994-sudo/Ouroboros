@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 
+from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from heavyforge.boot import KernelBootError, initialize_environment_with_registry
@@ -12,7 +13,10 @@ from heavyforge.registry import RootTrustAnchor, registry_payload_for_signature
 
 
 def public_key_b64(private_key: Ed25519PrivateKey) -> str:
-    public_bytes = private_key.public_key().public_bytes_raw()
+    public_bytes = private_key.public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
     return base64.b64encode(public_bytes).decode("ascii")
 
 
