@@ -23,6 +23,12 @@ on:
       - "tests/test_diagnostics_cli.py"
       - "tests/test_receipt_sealing.py"
       - "tests/test_operations_run_and_append.py"
+      - "tests/test_codegov_config.py"
+      - "tests/test_codegov_diff_parser.py"
+      - "tests/test_codegov_policy.py"
+      - "tests/test_codegov_receipt_renderer.py"
+      - "tests/test_codegov_engine.py"
+      - "tests/test_codegov_cli.py"
       - "pyproject.toml"
       - ".github/workflows/heavyforge-tests.yml"
   pull_request:
@@ -46,6 +52,12 @@ on:
       - "tests/test_diagnostics_cli.py"
       - "tests/test_receipt_sealing.py"
       - "tests/test_operations_run_and_append.py"
+      - "tests/test_codegov_config.py"
+      - "tests/test_codegov_diff_parser.py"
+      - "tests/test_codegov_policy.py"
+      - "tests/test_codegov_receipt_renderer.py"
+      - "tests/test_codegov_engine.py"
+      - "tests/test_codegov_cli.py"
       - "pyproject.toml"
       - ".github/workflows/heavyforge-tests.yml"
 
@@ -72,7 +84,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
-      - name: Run HEAVYFORGE tests
+      - name: Run HEAVYFORGE and Kaskal CodeGov tests
         run: |
           pytest \
             tests/test_schema_repair_once.py \
@@ -90,6 +102,12 @@ jobs:
             tests/test_diagnostics_cli.py \
             tests/test_receipt_sealing.py \
             tests/test_operations_run_and_append.py \
+            tests/test_codegov_config.py \
+            tests/test_codegov_diff_parser.py \
+            tests/test_codegov_policy.py \
+            tests/test_codegov_receipt_renderer.py \
+            tests/test_codegov_engine.py \
+            tests/test_codegov_cli.py \
             2>&1 | tee heavyforge-pytest.log
 
       - name: Upload HEAVYFORGE pytest log
