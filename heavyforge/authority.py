@@ -21,13 +21,12 @@ def calculate_authority_level(
     judge_decision: JudgeDecision | None,
     judge_failed: bool,
     judge_repaired: bool,
-    replay_verified: bool = False,
     min_judge_confidence: float = 0.65,
 ) -> AuthorityLevel:
-    """Calculate authority deterministically from system state.
+    """Calculate base authority deterministically from run state.
 
-    The Judge never assigns authority. External replay may enable
-    REPLAY_VERIFIED only if all lower integrity gates are clean.
+    This function intentionally cannot emit REPLAY_VERIFIED. Replay promotion is
+    handled by heavyforge.promotion after VerificationReceipt validation.
     """
 
     if judge_failed or judge_decision is None:
@@ -48,9 +47,7 @@ def calculate_authority_level(
     if judge_decision.judge_confidence < min_judge_confidence:
         return AuthorityLevel.DRAFT
 
-    if replay_verified:
-        level = AuthorityLevel.REPLAY_VERIFIED
-    elif judge_decision.evidence_notes:
+    if judge_decision.evidence_notes:
         level = AuthorityLevel.EVIDENCE_SUPPORTED
     else:
         level = AuthorityLevel.PLAUSIBLE
@@ -68,3 +65,29 @@ def calculate_authority_level(
         level = min_authority(level, AuthorityLevel.PLAUSIBLE)
 
     return level
+
+
+def run_integrity_allows_replay_promotion(receipt) -> bool:
+    """Return whether a sealed run is clean enough for replay promotion."""
+
+    if receipt.authority_level != AuthorityLevel.EVIDENCE_SUPPORTED:
+        return False
+
+    if receipt.judge_failed or receipt.judge_repaired:
+        return False
+
+    if receipt.unresolved_disputes:
+        # build_receipt records "No failed agents" / "No repaired agents" notes
+        # as disputes for operator visibility. These exact benign notes do not
+        # block promotion; all other unresolved disputes do.
+        benign = {"No failed agents.", "No repaired agents."}
+        if any(dispute not in benign for dispute in receipt.unresolved_disputes):
+            return False
+
+    if receipt.missing_evidence:
+        return False
+
+    if any(agent.failed or agent.repaired for agent in receipt.agents):
+        return False
+
+    return True
