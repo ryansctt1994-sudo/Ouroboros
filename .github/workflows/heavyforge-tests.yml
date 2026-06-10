@@ -1,12 +1,53 @@
 name: HEAVYFORGE Tests
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
+    paths:
+      - "heavyforge/**"
+      - "tests/test_*heavyforge*.py"
+      - "tests/test_schema_repair_once.py"
+      - "tests/test_authority_truth_table.py"
+      - "tests/test_worker_timeout_isolation.py"
+      - "tests/test_judge_cannot_assign_authority.py"
+      - "tests/test_ledger_hash_chain.py"
+      - "tests/test_diagnostic_stream.py"
+      - "tests/test_verification_receipt_binding.py"
+      - "tests/test_ledger_locked_append.py"
+      - "tests/test_kernel_boot_panic.py"
+      - "tests/test_registry_integrity.py"
+      - "tests/test_root_trust.py"
+      - "tests/test_promotion_gate.py"
+      - "tests/test_diagnostics_cli.py"
+      - "tests/test_receipt_sealing.py"
+      - "tests/test_operations_run_and_append.py"
+      - "pyproject.toml"
+      - ".github/workflows/heavyforge-tests.yml"
   pull_request:
     branches:
       - main
+    paths:
+      - "heavyforge/**"
+      - "tests/test_*heavyforge*.py"
+      - "tests/test_schema_repair_once.py"
+      - "tests/test_authority_truth_table.py"
+      - "tests/test_worker_timeout_isolation.py"
+      - "tests/test_judge_cannot_assign_authority.py"
+      - "tests/test_ledger_hash_chain.py"
+      - "tests/test_diagnostic_stream.py"
+      - "tests/test_verification_receipt_binding.py"
+      - "tests/test_ledger_locked_append.py"
+      - "tests/test_kernel_boot_panic.py"
+      - "tests/test_registry_integrity.py"
+      - "tests/test_root_trust.py"
+      - "tests/test_promotion_gate.py"
+      - "tests/test_diagnostics_cli.py"
+      - "tests/test_receipt_sealing.py"
+      - "tests/test_operations_run_and_append.py"
+      - "pyproject.toml"
+      - ".github/workflows/heavyforge-tests.yml"
 
 jobs:
   heavyforge-tests:
