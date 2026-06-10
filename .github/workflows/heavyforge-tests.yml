@@ -89,4 +89,12 @@ jobs:
             tests/test_promotion_gate.py \
             tests/test_diagnostics_cli.py \
             tests/test_receipt_sealing.py \
-            tests/test_operations_run_and_append.py
+            tests/test_operations_run_and_append.py \
+            2>&1 | tee heavyforge-pytest.log
+
+      - name: Upload HEAVYFORGE pytest log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: heavyforge-pytest-log
+          path: heavyforge-pytest.log
