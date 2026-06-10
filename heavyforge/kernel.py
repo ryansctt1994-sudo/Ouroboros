@@ -5,9 +5,10 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from .authority import calculate_authority_level
-from .contracts import JudgeDecision, JudgeReceipt, WorkerOutput
+from .contracts import JudgeDecision, JudgeReceipt, SealedJudgeReceipt, WorkerOutput
 from .judge import call_judge
 from .provider_protocol import ProviderProtocol
+from .receipts import seal_receipt_unsigned_phase1
 from .worker import call_worker
 
 
@@ -28,14 +29,12 @@ def build_receipt(
     judge_failed: bool,
     judge_repaired: bool,
     judge_error_msg: str | None,
-    replay_verified: bool = False,
 ) -> JudgeReceipt:
     authority_level = calculate_authority_level(
         worker_results=worker_results,
         judge_decision=judge_decision,
         judge_failed=judge_failed,
         judge_repaired=judge_repaired,
-        replay_verified=replay_verified,
     )
 
     failed_agents = [worker.agent_name for worker in worker_results if worker.failed]
@@ -73,6 +72,11 @@ def build_receipt(
         judge_repaired=judge_repaired,
         judge_error_msg=judge_error_msg,
     )
+
+
+def seal_run_receipt(receipt: JudgeReceipt) -> SealedJudgeReceipt:
+    sealed = SealedJudgeReceipt.model_validate(receipt.model_dump(mode="json"))
+    return seal_receipt_unsigned_phase1(sealed)
 
 
 async def run_workers(
@@ -132,5 +136,23 @@ async def heavy_run(
         judge_failed=judge_decision is None,
         judge_repaired=judge_repaired,
         judge_error_msg=judge_error_msg,
-        replay_verified=False,
     )
+
+
+async def heavy_run_sealed(
+    provider: ProviderProtocol,
+    user_prompt: str,
+    run_id: str | None = None,
+    agents: tuple[tuple[str, str], ...] = DEFAULT_AGENTS,
+    worker_timeout: float = 20.0,
+    judge_timeout: float = 30.0,
+) -> SealedJudgeReceipt:
+    receipt = await heavy_run(
+        provider=provider,
+        user_prompt=user_prompt,
+        run_id=run_id,
+        agents=agents,
+        worker_timeout=worker_timeout,
+        judge_timeout=judge_timeout,
+    )
+    return seal_run_receipt(receipt)
