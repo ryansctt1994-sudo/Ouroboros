@@ -18,6 +18,7 @@ dependencies = [
     "psutil>=5.8.0",
     "pydantic>=2.0",
     "cryptography>=42.0",
+    "portalocker>=2.8",
 ]
 
 [project.optional-dependencies]
@@ -31,6 +32,7 @@ dev = [
 
 [project.scripts]
 ouroboros = "ouroboros.cli:main"
+heavyforge-diagnostics = "heavyforge.cli.diagnostics_cli:main"
 
 [tool.setuptools.packages.find]
 include = ["ouroboros*", "eden_ecs*", "ABRAXIS*", "heavyforge*"]
