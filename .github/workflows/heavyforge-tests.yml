@@ -85,6 +85,7 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Run HEAVYFORGE and Kaskal CodeGov tests
+        shell: bash
         run: |
           pytest \
             tests/test_schema_repair_once.py \
